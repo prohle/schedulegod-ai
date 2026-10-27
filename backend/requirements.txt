@@ -4,3 +4,4 @@ ortools
 pydantic
 httpx
 python-dotenv
+openai

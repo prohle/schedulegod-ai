@@ -1,0 +1,36 @@
+{
+  "name": "Med-Surg Unit 4B — Week of Nov 2",
+  "workers": [
+    { "id": "maria", "name": "Maria", "role": "RN", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "john", "name": "John", "role": "RN", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "priya", "name": "Priya", "role": "RN", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "david", "name": "David", "role": "RN", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "sofia", "name": "Sofia", "role": "RN", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "marcus", "name": "Marcus", "role": "RN", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "ana", "name": "Ana", "role": "CNA", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "liam", "name": "Liam", "role": "CNA", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "zoe", "name": "Zoe", "role": "CNA", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "ethan", "name": "Ethan", "role": "CNA", "max_shifts_per_week": 5, "min_shifts_per_week": 2 },
+    { "id": "nina", "name": "Nina", "role": "CNA", "max_shifts_per_week": 5, "min_shifts_per_week": 2 }
+  ],
+  "days": [0, 1, 2, 3, 4, 5, 6],
+  "shift_types": ["day", "evening", "night"],
+  "coverage": [
+    { "role": "RN", "count": 1 },
+    { "role": "CNA", "count": 1 }
+  ],
+  "hard_rules": [
+    { "rule_type": "min_rest_hours", "value": 8, "label": "union rest rule" },
+    { "rule_type": "max_consecutive_days", "value": 3, "label": "burnout cap" }
+  ],
+  "unavailability": [
+    { "worker_id": "zoe", "day": 5 },
+    { "worker_id": "david", "day": 0, "shift_type": "evening" }
+  ],
+  "forced": [],
+  "preferences": [
+    { "worker_id": "maria", "kind": "avoid", "shift_type": "night", "weight": 5 },
+    { "worker_id": "liam", "kind": "prefer", "shift_type": "day", "weight": 2 },
+    { "worker_id": "sofia", "kind": "avoid", "day": 5, "shift_type": "evening", "weight": 3 }
+  ]
+}
