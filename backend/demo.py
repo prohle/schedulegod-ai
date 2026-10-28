@@ -57,6 +57,14 @@ def print_copilot(message: str, resp: CopilotResponse) -> None:
         print(f"  - [{op.op}] {op.explanation}")
     for note in resp.healing_notes:
         print(f"  ! {note}")
+    if resp.diagnosis:
+        print(f"  DIAGNOSIS ({resp.diagnosis_mode}): {resp.diagnosis}")
+    if resp.options:
+        print("  Solver-verified resolution options (Muse proposes, CP-SAT proves):")
+        for i, opt in enumerate(resp.options, 1):
+            obj = f", preference penalty={opt.result.objective}" if opt.result.objective is not None else ""
+            print(f"    {i}. drop '{opt.dropped_explanation}' — {opt.tradeoff} "
+                  f"[{opt.result.status.upper()}{obj}]")
     if resp.result:
         print_timetable(resp.result, "TIMETABLE")
 

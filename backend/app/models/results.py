@@ -57,6 +57,29 @@ class CandidateProposal(BaseModel):
     reason: str
 
 
+class Resolution(BaseModel):
+    """One Muse-proposed fix: drop exactly one conflicting request."""
+
+    drop_operation_index: int
+    tradeoff: str
+
+
+class DiagnosisResult(BaseModel):
+    """Structured-output contract for the Muse Spark diagnosis call."""
+
+    diagnosis: str
+    resolutions: list[Resolution]
+
+
+class ResolutionOption(BaseModel):
+    """A resolution Muse proposed AND CP-SAT re-solved successfully."""
+
+    dropped_operation_index: int
+    dropped_explanation: str
+    tradeoff: str
+    result: SolveResult
+
+
 class EmergencyResponse(BaseModel):
     removed_instructor_id: str
     removed_instructor_name: str
@@ -74,5 +97,8 @@ class CopilotResponse(BaseModel):
     applied_operations: list = []
     dropped_operations: list = []
     healing_notes: list[str] = []
+    diagnosis: Optional[str] = None
+    diagnosis_mode: Optional[str] = None
+    options: list[ResolutionOption] = []
     result: Optional[SolveResult] = None
     parser_mode: Literal["muse-spark", "mock"]
