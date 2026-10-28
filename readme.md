@@ -29,9 +29,11 @@ OPERATE    an emergency arrives (text or voice):
 
 When a request set is infeasible, the solver doesn't just fail — every
 incoming constraint is guarded by a CP-SAT *assumption literal*, so the model
-returns the **minimal conflicting subset** of the request, the self-healing
-agent drops the most recently stated conflict, explains the drop, and
-re-solves.
+returns the **minimal conflicting subset** of the request. Then the two-layer
+self-heal fires: **Muse Spark translates the proof** (plain-English diagnosis
++ ranked resolutions, each dropping one conflicting request), and **CP-SAT
+re-solves every proposed resolution** before it can be shown — the agent
+presents only *proven* options, and auto-applies the least disruptive one.
 
 Full constraint catalog — offerings & degree roadmaps, course optionality,
 active enrollment, equipment, cohort progression, instructor hard/soft
@@ -44,21 +46,26 @@ real-world consideration: [docs/constraint_catalog.md](./docs/constraint_catalog
 |---|---|
 | "Prof. Patel can't teach Mondays — committee duty." | Both her sections legally re-home to other instructors; a third section moves to keep the CS 2025 cohort conflict-free. One sentence, three-section ripple, all solver-verified. |
 | "Dr. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 2/3, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
-| "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. The conflict core names all three pins; the agent drops the latest, explains, re-solves to optimal. |
+| "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. Muse Spark's diagnosis names the binding rule and ranks resolutions ("drop the CS 201 pin — Okafor has capacity to take it"); **every option is re-solved by CP-SAT with its own penalty delta**, the least disruptive one applies. |
 | "CS 350 enrollment jumped to 45 after registration ended." | The elective outgrew its room mid-flight: CS 350 re-shops into the 120-seat hall, CS 210 moves labs, zero cohort conflicts — active enrollment re-triggers every capacity check. |
 
-## Meta models in the core
+## Meta AI tooling at runtime
 
-| Model | Where | Role |
-|---|---|---|
-| **Muse Spark** (`muse-spark-1.3-contributor`) | Meta Model API | Constraint parsing via structured output — intake-window submissions, chair requests, emergency transcripts |
-| **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) *(planned)* | Meta Model API | Emergency calls: a chair calls it in; the transcript becomes constraints |
-| **Muse Spark Open** (`muse-spark-open-1026`) *(optional)* | any OpenAI-compatible endpoint | Self-hosted open-weights parsing at scale — the client is endpoint-agnostic (Baseten / Modal / vLLM) |
-| **Muse Code** | dev-time | Co-authoring the solver + diagnosis layer |
+**Every model this project calls at runtime is a Meta model**, via the Meta
+Model API. The deterministic core (OR-Tools CP-SAT) is not a model — the LLM
+proposes, the solver proves. When no API key is present, both model roles
+degrade to deterministic templates (dev/tests cost zero credits).
 
-*Parsing runs on the contributor model because all demo data is synthetic; a
-real institution would use standard mode so no staff data ever trains Meta's
-models.*
+| # | Runtime call | Model | Code | When it fires |
+|---|---|---|---|---|
+| 1 | Constraint parsing → typed operations (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` | every intake submission, chair request, emergency message |
+| 2 | Self-healing diagnosis → conflict explanation + ranked resolutions (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/diagnosis.py` | whenever CP-SAT proves a request infeasible |
+| 3 | Emergency call transcription *(planned)* | Muse Voice Transcribe `muse-voice-transcribe-1.0` | planned `backend/app/voice/` | a chair calls an emergency in |
+
+*Parsing runs on the contributor model because all data is synthetic; a
+real institution would use standard mode (`muse-spark-1.3`) so no staff data
+ever trains Meta's models. Dev-time coding tools are unrestricted by the
+hackathon and touch nothing at runtime.*
 
 ## Stack
 
