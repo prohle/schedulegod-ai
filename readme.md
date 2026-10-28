@@ -49,7 +49,7 @@ instructor hard/soft schedules, rooms, campus walk matrix): [docs/constraint_cat
 |---|---|---|
 | **Muse Spark** (`muse-spark-1.3-contributor`) | Meta Model API | Constraint parsing via structured output — intake-window submissions, chair requests, emergency transcripts |
 | **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) *(planned)* | Meta Model API | Emergency calls: a chair calls it in; the transcript becomes constraints |
-| **Muse Spark Open** (`muse-spark-open-1026`) *(planned)* | Baseten | Self-hosted open-weights parsing at scale |
+| **Muse Spark Open** (`muse-spark-open-1026`) *(optional)* | any OpenAI-compatible endpoint | Self-hosted open-weights parsing at scale — the client is endpoint-agnostic (Baseten / Modal / vLLM) |
 | **Muse Code** | dev-time | Co-authoring the solver + diagnosis layer |
 
 *Parsing runs on the contributor model because all demo data is synthetic; a
@@ -62,7 +62,7 @@ models.*
 - **Frontend:** Next.js
 - **Inference:** Meta Model API (OpenAI-compatible, `beta.chat.completions.parse` structured output) — mock parser included so dev/tests burn zero credits
 - **Persistence (planned):** SQLite — constraint provenance + change log
-- **Deploy (planned):** Modal
+- **Deploy:** local-first demo; free-tier hosting (HF Spaces / Render for the API, Vercel for the UI) — Modal if partner credits arrive
 
 ## Run the offline demo
 
