@@ -24,6 +24,7 @@ INTAKE_MSG = (
 )
 EMERGENCY_MSG = "Dr. Chen is out all week — who could cover her sections?"
 OVERLOAD_MSG = "Diaz is taking over CS 101, MATH 201 and CS 201 personally."
+ENROLLMENT_MSG = "CS 350 enrollment jumped to 45 after registration ended."
 
 
 def print_timetable(result: SolveResult, title: str) -> None:
@@ -93,6 +94,7 @@ def main() -> None:
 
     print_emergency(EMERGENCY_MSG, run_emergency(scenario, EMERGENCY_MSG))
     print_copilot(OVERLOAD_MSG, run_copilot(scenario, OVERLOAD_MSG))
+    print_copilot(ENROLLMENT_MSG, run_copilot(scenario, ENROLLMENT_MSG))
 
 
 if __name__ == "__main__":

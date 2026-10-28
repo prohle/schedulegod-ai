@@ -72,7 +72,9 @@ def _options(sc: Scenario, section: Section) -> list[tuple[str, str, int, str]]:
     period (0-3) for MWF/TTh or the day (BLOCK_DAYS) for weekly blocks."""
     course = sc.course(section.course_id)
     rooms = [r for r in sc.rooms
-             if r.room_type == course.room_type and r.capacity >= sc.enrollment_for_section(section)]
+             if r.room_type == course.room_type
+             and r.capacity >= sc.enrollment_for_section(section)
+             and set(course.equipment) <= set(r.equipment)]  # C34
     insts = [i for i in sc.instructors if section.course_id in i.qualified_courses]
     opts: list[tuple[str, str, int, str]] = []
     if course.pattern in ("MWF", "TTh"):
@@ -267,6 +269,12 @@ def solve(
                 m.Add(cp_model.LinearExpr.Sum(terms) == 1).OnlyEnforceIf(lit)
             else:
                 m.Add(lit == 0)  # impossible ask -> surfaces as conflict on this op
+        elif op.op == "update_enrollment" and op.section_id and op.value:
+            # C37: active enrollment re-triggers the capacity check (C24):
+            # every too-small room for this section is blocked while the op holds.
+            for k, v in a.items():
+                if k[0] == op.section_id and sc.room(k[3]).capacity < (op.value or 0):
+                    m.Add(v == 0).OnlyEnforceIf(lit)
 
     # ---- soft preferences (C19/C20) as objective ----------------------------
     prefs: list[tuple[str, InstructorPreference]] = []

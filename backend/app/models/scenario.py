@@ -44,6 +44,7 @@ class Room(BaseModel):
     building_id: str
     capacity: int
     room_type: RoomType
+    equipment: list[str] = []  # projector, computers, lecture-capture, video-conf, ...
 
 
 class RoomBlackout(BaseModel):
@@ -82,6 +83,7 @@ class Course(BaseModel):
     pattern: Pattern
     room_type: RoomType
     seats: int  # minimum room capacity needed (per-section enrollment)
+    equipment: list[str] = []  # required equipment subset of Room.equipment
 
 
 class Section(BaseModel):
@@ -89,10 +91,21 @@ class Section(BaseModel):
     course_id: str
 
 
+class RoadmapRequirement(BaseModel):
+    """A degree-map entry: required course or elective-pool pick.
+
+    Electives drive *estimated* demand (take-up), not full cohort size.
+    """
+
+    course_id: str
+    required: bool = True
+    seat_estimate: Optional[int] = None  # elective expected take-up
+
+
 class Program(BaseModel):
     id: str
     name: str
-    roadmap: dict[str, list[str]]  # "term index" -> required course ids
+    roadmap: dict[str, list[RoadmapRequirement]]  # "term index" -> requirements
 
 
 class Cohort(BaseModel):
@@ -119,6 +132,7 @@ class Scenario(BaseModel):
     distances: dict[str, dict[str, int]]  # building_id -> building_id -> walk minutes
     room_blackouts: list[RoomBlackout] = []
     walk_limit_min: int = 10  # max walk between back-to-back classes
+    active_enrollment: dict[str, int] = {}  # section_id -> registered count (post add/drop)
 
     # --- lookups -----------------------------------------------------------
     def course(self, course_id: str) -> Course:
@@ -140,17 +154,28 @@ class Scenario(BaseModel):
         return next(s for s in self.sections if s.id == section_id)
 
     # --- demand ------------------------------------------------------------
-    def cohort_term_courses(self, cohort: Cohort) -> list[str]:
+    def _term_requirements(self, cohort: Cohort) -> list[RoadmapRequirement]:
         program = next(p for p in self.programs if p.id == cohort.program_id)
         return program.roadmap.get(str(cohort.current_term), [])
 
+    def cohort_term_courses(self, cohort: Cohort) -> list[str]:
+        return [r.course_id for r in self._term_requirements(cohort)]
+
     def enrollment_for_section(self, section: Section) -> int:
-        """Projected enrollment: all cohort demand for the course / sections."""
+        """Projected or active enrollment. Active enrollment (post
+        registration) always overrides the roadmap projection (C37)."""
+        if section.id in self.active_enrollment:
+            return self.active_enrollment[section.id]
         course = self.course(section.course_id)
-        demand = sum(
-            c.size for c in self.cohorts
-            if course.id in self.cohort_term_courses(c)
-        )
+        demand = 0
+        for c in self.cohorts:
+            for req in self._term_requirements(c):
+                if req.course_id != course.id:
+                    continue
+                if req.required:
+                    demand += c.size
+                else:  # elective: estimated take-up (C35)
+                    demand += req.seat_estimate or int(c.size * 0.4)
         return demand // max(1, len(self.sections_of_course(course.id)))
 
     def demanded_section_pairs(self) -> list[tuple[Section, Section]]:
@@ -192,6 +217,7 @@ class Operation(BaseModel):
         "add_room_unavailability",
         "remove_instructor",
         "set_section_instructor",
+        "update_enrollment",
     ]
     instructor_id: Optional[str] = None
     section_id: Optional[str] = None
@@ -200,6 +226,7 @@ class Operation(BaseModel):
     period: Optional[int] = Field(default=None, ge=0, le=3)
     kind: Optional[Literal["prefer", "avoid"]] = None
     weight: Optional[int] = None
+    value: Optional[int] = None  # update_enrollment: new active count
     explanation: str
 
 

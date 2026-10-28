@@ -17,9 +17,12 @@ def build_system_prompt(sc: Scenario) -> str:
     )
     sections = "\n".join(f"- {s.id} teaches {s.course_id}" for s in sc.sections)
     rooms = "\n".join(
-        f"- {r.id} ({r.name}, building {r.building_id}, {r.capacity} seats, {r.room_type})"
+        f"- {r.id} ({r.name}, building {r.building_id}, {r.capacity} seats, {r.room_type}"
+        + (f", equipment: {', '.join(r.equipment)}" if r.equipment else "") + ")"
         for r in sc.rooms
     )
+    active = ("Active enrollment (overrides projections): "
+             + "; ".join(f"{sid}={n}" for sid, n in sc.active_enrollment.items())) if sc.active_enrollment else ""
     buildings = ", ".join(
         f"{b.id}={b.name}" + (" [" + ", ".join(
             f"{o}:{sc.distances[b.id][o]}min" for o in sc.distances[b.id] if o != b.id
@@ -42,6 +45,7 @@ Sections:
 {sections}
 Rooms:
 {rooms}
+{active}
 Buildings (walk minutes): {buildings}
 
 ENCODING
@@ -57,6 +61,9 @@ OPERATIONS (emit as few as capture the request fully)
 4. remove_instructor — emergency: instructor gone entirely this term.
 5. set_section_instructor — pin a section to an instructor. Needs
    section_id + instructor_id.
+6. update_enrollment — registration reality: actual count for a section.
+   Needs section_id + value (the new active enrollment); this re-triggers
+   room-capacity checks.
 
 RULES FOR YOUR OUTPUT
 - Only emit operations actually implied by the message; an empty list is fine.

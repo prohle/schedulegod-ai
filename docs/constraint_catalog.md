@@ -16,14 +16,29 @@ along each cohort is.
 | Entity | Key attributes |
 |---|---|
 | **Program** | code, degree roadmap (term-indexed requirements) |
-| **Degree roadmap** | per program: required courses per term index + elective buckets (e.g., "4 electives across terms 3-6") |
+| **Degree roadmap** | per program, per term: **typed requirements** — required courses + **elective pools** with estimated take-up (e.g., "term 5: CS 210, CS 301 required + 1 elective from the pool") |
 | **Cohort** | program + **year of admission** + **expected graduation year** + **current term index** ("how far along") → derives the exact set of courses this cohort needs *this term* |
-| **Course** | code, credits, meeting pattern (e.g., MWF 1h / TTh 1.5h / weekly lab block), room type need, seats per section |
-| **Section** | offering instance of a course → needs instructor + timeslot(s) + room |
-| **Instructor** | qualification set, **hard schedule** (blocked slots), **soft schedule** (preferences: mornings, no-Friday, day-off requests), load caps, course preferences |
-| **Room** | capacity, type (lecture / lab / seminar), building, maintenance blackouts |
-| **Building** | node in the **walk-distance matrix** (minutes between every building pair) |
-| **Timeslot grid** | days × periods (e.g., Mon-Fri × 4 periods) + institutional blackouts |
+| **Course** | code, credits, meeting pattern (C29), room type need, **equipment needs** (projector, computers, lecture-capture...), seats per section |
+| **Section** | offering instance of a course → needs instructor + timeslot(s) + room; **active enrollment** (actual registered count) overrides the projection after add/drop |
+| **Instructor** | qualification set, **hard schedule** (blocked slots), **soft schedule** (preferences: mornings, no-Friday, day-off requests), load caps, course preferences — **recorded at the beginning of the semester via intake windows** |
+| **Room** | capacity, type (lecture / lab / seminar), **equipment inventory**, building, maintenance blackouts |
+| **Building** | node in the **walk-distance matrix** (minutes between every building pair); facility-level closures expressed as room blackouts |
+| **Timeslot grid** | days × periods + institutional blackouts |
+
+### Coverage map (the checklist that drives this catalog)
+
+| Real-world consideration | Constraint IDs |
+|---|---|
+| Facility constraints (closures, maintenance) | C26, C38 |
+| Classroom equipment requirements | C34 |
+| Classroom size | C24, C25 |
+| Campus map distance | C32 |
+| Classroom duration (meeting patterns) | C29 |
+| Cohort information (admission/grad year, progression) | Entities + C1, C12 |
+| Degree map requirements | C1, C2, C4, C35 |
+| Course optionality (required vs elective) | C35, C36 |
+| Active enrollment (post-registration reality) | C37 |
+| Professor hard + soft constraints (semester-start intake) | C13–C22 + intake windows |
 
 ---
 
@@ -90,6 +105,16 @@ along each cohort is.
 | C32 | Walk matrix: any person (instructor or cohort) with consecutive obligations needs gap ≥ building-pair walk time | Hard | ✓ |
 | C33 | Distance penalties for near-misses (gap barely too short) | Soft | later |
 
+## G. Equipment, electives, enrollment
+
+| ID | Constraint | Type | v1 |
+|---|---|---|---|
+| C34 | Equipment match: a course's required equipment (projector, computers, lecture-capture, video-conf...) must be a subset of the room's inventory | Hard | ✓ |
+| C35 | Elective offerings: each cohort's term plan electives must be offered; seat demand = estimated take-up (explicit estimate or default fraction), not full cohort size | Hard (offering) / Soft (demand) | ✓ |
+| C36 | Elective conflict-freedom: for students who choose an elective, it must not overlap that cohort's required courses (v1: conservatively applies to all electives in the term plan) | Hard | ✓ |
+| C37 | Active enrollment: after registration closes, actual per-section counts replace projections and re-trigger C24 capacity checks | Hard | ✓ |
+| C38 | Building-level closures: a facility outage blacklists all rooms in the building (expressed as per-room blackout operations) | Hard | ✓ |
+
 ---
 
 ## Live change requests — the Muse Spark parsing vocabulary
@@ -106,6 +131,7 @@ What a chair/secretary actually says mid-term, and what each maps to:
 | "Enrollment surged — CS210 needs another section" | `add_section` (re-opens offering decision) |
 | "Dr. Lee is covering for Dr. Okafor in CS220" | `set_section_instructor` |
 | "Move the intro lecture to the big hall, the small one is packed" | `set_section_room` |
+| "CS 350 enrollment jumped to 45 after registration ended" | `update_enrollment` (re-triggers C24 capacity) |
 | **(emergency)** "Dr. Chen is out all next week — who can cover her sections?" | `propose_candidates` — a **query**, not an edit: ranked coverage proposals |
 
 Every operation is guarded by a CP-SAT assumption literal — infeasible
@@ -150,7 +176,7 @@ requests produce the minimal conflicting subset, the self-healing hook.
 Decisions: for each section → (instructor, timeslot set, room).
 Fixed by seed: program offerings (C1/C2/C5 precomputed from cohorts),
 course catalog, room inventory, walk matrix.
-Modeled now: C7, C8, C9, C10, C13-C21, C23-C26, C29, C30, C32.
+Modeled now: C7, C8, C9, C10, C13-C21, C23-C26, C29, C30, C32, C34-C38.
 Deferred: C3, C6, C11, C22, C27, C28, C31, C33.
 
 Lifecycle features:

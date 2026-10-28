@@ -105,11 +105,22 @@ def mock_parse(message: str, scenario: Scenario) -> ParsedRequest:
                                  explanation=f"{inst.name} {kind}s the {period} period."))
             parts.append(f"{inst.name} {kind}s period {period}")
 
-    # room closures: "the Science Hall is closed"
+    # active enrollment: "CS 350 enrollment jumped to 45 after registration ended"
+    enroll = re.search(r"enrollment (?:jumped|hit|rose|climbed) to (\d+)", lower)
+    if enroll and courses:
+        section = next((s for s in scenario.sections if s.course_id == courses[0].id), None)
+        if section:
+            ops.append(Operation(op="update_enrollment", section_id=section.id,
+                                 value=int(enroll.group(1)),
+                                 explanation=f"Active enrollment for {courses[0].code} is now {enroll.group(1)}."))
+            parts.append(f"{courses[0].code} enrollment -> {enroll.group(1)}")
+
+    # room closures: "the Science Hall is closed" (match full names, never ids)
     if re.search(r"\bclos(?:ed|e|ing)\b", lower):
         for r in scenario.rooms:
-            name = r.name.lower()
-            if name in lower or r.building_id.lower() in lower:
+            building = next((b for b in scenario.buildings if b.id == r.building_id), None)
+            bname = building.name.lower() if building else ""
+            if r.name.lower() in lower or (bname and bname in lower):
                 ops.append(Operation(op="add_room_unavailability", room_id=r.id,
                                      explanation=f"{r.name} closed all week."))
                 parts.append(f"close {r.name}")

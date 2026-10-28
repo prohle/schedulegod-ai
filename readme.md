@@ -18,8 +18,9 @@ INTAKE     each instructor gets a window with a deadline:
            free-text constraints -> Muse Spark (structured output)
            -> typed hard/soft constraints -> validated -> provenance stored
 BUILD      CP-SAT assigns every section an instructor, timeslot set, and room:
-           qualification, loads, prep caps, room capacity/type, meeting
-           patterns, cohort conflicts, campus walk distances, preferences
+           qualification, loads, prep caps, room capacity/type, equipment,
+           meeting patterns, cohort conflicts, electives, campus walk
+           distances, active enrollment, preferences
 OPERATE    an emergency arrives (text or voice):
            impact analysis -> propose_candidates: every qualified instructor
            CP-SAT-probed for zero-ripple feasibility + preference delta,
@@ -42,6 +43,7 @@ instructor hard/soft schedules, rooms, campus walk matrix): [docs/constraint_cat
 | "Prof. Patel can't teach Mondays — committee duty." | Both her sections legally re-home to other instructors; a third section moves to keep the CS 2025 cohort conflict-free. One sentence, three-section ripple, all solver-verified. |
 | "Dr. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 1/2, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
 | "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. The conflict core names all three pins; the agent drops the latest, explains, re-solves to optimal. |
+| "CS 350 enrollment jumped to 45 after registration ended." | The elective outgrew its room mid-flight: CS 350 re-shops into the 120-seat hall, CS 210 moves labs, zero cohort conflicts — active enrollment re-triggers every capacity check. |
 
 ## Meta models in the core
 

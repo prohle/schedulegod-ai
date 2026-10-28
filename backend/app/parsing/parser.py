@@ -81,6 +81,10 @@ def validate_operations(ops: list[Operation], scenario: Scenario) -> tuple[list[
             if not op.section_id or op.section_id not in section_ids:
                 notes.append(f"Dropped operation {i}: unknown section '{op.section_id}'.")
                 continue
+        if op.op == "update_enrollment":
+            if not op.section_id or op.section_id not in section_ids or not op.value:
+                notes.append(f"Dropped operation {i}: enrollment update needs section_id + value.")
+                continue
         if op.op == "add_instructor_preference" and op.day is None and op.period is None:
             notes.append(f"Dropped operation {i}: preference needs a day or a period.")
             continue
