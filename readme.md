@@ -2,7 +2,7 @@
 
 **Every term, every department rediscovers that the course timetable is an NP-hard constraint problem managed with email and spreadsheets.**
 
-Thirty instructors with hard constraints ("never Tuesdays, committee duty"), soft preferences ("mornings, please"), teaching-load and prep caps. Four cohorts at different points of the same degree roadmap — the CS 2025 cohort needs CS 201 *this term* or forty-five students slip a semester. A fixed inventory of rooms across a campus you can't cross in ten minutes between classes. And one coordinator whose calendar bleeds a week, every term, translating all of it into a spreadsheet that is wrong the moment reality changes.
+Thirty instructors with hard constraints ("never Tuesdays, committee duty"), soft preferences ("mornings, please"), teaching-load and prep caps. Four cohorts at different points of the same degree roadmap — the CS 2025 cohort needs CS 201 *this term* or forty-five students slip a semester. Elective pools with estimated take-up, enrollment that surges after registration closes. A fixed inventory of rooms — each course needing the right equipment and size — across a campus you can't cross in ten minutes between classes. And one coordinator whose calendar bleeds a week, every term, translating all of it into a spreadsheet that is wrong the moment reality changes.
 
 **ScheduleGod AI is the agentic co-pilot for that week.** Natural language goes in — Muse Spark parses it into typed constraints — and a deterministic CP-SAT engine guarantees the output: a provably feasible timetable, minimal-conflict diagnosis when a request can't hold, and when reality breaks the term mid-flight (an instructor drops out, a hall closes), the co-pilot doesn't guess who can cover. **It proves it.**
 
@@ -33,15 +33,17 @@ returns the **minimal conflicting subset** of the request, the self-healing
 agent drops the most recently stated conflict, explains the drop, and
 re-solves.
 
-Full constraint catalog (offerings & degree roadmaps, cohort progression,
-instructor hard/soft schedules, rooms, campus walk matrix): [docs/constraint_catalog.md](./docs/constraint_catalog.md)
+Full constraint catalog — offerings & degree roadmaps, course optionality,
+active enrollment, equipment, cohort progression, instructor hard/soft
+schedules, rooms & campus walk matrix, with a coverage map of every
+real-world consideration: [docs/constraint_catalog.md](./docs/constraint_catalog.md)
 
 ## What a demo sounds like
 
 | Who says | What happens |
 |---|---|
 | "Prof. Patel can't teach Mondays — committee duty." | Both her sections legally re-home to other instructors; a third section moves to keep the CS 2025 cohort conflict-free. One sentence, three-section ripple, all solver-verified. |
-| "Dr. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 1/2, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
+| "Dr. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 2/3, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
 | "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. The conflict core names all three pins; the agent drops the latest, explains, re-solves to optimal. |
 | "CS 350 enrollment jumped to 45 after registration ended." | The elective outgrew its room mid-flight: CS 350 re-shops into the 120-seat hall, CS 210 moves labs, zero cohort conflicts — active enrollment re-triggers every capacity check. |
 
