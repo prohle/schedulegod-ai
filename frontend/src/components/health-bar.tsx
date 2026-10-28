@@ -1,81 +1,45 @@
 "use client";
 
-import { ShieldCheck, CheckCircle2, AlertCircle, AlertTriangle, Users, Building, BookOpen, UserCheck } from "lucide-react";
+// Faithful port of local-design.html: constraint health bar with LIVE
+// evaluation (room/prof collisions, cohort demand, 4-course minimum).
+import { ShieldCheck, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import type { Scenario, CopilotResponse } from "@/types";
+import { useSchedule } from "@/lib/schedule-store";
 
-interface HealthBarProps {
-  scenario: Scenario;
-  response: CopilotResponse | null;
-}
+export function HealthBar() {
+  const { getConstraintHealth } = useSchedule();
+  const health = getConstraintHealth();
 
-export function HealthBar({ scenario, response }: HealthBarProps) {
-  const hasInfeasible = response?.result?.status === "infeasible";
-  const hasDropped = (response?.dropped_operations?.length ?? 0) > 0;
-  const hasHealing = (response?.healing_notes?.length ?? 0) > 0;
-
-  // Check constraint satisfaction
-  const cohortDemandSatisfied = true; // Would check against actual placements
-  const studentMinCourses = true;
-  const profHardConflicts = true;
-  const roomDoubleBooking = true;
+  const badges = [
+    { passed: health.demandOk, label: "Cohort Dynamic Demand Satisfied" },
+    { passed: health.studentsOk, label: "Student 4-Course Minimum" },
+    { passed: health.profOk, label: "Zero Prof Hard Conflicts" },
+    { passed: health.roomsOk, label: "No Room Double-Booking" },
+  ];
 
   return (
-    <div className="bg-card border-b border-border px-3 py-1.5 flex items-center justify-between text-xs shrink-0 shadow-sm">
+    <div className="bg-card border-b border-border px-3 py-1.5 flex items-center justify-between text-xs shrink-0 shadow-sm flex-wrap gap-2">
       <div className="flex items-center space-x-3 flex-wrap gap-2">
         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-          <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-          Rules:
+          <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Rules:
         </span>
-        <Badge variant={cohortDemandSatisfied ? "success" : "destructive"}>
-          <CheckCircle2 className="w-3 h-3 mr-1" />
-          Cohort Dynamic Demand Satisfied
-        </Badge>
-        <Badge variant={studentMinCourses ? "success" : "destructive"}>
-          <CheckCircle2 className="w-3 h-3 mr-1" />
-          Student 4-Course Minimum
-        </Badge>
-        <Badge variant={profHardConflicts ? "success" : "destructive"}>
-          <CheckCircle2 className="w-3 h-3 mr-1" />
-          Zero Prof Hard Conflicts
-        </Badge>
-        <Badge variant={roomDoubleBooking ? "success" : "destructive"}>
-          <CheckCircle2 className="w-3 h-3 mr-1" />
-          No Room Double-Booking
-        </Badge>
+        {badges.map(b => (
+          <div
+            key={b.label}
+            className={cn(
+              "flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] font-semibold border",
+              b.passed
+                ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 animate-pulse"
+            )}
+          >
+            {b.passed ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+            <span>{b.label}</span>
+          </div>
+        ))}
       </div>
-      <div className="flex items-center space-x-2">
-        {hasInfeasible && (
-          <Badge variant="destructive" className="animate-pulse">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Infeasible - Self-Healing Active
-          </Badge>
-        )}
-        {hasDropped && !hasInfeasible && (
-          <Badge variant="warning">
-            <AlertTriangle className="w-3 h-3 mr-1" />
-            {response?.dropped_operations?.length} Constraint(s) Dropped
-          </Badge>
-        )}
-        {hasHealing && !hasInfeasible && !hasDropped && (
-          <Badge variant="success">
-            <CheckCircle2 className="w-3 h-3 mr-1" />
-            Self-Healed Successfully
-          </Badge>
-        )}
-        {!hasInfeasible && !hasDropped && !hasHealing && (
-          <Badge variant="success" className="flex items-center space-x-1">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>All Constraints Satisfied</span>
-          </Badge>
-        )}
-        {response && (
-          <Badge variant="info" className="flex items-center space-x-1 ml-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            <span>Parser: {response.parser_mode === "muse-spark" ? "Muse Spark" : "Mock"}</span>
-          </Badge>
-        )}
+      <div className={cn("text-[11px] font-medium flex items-center space-x-1", health.allPassed ? "text-emerald-600" : "text-amber-600")}>
+        {health.allPassed ? <span>All Constraints Satisfied</span> : <span>Constraints Unfulfilled — Adjust Schedule</span>}
       </div>
     </div>
   );

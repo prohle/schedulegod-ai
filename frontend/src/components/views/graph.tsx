@@ -1,390 +1,237 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Clock, GraduationCap, AlertTriangle, CheckCircle2, Target, AlertCircle, TrendingUp, ArrowRight } from "lucide-react";
+// Faithful port of local-design.html VIEW 3: Course Prerequisite DAG &
+// Graduation Timeline. SVG-based DAG (vis-network replaced for SSR safety),
+// cohort path highlighting, term traversal simulator, prereq depth analysis.
+
+import { useState, useMemo } from "react";
+import { ChevronLeft, ChevronRight, GraduationCap, Clock, CheckCircle2, AlertTriangle, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Scenario, Course, Cohort } from "@/types";
+import { useSchedule } from "@/lib/schedule-store";
 
 interface GraphViewProps {
-  scenario: Scenario;
+  onToast: (message: string, type?: "info" | "success" | "warning" | "error") => void;
 }
 
-export function GraphView({ scenario }: GraphViewProps) {
-  const [selectedStudentId, setSelectedStudentId] = useState(scenario.cohorts[0]?.id || "");
+export function GraphView({ onToast }: GraphViewProps) {
+  void onToast;
+  const { courses, students, activeStudentId, setActiveStudentId, getCoursePrereqDepth } = useSchedule();
   const [currentTerm, setCurrentTerm] = useState(1);
-  const [layout, setLayout] = useState<"horizontal" | "vertical">("horizontal");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
-  const selectedStudent = scenario.cohorts.find(s => s.id === selectedStudentId) || scenario.cohorts[0];
+  const student = students.find(s => s.id === activeStudentId) || students[0];
 
-  // Build nodes and edges for the DAG
-  const { nodes, edges, nodePositions } = useMemo(() => {
-    return buildDAG(scenario, selectedStudent);
-  }, [scenario, selectedStudent]);
+  // Layout: level = prereq depth (mirrors design's vis-network hierarchical LR layout)
+  const levels = useMemo(() => {
+    const map = new Map<string, number>();
+    courses.forEach(c => map.set(c.id, getCoursePrereqDepth(c.id)));
+    return map;
+  }, [courses, getCoursePrereqDepth]);
+
+  const maxLevel = Math.max(...Array.from(levels.values()), 1);
+  const W = 220, H = 90, GAP_X = 70, GAP_Y = 24;
+
+  const positions = useMemo(() => {
+    const pos: Record<string, { x: number; y: number; col: number }> = {};
+    const colCount = new Map<number, number>();
+    courses.forEach(c => {
+      const level = levels.get(c.id) || 1;
+      const idx = colCount.get(level) || 0;
+      colCount.set(level, idx + 1);
+      pos[c.id] = {
+        x: 30 + (level - 1) * (W + GAP_X),
+        y: 30 + idx * (H + GAP_Y),
+        col: level,
+      };
+    });
+    return pos;
+  }, [courses, levels]);
+
+  const width = (maxLevel) * (W + GAP_X) + 60;
+  const height = Math.max(...Array.from(new Set(Object.values(positions).map(p => p.y))), H) + H + 40;
 
   return (
     <div className="view-panel h-full w-full flex flex-col min-h-0 bg-card border border-border rounded-lg shadow-sm">
-      {/* Header */}
-      <div className="bg-muted/50 border-b border-border rounded-t-lg p-2.5 shrink-0 flex items-center justify-between text-xs">
-        <div className="flex items-center space-x-3 flex-wrap gap-2">
-          <div>
-            <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
-              Course Prerequisites & DAG Graduation Timeline
-            </h2>
-            <p className="text-[11px] text-muted-foreground">Directed Acyclic Graph (DAG) for prerequisite dependencies and term path traversals.</p>
-          </div>
+      <div className="bg-muted/50 border-b border-border rounded-t-lg p-2.5 shrink-0 flex items-center justify-between text-xs flex-wrap gap-2">
+        <div>
+          <h2 className="font-bold text-sm text-foreground">Course Prerequisites & DAG Graduation Timeline</h2>
+          <p className="text-[11px] text-muted-foreground">Directed Acyclic Graph (DAG) for prerequisite dependencies and term path traversals.</p>
         </div>
-
-        <div className="flex items-center space-x-2 flex-wrap gap-2">
-          <span className="font-medium text-muted-foreground">Highlight Cohort Path:</span>
-          <Select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} className="bg-primary/10 text-primary font-bold border-primary/50 rounded px-2 py-0.5 text-xs">
-            {scenario.cohorts.map(s => (
-              <option key={s.id} value={s.id}>{s.name} ({s.degree})</option>
-            ))}
+        <div className="flex items-center space-x-2">
+          <span className="font-medium text-muted-foreground">Highlight Student Path:</span>
+          <Select value={activeStudentId} onChange={e => setActiveStudentId(e.target.value)} className="bg-primary/10 text-primary font-bold border-primary/50">
+            {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
-          <Button variant="outline" size="sm" onClick={() => setLayout(l => l === "horizontal" ? "vertical" : "horizontal")} className="text-[11px]">
-            {layout === "horizontal" ? "Vertical" : "Horizontal"} Layout
-          </Button>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 divide-y lg:divide-y-0 lg:divide-x divide-border">
-        {/* DAG Visualization */}
-        <div className="flex-1 min-h-[400px] bg-muted/30 relative p-4 overflow-auto custom-scrollbar">
-          <DAGVisualization
-            nodes={nodes}
-            edges={edges}
-            layout={layout}
-            student={selectedStudent}
-            nodePositions={nodePositions}
-          />
+        {/* DAG canvas */}
+        <div className="flex-1 min-h-[350px] bg-muted/30 relative overflow-auto custom-scrollbar">
+          <svg width={width} height={height} className="p-2">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+              </marker>
+            </defs>
+
+            {/* Edges */}
+            {courses.flatMap(c =>
+              c.prereqs.map(prereqId => {
+                const from = positions[prereqId];
+                const to = positions[c.id];
+                if (!from || !to) return null;
+                const x1 = from.x + W, y1 = from.y + H / 2;
+                const x2 = to.x, y2 = to.y + H / 2;
+                const highlight = highlightId === prereqId || highlightId === c.id;
+                return (
+                  <path
+                    key={`${prereqId}->${c.id}`}
+                    d={`M ${x1} ${y1} C ${x1 + GAP_X / 2} ${y1}, ${x2 - GAP_X / 2} ${y2}, ${x2} ${y2}`}
+                    stroke={highlight ? "#0284c7" : "#94a3b8"}
+                    strokeWidth={highlight ? 2.5 : 2}
+                    fill="none"
+                    markerEnd="url(#arrowhead)"
+                  />
+                );
+              })
+            )}
+
+            {/* Nodes */}
+            {courses.map(c => {
+              const pos = positions[c.id];
+              if (!pos) return null;
+              const isCompleted = student.completed.includes(c.id);
+              const isRequired = student.requiredRemaining.includes(c.id);
+              let borderColor = "#0284c7";
+              if (isCompleted) borderColor = "#10b981";
+              else if (isRequired) borderColor = "#f59e0b";
+              const depth = levels.get(c.id) || 1;
+              const termLabel = currentTerm >= depth ? "This Term" : `Term ${depth}`;
+
+              return (
+                <g
+                  key={c.id}
+                  transform={`translate(${pos.x}, ${pos.y})`}
+                  onMouseEnter={() => setHighlightId(c.id)}
+                  onMouseLeave={() => setHighlightId(null)}
+                  className="cursor-pointer"
+                >
+                  <rect
+                    width={W} height={H} rx="8"
+                    fill="var(--card)"
+                    stroke={borderColor}
+                    strokeWidth={isRequired || isCompleted ? 3 : 1}
+                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.08))"
+                  />
+                  <text x={W / 2} y={26} textAnchor="middle" fontSize="12" fontWeight="800" fill="var(--foreground)" fontFamily="Inter, sans-serif">
+                    {c.id}
+                  </text>
+                  <text x={W / 2} y={48} textAnchor="middle" fontSize="10" fill="var(--muted-foreground)" fontFamily="Inter, sans-serif">
+                    {c.name}
+                  </text>
+                  <text x={W / 2} y={70} textAnchor="middle" fontSize="9" fill={borderColor} fontFamily="Inter, sans-serif" fontWeight="700">
+                    {isCompleted ? "✓ Completed" : isRequired ? `Required — ${termLabel}` : termLabel}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
         </div>
 
-        {/* Graduation Timeline Metrics Side Panel */}
-        <div className="w-full lg:w-96 bg-card p-3 flex flex-col overflow-y-auto custom-scrollbar shrink-0 lg:border-l lg:border-border">
+        {/* Side panel: Graduation timeline */}
+        <div className="w-full lg:w-96 bg-card p-3 flex flex-col overflow-y-auto custom-scrollbar shrink-0">
           <h3 className="font-bold text-xs text-foreground mb-2 flex items-center gap-1.5">
             <GraduationCap className="w-4 h-4 text-emerald-600" />
             Graduation Timeline & Traversal Simulator
           </h3>
 
-          {/* Traversal Player Bar */}
+          {/* Traversal player */}
           <div className="bg-muted/50 border border-border rounded-lg p-2 mb-3">
             <div className="flex items-center justify-between text-[11px] font-bold text-foreground mb-1.5">
               <span>Term Traversal Simulator:</span>
-              <span className="text-primary">Term {currentTerm} (Intro)</span>
+              <span className="text-primary">
+                Term {currentTerm} ({currentTerm === 1 ? "Intro" : currentTerm === 2 ? "Intermediate" : "Capstone"})
+              </span>
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={() => setCurrentTerm(t => Math.max(1, t - 1))} disabled={currentTerm <= 1} className="px-2 py-1">
-                <ChevronLeft className="w-3.5 h-3.5" />
+              <Button variant="outline" size="sm" onClick={() => setCurrentTerm(t => Math.max(1, t - 1))} disabled={currentTerm <= 1} className="px-2 py-1 font-bold">
+                ◀ Prev
               </Button>
               <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
-                <div className="bg-primary h-full transition-all duration-300" style={{ width: `${(currentTerm / 4) * 100}%` }} />
+                <div className="bg-primary h-full transition-all duration-300" style={{ width: `${(currentTerm / 3) * 100}%` }} />
               </div>
-              <Button variant="primary" size="sm" onClick={() => setCurrentTerm(t => Math.min(4, t + 1))} disabled={currentTerm >= 4} className="px-2 py-1">
-                <ChevronRight className="w-3.5 h-3.5" />
+              <Button variant="primary" size="sm" onClick={() => setCurrentTerm(t => Math.min(3, t + 1))} disabled={currentTerm >= 3} className="px-2 py-1 font-bold">
+                Next ▶
               </Button>
             </div>
           </div>
 
-          <GraduationTimelineDetails scenario={scenario} student={selectedStudent} currentTerm={currentTerm} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// DAG Visualization Component
-function DAGVisualization({ 
-  nodes, 
-  edges, 
-  layout, 
-  student, 
-  nodePositions 
-}: { 
-  nodes: DAGNode[]; 
-  edges: DAGEdge[]; 
-  layout: "horizontal" | "vertical";
-  student: Cohort;
-  nodePositions: Record<string, { x: number; y: number }>;
-}) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (svgRef.current) {
-        const rect = svgRef.current.getBoundingClientRect();
-        setDimensions({ width: rect.width, height: rect.height });
-      }
-    };
-    updateDimensions();
-    window.addEventListener("resize", updateDimensions);
-    return () => window.removeEventListener("resize", updateDimensions);
-  }, []);
-
-  // Calculate positions if not provided
-  const positions = useMemo(() => {
-    if (Object.keys(nodePositions).length > 0) return nodePositions;
-    return calculateLayout(nodes, edges, layout, dimensions);
-  }, [nodes, edges, layout, dimensions, nodePositions]);
-
-  return (
-    <svg 
-      ref={svgRef} 
-      width="100%" 
-      height="100%" 
-      viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
-      preserveAspectRatio="xMidYMid meet"
-      className="bg-transparent"
-    >
-      <defs>
-        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
-        </marker>
-        <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#f1f5f9" />
-        </linearGradient>
-      </defs>
-      
-      {/* Edges */}
-      <g stroke="#94a3b8" strokeWidth="1.5" fill="none" markerEnd="url(#arrowhead)">
-        {edges.map(edge => {
-          const source = positions[edge.from];
-          const target = positions[edge.to];
-          if (!source || !target) return null;
-          
-          const midX = (source.x + target.x) / 2;
-          const midY = (source.y + target.y) / 2;
-          
-          // Curved path
-          const cpX = layout === "horizontal" 
-            ? source.x + (target.x - source.x) * 0.5
-            : source.x;
-          const cpY = layout === "horizontal"
-            ? source.y
-            : source.y + (target.y - source.y) * 0.5;
-          
-          return (
-            <path
-              key={`${edge.from}-${edge.to}`}
-              d={`M ${source.x} ${source.y} Q ${cpX} ${cpY} ${target.x} ${target.y}`}
-              stroke="#94a3b8"
-              strokeWidth={1.5}
-              fill="none"
-              markerEnd="url(#arrowhead)"
-            />
-          );
-        })}
-      </g>
-      
-      {/* Nodes */}
-      <g>
-        {nodes.map(node => {
-          const pos = positions[node.id];
-          if (!pos) return null;
-          
-          const isCompleted = student.completed?.includes(node.id) || false;
-          const isRequired = student.requiredRemaining?.includes(node.id) || false;
-          const isCurrent = node.id === student.requiredRemaining?.[0];
-          
-          let borderColor = "#0284c7";
-          let bgColor = "url(#nodeGradient)";
-          if (isCompleted) borderColor = "#10b981";
-          else if (isRequired) borderColor = "#f59e0b";
-          else if (isCurrent) borderColor = "#8b5cf6";
-          
-          return (
-            <g key={node.id} transform={`translate(${pos.x - 100}, ${pos.y - 40})`}>
-              <rect
-                x="0" y="0"
-                width="200" height="80"
-                rx="8"
-                fill="url(#nodeGradient)"
-                stroke={borderColor}
-                strokeWidth={isRequired || isCompleted ? 3 : 1}
-                filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
-              />
-              <text x="100" y="25" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#0f172a">
-                {node.code}
-              </text>
-              <text x="100" y="45" textAnchor="middle" fontSize="10" fill="#64748b">
-                {node.title}
-              </text>
-              <text x="100" y="65" textAnchor="middle" fontSize="9" fill="#94a3b8">
-                {node.pattern} • {node.room_type}
-              </text>
-              {isCompleted && (
-                <text x="190" y="15" textAnchor="end" fontSize="10" fill="#10b981">✓</text>
-              )}
-              {isCurrent && !isCompleted && (
-                <text x="190" y="15" textAnchor="end" fontSize="10" fill="#0284c7">●</text>
-              )}
-            </g>
-          );
-        })}
-      </g>
-    </svg>
-  );
-}
-
-interface DAGNode {
-  id: string;
-  code: string;
-  title: string;
-  pattern: string;
-  room_type: string;
-}
-
-interface DAGEdge {
-  from: string;
-  to: string;
-}
-
-function buildDAG(scenario: Scenario, student: Cohort) {
-  const nodes: DAGNode[] = scenario.courses.map(course => ({
-    id: course.id,
-    code: course.code,
-    title: course.title,
-    pattern: course.pattern,
-    room_type: course.room_type,
-  }));
-
-  const edges: DAGEdge[] = [];
-  scenario.courses.forEach(course => {
-    if (course.prereqs) {
-      course.prereqs.forEach((prereq: string) => {
-        edges.push({ from: prereq, to: course.id });
-      });
-    }
-  });
-
-  return { nodes, edges, nodePositions: {} as Record<string, { x: number; y: number }> };
-}
-
-function calculateLayout(
-  nodes: DAGNode[], 
-  edges: DAGEdge[], 
-  layout: "horizontal" | "vertical",
-  dimensions: { width: number; height: number }
-) {
-  const positions: Record<string, { x: number; y: number }> = {};
-  
-  // Simple topological layout
-  const levels = new Map<string, number>();
-  const visited = new Set<string>();
-  
-  function assignLevel(nodeId: string): number {
-    if (visited.has(nodeId)) return levels.get(nodeId) || 0;
-    visited.add(nodeId);
-    
-    const incomingEdges = edges.filter(e => e.to === nodeId);
-    if (incomingEdges.length === 0) {
-      levels.set(nodeId, 0);
-      return 0;
-    }
-    
-    const maxLevel = Math.max(...incomingEdges.map(e => assignLevel(e.from)));
-    const level = maxLevel + 1;
-    levels.set(nodeId, level);
-    return level;
-  }
-  
-  nodes.forEach(n => assignLevel(n.id));
-  
-  const maxLevel = Math.max(...Array.from(levels.values()));
-  const levelCounts = new Map<number, number>();
-  levels.forEach((level) => {
-    levelCounts.set(level, (levelCounts.get(level) || 0) + 1);
-  });
-  
-  const levelOffsets = new Map<number, number>();
-  levelCounts.forEach((count, level) => {
-    levelOffsets.set(level, -((count - 1) * 220) / 2);
-  });
-  
-  const levelIndex = new Map<number, number>();
-  
-  nodes.forEach(node => {
-    const level = levels.get(node.id) || 0;
-    const index = levelIndex.get(level) || 0;
-    levelIndex.set(level, index + 1);
-    
-    const offset = levelOffsets.get(level) || 0;
-    const centerX = dimensions.width / 2;
-    const centerY = dimensions.height / 2;
-    
-    if (layout === "horizontal") {
-      positions[node.id] = {
-        x: centerX + (level - maxLevel / 2) * 250 + (levelOffsets.get(level) || 0) + (Array.from(levels.values()).filter(l => l === level).indexOf(level) * 220),
-        y: centerY + offset
-      };
-    } else {
-      positions[node.id] = {
-        x: centerX + offset,
-        y: centerY + (level - maxLevel / 2) * 120 + (levelOffsets.get(level) || 0) + (Array.from(levels.values()).filter(l => l === level).indexOf(level) * 120)
-      };
-    }
-  });
-  
-  return positions;
-}
-
-function GraduationTimelineDetails({ scenario, student, currentTerm }: { scenario: Scenario; student: Cohort; currentTerm: number }) {
-  return (
-    <div>
-      <div className="bg-muted/50 border border-border rounded-lg p-3 mb-3">
-        <div className="font-bold text-sm text-foreground mb-2">{student.name}</div>
-        <div className="text-[11px] text-muted-foreground">{student.degree}</div>
-        <div className="text-[10px] text-muted-foreground mt-1">Cohort: {student.cohortYear} | Admitted: {student.admission_year}</div>
-      </div>
-
-      <div className="space-y-2">
-        {scenario.courses.slice(0, 8).map((course, idx) => {
-          const isCompleted = student.completed?.includes(course.id) || false;
-          const isRequired = student.requiredRemaining?.includes(course.id) || false;
-          const isCurrent = idx === currentTerm - 1;
-
-          let statusIcon = <Clock className="w-3.5 h-3.5 text-slate-400" />;
-          let statusClass = "text-slate-500";
-          let statusLabel = "Upcoming";
-
-          if (isCompleted) { statusIcon = <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />; statusClass = "text-emerald-600"; statusLabel = "Completed"; }
-          else if (isCurrent) { statusIcon = <Target className="w-3.5 h-3.5 text-sky-500" />; statusClass = "text-sky-600"; statusLabel = "Current"; }
-          else if (isRequired) { statusIcon = <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />; statusClass = "text-amber-600"; statusLabel = "Required"; }
-
-          return (
-            <div key={course.id} className="bg-card border border-border rounded-lg p-3 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  {statusIcon}
+          {/* Per-student graduation estimates (from design) */}
+          <div className="space-y-2 text-xs">
+            {students.map(s => {
+              let maxDepth = 1;
+              s.requiredRemaining.forEach(cId => {
+                const depth = getCoursePrereqDepth(cId);
+                if (depth > maxDepth) maxDepth = depth;
+              });
+              const yearsToGrad = (maxDepth / 2).toFixed(1);
+              return (
+                <div key={s.id} className="bg-muted/50 border border-border rounded-lg p-3 shadow-sm space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-extrabold text-foreground text-xs">{s.name}</h4>
+                      <span className="text-[10px] text-primary font-semibold block">{s.degree}</span>
+                    </div>
+                    <Badge variant="success" className="text-[10px]">
+                      {maxDepth} Terms ({yearsToGrad} Yrs)
+                    </Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground space-y-1">
+                    <div>Prerequisite DAG Critical Path: <strong className="text-foreground">{maxDepth} Terms Deep</strong></div>
+                    <div>Remaining: <strong className="text-foreground">{s.requiredRemaining.join(", ")}</strong></div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-bold text-xs text-foreground">{course.code}</div>
-                  <div className="text-[10px] text-muted-foreground truncate max-w-[200px]">{course.title}</div>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Badge variant={isCompleted ? "success" : isCurrent ? "info" : isRequired ? "warning" : "default"} className="text-[10px]">{statusLabel}</Badge>
-                {course.prereqs && course.prereqs.length > 0 && (
-                  <Badge variant="info" className="text-[9px]">{course.prereqs.length} prereqs</Badge>
-                )}
-              </div>
+              );
+            })}
+          </div>
+
+          {/* Current-term courses (traversal simulation) */}
+          <div className="mt-3">
+            <h4 className="font-bold text-[11px] text-foreground mb-2 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-primary" />
+              Term {currentTerm} Focus Courses
+            </h4>
+            <div className="space-y-1">
+              {courses.filter(c => (levels.get(c.id) || 1) === currentTerm).map(c => {
+                const isDone = student.completed.includes(c.id);
+                return (
+                  <div key={c.id} className={cn(
+                    "flex items-center justify-between bg-card border rounded p-2 text-[11px]",
+                    isDone ? "border-emerald-300 dark:border-emerald-700" : "border-border"
+                  )}>
+                    <span className="font-bold text-foreground">{c.id} — {c.name}</span>
+                    {isDone
+                      ? <Badge variant="success" className="text-[9px]"><CheckCircle2 className="w-3 h-3 mr-1" />Done</Badge>
+                      : <Badge variant="info" className="text-[9px]"><Target className="w-3 h-3 mr-1" />Focus</Badge>}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-        <div className="flex items-start space-x-2 text-xs">
-          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <div className="font-bold text-amber-800 dark:text-amber-200">Degree Delay Risk</div>
-            <div className="text-amber-700 dark:text-amber-300 mt-1">
-              Missing required courses may delay graduation. Review course sequence before registration.
+          <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-start space-x-2 text-xs">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-amber-800 dark:text-amber-200">Degree Delay Risk</div>
+                <div className="text-amber-700 dark:text-amber-300 mt-1">
+                  If a mandatory section conflicts or is unplaced, the downstream DAG freezes: graduation slips one term per unmet course.
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -392,5 +239,3 @@ function GraduationTimelineDetails({ scenario, student, currentTerm }: { scenari
     </div>
   );
 }
-
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

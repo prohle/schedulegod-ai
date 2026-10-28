@@ -1,6 +1,7 @@
 "use client";
 
-import { Calendar, Sparkles, FileSpreadsheet, Download, AlertTriangle, Users, Building, BookOpen, GitFork, UserCheck, AlertCircle, GraduationCap } from "lucide-react";
+// Faithful port of local-design.html header: branding, tabs, actions.
+import { Calendar, Sparkles, FileSpreadsheet, Download, AlertTriangle, Users, Building, BookOpen, GitFork, UserCheck, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { Tab } from "@/components/dashboard";
@@ -24,30 +25,30 @@ export function Header({ activeTab, onTabChange, onAutoSolve, onExportCSV, onExp
   ];
 
   return (
-    <header className="bg-card border-b border-border px-4 py-2 flex items-center justify-between shrink-0 text-xs shadow-sm">
+    <header className="bg-card border-b border-border px-4 py-2 flex items-center justify-between shrink-0 text-xs shadow-sm flex-wrap gap-2">
       <div className="flex items-center space-x-3">
         <div className="p-2 bg-gradient-to-tr from-sky-500 to-indigo-600 rounded-lg text-white shadow-md shadow-sky-500/20">
           <GraduationCap className="w-4 h-4" />
         </div>
         <div>
           <h1 className="font-extrabold text-sm text-foreground tracking-tight flex items-center gap-2">
-            ScheduleGod AI
+            Academic Scheduler & Cohort Demand Engine
             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
-              Dynamic CSP
+              Dynamic CSP v3.5
             </span>
           </h1>
-          <p className="text-[10px] text-muted-foreground">Mon–Fri • 8:00 AM – 3:00 PM • Cohort Requirement & Faculty Engine</p>
+          <p className="text-[10px] text-muted-foreground">Mon–Sat • 7:30 AM – 9:00 PM • Cohort Requirement & Faculty Engine</p>
         </div>
       </div>
 
-      <div className="flex items-center space-x-1 bg-muted/50 p-1 rounded-xl border border-border">
-        {tabs.map((tab) => (
+      <div className="flex items-center space-x-1 bg-muted/50 p-1 rounded-xl border border-border flex-wrap">
+        {tabs.map(tab => (
           <Button
             key={tab.id}
             variant={activeTab === tab.id ? "primary" : "ghost"}
             size="sm"
             onClick={() => onTabChange(tab.id)}
-            className="flex items-center space-x-1.5"
+            className={cn("flex items-center space-x-1.5", activeTab === tab.id && "shadow-sm")}
           >
             {tab.icon}
             <span>{tab.label}</span>
@@ -55,8 +56,8 @@ export function Header({ activeTab, onTabChange, onAutoSolve, onExportCSV, onExp
         ))}
       </div>
 
-      <div className="flex items-center space-x-2">
-        <Button variant="primary" size="sm" onClick={onAutoSolve} className="flex items-center space-x-1.5 shadow-sm">
+      <div className="flex items-center space-x-2 flex-wrap gap-2">
+        <Button variant="primary" size="sm" onClick={onAutoSolve} className="flex items-center space-x-1.5 shadow-sm bg-emerald-600 hover:bg-emerald-700">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Cohort CSP Auto-Solve</span>
         </Button>
@@ -68,7 +69,7 @@ export function Header({ activeTab, onTabChange, onAutoSolve, onExportCSV, onExp
           <Download className="w-3.5 h-3.5" />
           <span>Export</span>
         </Button>
-        <Button variant="destructive" size="sm" onClick={onEmergencyClick} className="flex items-center space-x-1.5 shadow-sm">
+        <Button variant="outline" size="sm" onClick={onEmergencyClick} className="flex items-center space-x-1 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30">
           <AlertTriangle className="w-3.5 h-3.5" />
           <span>Emergency</span>
         </Button>
