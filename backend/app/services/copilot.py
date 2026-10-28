@@ -1,11 +1,10 @@
 """Co-pilot orchestration: parse -> validate -> solve -> self-heal.
 
-The self-healing loop: when the solver reports infeasibility, CP-SAT has
-already named the minimal conflicting subset of the request (see the
-assumption literals in the solver). We drop the most recently stated
-conflicting request, explain the drop in plain English, and re-solve —
-bounded to a few iterations. The LLM never decides feasibility; it only
-translates. The solver never talks to humans; the agent layer explains.
+When the solver reports infeasibility, CP-SAT has already named the minimal
+conflicting subset of the request (assumption literals). We drop the most
+recently stated conflicting request, explain the drop, and re-solve —
+bounded to a few rounds. The LLM never decides feasibility; the solver never
+talks to humans. The agent layer explains.
 """
 
 from __future__ import annotations
@@ -42,7 +41,6 @@ def run_copilot(
         if not conflict or not conflict.conflicting_operation_indices:
             break  # base scenario infeasible — dropping requests won't help
 
-        # Self-heal: drop the most recently stated conflicting request.
         drop_idx = max(conflict.conflicting_operation_indices)
         victim = remaining.pop(drop_idx)
         dropped.append(victim)

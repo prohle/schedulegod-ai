@@ -1,50 +1,81 @@
 # ScheduleGod AI
 
-**An agentic scheduling co-pilot that turns messy natural-language shift rules into deterministic OR-Tools constraints — with a self-healing agent that auto-debug infeasibilities for hospitals and field dispatch.**
+**Every term, every department rediscovers that the course timetable is an NP-hard constraint problem managed with email and spreadsheets.**
 
-Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* track.
+Thirty instructors with hard constraints ("never Tuesdays, committee duty"), soft preferences ("mornings, please"), teaching-load and prep caps. Four cohorts at different points of the same degree roadmap — the CS 2025 cohort needs CS 201 *this term* or forty-five students slip a semester. A fixed inventory of rooms across a campus you can't cross in ten minutes between classes. And one coordinator whose calendar bleeds a week, every term, translating all of it into a spreadsheet that is wrong the moment reality changes.
 
-## The Problem
+**ScheduleGod AI is the agentic co-pilot for that week.** Natural language goes in — Muse Spark parses it into typed constraints — and a deterministic CP-SAT engine guarantees the output: a provably feasible timetable, minimal-conflict diagnosis when a request can't hold, and when reality breaks the term mid-flight (an instructor drops out, a hall closes), the co-pilot doesn't guess who can cover. **It proves it.**
 
-Scheduling in dynamic environments — such as hospital nursing shifts or field dispatch — is an NP-hard constraint satisfaction problem. Traditional solvers are mathematically rigid, forcing managers to spend hours manually translating messy human requirements into code or spreadsheets. Meanwhile, LLM chatbots that "help with scheduling" produce plausible-but-wrong output — unacceptable when a missed union rule means overtime penalties or an unsafe shift.
+> The LLM never touches the schedule. It only proposes constraints, and every
+> constraint — and every coverage proposal — is verified by a solver.
 
-## Our Approach
+Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* track. This is the problem we know firsthand.
 
-We bridge unstructured human communication with deterministic optimization. **The LLM never touches the schedule — it only proposes constraints, and every constraint is verified against a deterministic solver.**
+## How it works
 
-1. **Constraint Parsing** — Muse Spark (via Meta Model API) converts raw text (last-minute shift swaps, union rules, worker preferences) into structured JSON mathematical constraints.
-2. **Hybrid Optimization Pipeline** — Parsed constraints feed into Google OR-Tools (MILP/CP-SAT) to guarantee mathematically valid, optimal schedule generation.
-3. **Self-Healing Agent** — When the solver reports infeasibility, a Muse Code-powered agent inspects the conflicting constraints, diagnoses the failure in plain English, proposes minimal relaxations, and re-solves. Solver scripts run in isolated Modal Sandboxes.
+```
+INTAKE     each instructor gets a window with a deadline:
+           free-text constraints -> Muse Spark (structured output)
+           -> typed hard/soft constraints -> validated -> provenance stored
+BUILD      CP-SAT assigns every section an instructor, timeslot set, and room:
+           qualification, loads, prep caps, room capacity/type, meeting
+           patterns, cohort conflicts, campus walk distances, preferences
+OPERATE    an emergency arrives (text or voice):
+           impact analysis -> propose_candidates: every qualified instructor
+           CP-SAT-probed for zero-ripple feasibility + preference delta,
+           ranked with plain-English reasons -> pick -> timetable morphs
+```
 
-## Meta Model Usage
+When a request set is infeasible, the solver doesn't just fail — every
+incoming constraint is guarded by a CP-SAT *assumption literal*, so the model
+returns the **minimal conflicting subset** of the request, the self-healing
+agent drops the most recently stated conflict, explains the drop, and
+re-solves.
 
-| Model | Platform | Role |
+Full constraint catalog (offerings & degree roadmaps, cohort progression,
+instructor hard/soft schedules, rooms, campus walk matrix): [docs/constraint_catalog.md](./docs/constraint_catalog.md)
+
+## What a demo sounds like
+
+| Who says | What happens |
+|---|---|
+| "Prof. Patel can't teach Mondays — committee duty." | Both her sections legally re-home to other instructors; a third section moves to keep the CS 2025 cohort conflict-free. One sentence, three-section ripple, all solver-verified. |
+| "Dr. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 1/2, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
+| "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. The conflict core names all three pins; the agent drops the latest, explains, re-solves to optimal. |
+
+## Meta models in the core
+
+| Model | Where | Role |
 |---|---|---|
-| **Muse Spark** | Meta Model API | Natural-language → structured JSON constraint parsing |
-| **Muse Spark Open** (`meta-models/muse-spark-open-1026`) | Baseten | Self-hosted open-weights inference for high-volume parsing |
-| **Muse Code** | Agent layer | Inspect infeasible constraints, debug/refine solver logic in real time |
-| **Muse Voice Transcribe** *(planned)* | Meta Model API | Nurses call in swap requests by voice |
-| **Muse Glimmer / Muse Spark Open** *(planned)* | Modal Endpoints | Open-weights serving |
+| **Muse Spark** (`muse-spark-1.3-contributor`) | Meta Model API | Constraint parsing via structured output — intake-window submissions, chair requests, emergency transcripts |
+| **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) *(planned)* | Meta Model API | Emergency calls: a chair calls it in; the transcript becomes constraints |
+| **Muse Spark Open** (`muse-spark-open-1026`) *(planned)* | Baseten | Self-hosted open-weights parsing at scale |
+| **Muse Code** | dev-time | Co-authoring the solver + diagnosis layer |
 
-## Architecture
-
-```
-text / voice request
-  → constraint parser (Muse Spark, structured JSON output)
-  → JSON schema validation
-  → OR-Tools MILP solver (Modal serverless functions)
-  → optimal schedule ─ or ─ infeasibility report
-  → self-healing agent loop (Muse Code + Modal Sandboxes)
-  → Next.js UI
-```
+*Parsing runs on the contributor model because all demo data is synthetic; a
+real institution would use standard mode so no staff data ever trains Meta's
+models.*
 
 ## Stack
 
-- **Backend:** Python / FastAPI, OR-Tools (MILP / CP-SAT)
-- **Solver compute & agent sandboxes:** Modal — serverless jobs, async queues, sandboxes
-- **Inference:** Meta Model API + Baseten (Muse Spark Open `-1026`)
+- **Backend:** Python / FastAPI, OR-Tools CP-SAT (assumption literals for minimal-conflict diagnosis, feasibility probes for coverage proposals)
 - **Frontend:** Next.js
+- **Inference:** Meta Model API (OpenAI-compatible, `beta.chat.completions.parse` structured output) — mock parser included so dev/tests burn zero credits
+- **Persistence (planned):** SQLite — constraint provenance + change log
+- **Deploy (planned):** Modal
+
+## Run the offline demo
+
+```bash
+cd backend
+python -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python demo.py            # full pipeline, mock parser, zero credits
+.venv/bin/uvicorn app.main:app      # API at http://localhost:8000/docs
+```
+
+Set `MODEL_API_KEY` (from the [Meta Model API dashboard](https://dev.meta.ai)) to switch
+parsing from mock to live Muse Spark.
 
 ## Status
 
-Built during the hackathon (Oct 27 – Nov 4, 2026). See commit history for the full build log. Internal build plan and submission notes: [PLANNING.md](./PLANNING.md).
+Built during the hackathon (Oct 27 – Nov 4, 2026) — commit history is the build log. Internal working notes live in local files; the constraint catalog is the source of truth for the model, the parsing vocabulary, and the roadmap.

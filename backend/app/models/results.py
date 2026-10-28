@@ -1,4 +1,4 @@
-"""Result types: what the solver and the co-pilot orchestration return."""
+"""Result types: timetable, conflict reports, and emergency coverage proposals."""
 
 from __future__ import annotations
 
@@ -6,20 +6,26 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
-from app.models.scenario import DAY_NAMES, Operation, ShiftType
+
+class Placement(BaseModel):
+    """Where one section landed: instructor, timeslot(s), room."""
+
+    section_id: str
+    course_id: str
+    course_code: str
+    instructor_id: str
+    instructor_name: str
+    days: list[int]          # meeting days
+    period: Optional[int]    # one-period patterns; None for blocks
+    periods: list[int]       # occupied periods (1 or 2 entries)
+    room_id: str
+    room_name: str
+    building_id: str
 
 
-class Assignment(BaseModel):
-    day: int
-    day_name: str
-    shift_type: ShiftType
-    worker_id: str
-    worker_name: str
-
-
-class Schedule(BaseModel):
-    assignments: list[Assignment]
-    shifts_per_worker: dict[str, int]
+class Timetable(BaseModel):
+    placements: list[Placement]
+    sections_per_instructor: dict[str, int]
 
 
 class ConflictReport(BaseModel):
@@ -32,21 +38,41 @@ class ConflictReport(BaseModel):
 
 class SolveResult(BaseModel):
     status: Literal["optimal", "feasible", "infeasible"]
-    schedule: Optional[Schedule] = None
+    timetable: Optional[Timetable] = None
     objective: Optional[int] = None
     conflicts: Optional[ConflictReport] = None
     solve_time_ms: int
 
 
-class CopilotResponse(BaseModel):
-    summary: str
-    operations: list[Operation]
-    applied_operations: list[Operation]
-    dropped_operations: list[Operation]
+class CandidateProposal(BaseModel):
+    """One instructor's CP-SAT-verified viability for covering a section."""
+
+    section_id: str
+    course_code: str
+    instructor_id: str
+    instructor_name: str
+    feasible: bool
+    objective_delta: Optional[int] = None
+    load_after: Optional[int] = None
+    reason: str
+
+
+class EmergencyResponse(BaseModel):
+    removed_instructor_id: str
+    removed_instructor_name: str
+    affected_section_ids: list[str]
+    proposals: list[CandidateProposal]
+    chosen: dict[str, str]           # section_id -> chosen instructor_id
     healing_notes: list[str]
     result: Optional[SolveResult] = None
     parser_mode: Literal["muse-spark", "mock"]
 
 
-def describe_day(day: int) -> str:
-    return DAY_NAMES[day]
+class CopilotResponse(BaseModel):
+    summary: str
+    operations: list = []
+    applied_operations: list = []
+    dropped_operations: list = []
+    healing_notes: list[str] = []
+    result: Optional[SolveResult] = None
+    parser_mode: Literal["muse-spark", "mock"]

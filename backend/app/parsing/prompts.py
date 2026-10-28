@@ -1,39 +1,67 @@
-"""System prompt for the Muse Spark constraint-parsing call."""
+"""System prompt for the Muse Spark constraint-parsing call (academic)."""
 
 from __future__ import annotations
 
-from app.models.scenario import DAY_NAMES, Scenario
+from app.models.scenario import DAY_NAMES, PERIOD_NAMES, Scenario
 
 
-def build_system_prompt(scenario: Scenario) -> str:
-    roster = "\n".join(f"- id: {w.id} (name: {w.name}, role: {w.role})" for w in scenario.workers)
-    days = ", ".join(f"{d}={DAY_NAMES[d]}" for d in sorted(scenario.days))
-    rules = "\n".join(f"- {r.rule_type} = {r.value}" + (f" [{r.label}]" if r.label else "") for r in scenario.hard_rules)
+def build_system_prompt(sc: Scenario) -> str:
+    instructors = "\n".join(
+        f"- id: {i.id} ({i.name}), qualified: {', '.join(i.qualified_courses) or 'none'}, "
+        f"max {i.max_sections} sections / {i.max_preps} preps"
+        for i in sc.instructors
+    )
+    courses = "\n".join(
+        f"- {c.id} ({c.code}, {c.title}, pattern {c.pattern}, needs {c.room_type} room for {c.seats} seats)"
+        for c in sc.courses
+    )
+    sections = "\n".join(f"- {s.id} teaches {s.course_id}" for s in sc.sections)
+    rooms = "\n".join(
+        f"- {r.id} ({r.name}, building {r.building_id}, {r.capacity} seats, {r.room_type})"
+        for r in sc.rooms
+    )
+    buildings = ", ".join(
+        f"{b.id}={b.name}" + (" [" + ", ".join(
+            f"{o}:{sc.distances[b.id][o]}min" for o in sc.distances[b.id] if o != b.id
+        ) + "]" if any(o != b.id for o in sc.distances[b.id]) else "")
+        for b in sc.buildings
+    )
 
-    return f"""You are the constraint-parsing module of ScheduleGod AI, a hospital
-shift-scheduling co-pilot. Convert the charge nurse's message into structured
-scheduling operations. You do NOT create schedules — a deterministic solver
-does. You only translate human intent into typed constraints.
+    return f"""You are the constraint-parsing module of ScheduleGod AI, a
+department course-timetabling co-pilot. Convert the chair's or instructor's
+message into structured scheduling operations. You do NOT build the
+timetable — a CP-SAT solver does. You only translate human intent into typed
+constraints.
 
-ROSTER (use these exact worker ids — never invent others):
-{roster}
+WORLD STATE
+Instructors (use exact ids — never invent):
+{instructors}
+Courses:
+{courses}
+Sections:
+{sections}
+Rooms:
+{rooms}
+Buildings (walk minutes): {buildings}
 
-ENCODING:
-- day: integer 0-6 where {days}
-- shift_type: "day" (7:00-15:00) | "evening" (15:00-23:00) | "night" (23:00-7:00)
+ENCODING
+- day: 0-4 = {", ".join(f"{i}={d}" for i, d in enumerate(DAY_NAMES))}
+- period: 0-3 = {", ".join(f"{i}={p}" for i, p in enumerate(PERIOD_NAMES))}
 
-OPERATIONS (choose the best fit; emit as few as capture the request fully):
-1. add_unavailability   — worker can't work. Needs worker_id + day; shift_type optional (omit = whole day).
-2. force_assignment     — worker must work. Needs worker_id + day + shift_type. Use for "swap into", "wants", "must cover".
-3. add_hard_rule        — unit-wide rule. Needs rule_type ("min_rest_hours" or "max_consecutive_days") + value (hours/days).
-4. add_preference       — soft like/dislike. Needs worker_id + kind ("prefer"|"avoid"); day/shift_type optional; weight 1-10 (10 = strong).
+OPERATIONS (emit as few as capture the request fully)
+1. add_instructor_unavailability — hard: instructor can't teach. Needs
+   instructor_id + day and/or period (both null = all week).
+2. add_instructor_preference — soft: needs instructor_id + kind
+   ("prefer"|"avoid") + day or period, optional weight 1-10.
+3. add_room_unavailability — hard: room_id + day and/or period.
+4. remove_instructor — emergency: instructor gone entirely this term.
+5. set_section_instructor — pin a section to an instructor. Needs
+   section_id + instructor_id.
 
-BASE RULES ALREADY IN EFFECT (context only, do not re-emit):
-{rules}
-
-RULES FOR YOUR OUTPUT:
-- Only emit operations actually implied by the message. An empty list is fine.
-- A "swap A with B" is one add_unavailability (A off) + one force_assignment (B in) for the same day/shift.
-- explanation: one short plain-English sentence per operation — it goes straight into the change log shown to the nurse.
+RULES FOR YOUR OUTPUT
+- Only emit operations actually implied by the message; an empty list is fine.
+- explanation: one short plain-English sentence per operation — it goes into
+  the change log shown to the scheduler.
 - summary: one line describing what the message changes overall.
-- Resolve names to roster ids; if a name isn't on the roster, omit that operation."""
+- Resolve names to ids; if someone or something isn't in the world state,
+  omit that operation rather than guessing."""

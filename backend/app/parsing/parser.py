@@ -1,14 +1,15 @@
 """Constraint parser: natural-language request -> typed operations.
 
 Real path: Muse Spark via Meta Model API with structured output
-(JSON-schema-constrained decoding), so the model can only emit operations
-that validate against the Pydantic contract.
+(JSON-schema-constrained decoding via `beta.chat.completions.parse`),
+defaulting to `muse-spark-1.3-contributor` (frugal; content trains future
+Meta models — fine for synthetic data, flip to `muse-spark-1.3` for real
+institutional data).
 
-Mock path: deterministic rule-based parser (no API key / credits needed) so
-the full pipeline is testable offline from day one.
+Mock path: deterministic rule-based parser — full pipeline with zero credits.
 
-Either way, every operation passes `validate_operations` before it may touch
-the solver — the LLM never gets the benefit of the doubt.
+Either way, every operation passes `validate_operations` before it may
+touch the solver — the LLM never gets the benefit of the doubt.
 """
 
 from __future__ import annotations
@@ -36,12 +37,11 @@ class ConstraintParser:
         if self._client is None:
             return mock_parse(message, scenario)
 
-        system = build_system_prompt(scenario)
         try:
             kwargs = dict(
                 model=config.MUSE_MODEL,
                 messages=[
-                    {"role": "system", "content": system},
+                    {"role": "system", "content": build_system_prompt(scenario)},
                     {"role": "user", "content": message},
                 ],
                 response_format=ParsedRequest,
@@ -55,39 +55,37 @@ class ConstraintParser:
             logger.info("muse-spark parse ok (model=%s)", config.MUSE_MODEL)
             return parsed
         except Exception:
-            # Real model call failed (params, credits, schema, transient) —
-            # degrade gracefully to the deterministic mock so the pipeline
-            # keeps working; surface the failure in logs.
             logger.exception("Muse Spark parse failed; falling back to mock parser")
             return mock_parse(message, scenario)
 
 
 def validate_operations(ops: list[Operation], scenario: Scenario) -> tuple[list[Operation], list[str]]:
-    """Drop operations that don't reference real roster members or required fields.
-
-    Returns (valid_ops, notes). This is the hallucination firewall: a
-    nonexistent worker id or malformed op never reaches the solver.
-    """
-    roster = scenario.worker_ids()
+    """Drop operations that reference unknown people/rooms/sections or miss
+    required fields. The hallucination firewall before the solver."""
+    instructor_ids = {i.id for i in scenario.instructors}
+    room_ids = {r.id for r in scenario.rooms}
+    section_ids = {s.id for s in scenario.sections}
     valid: list[Operation] = []
     notes: list[str] = []
     for i, op in enumerate(ops):
-        needs_worker = op.op in ("add_unavailability", "force_assignment", "add_preference")
-        if needs_worker:
-            if not op.worker_id or op.worker_id not in roster:
-                notes.append(f"Dropped operation {i}: unknown worker '{op.worker_id}'.")
+        if op.op in ("add_instructor_unavailability", "add_instructor_preference", "remove_instructor",
+                     "set_section_instructor"):
+            if not op.instructor_id or op.instructor_id not in instructor_ids:
+                notes.append(f"Dropped operation {i}: unknown instructor '{op.instructor_id}'.")
                 continue
-        if op.op == "add_unavailability" and op.day is None:
-            notes.append(f"Dropped operation {i}: unavailability needs a day.")
+        if op.op == "add_room_unavailability":
+            if not op.room_id or op.room_id not in room_ids:
+                notes.append(f"Dropped operation {i}: unknown room '{op.room_id}'.")
+                continue
+        if op.op == "set_section_instructor":
+            if not op.section_id or op.section_id not in section_ids:
+                notes.append(f"Dropped operation {i}: unknown section '{op.section_id}'.")
+                continue
+        if op.op == "add_instructor_preference" and op.day is None and op.period is None:
+            notes.append(f"Dropped operation {i}: preference needs a day or a period.")
             continue
-        if op.op == "force_assignment" and (op.day is None or op.shift_type is None):
-            notes.append(f"Dropped operation {i}: assignment needs day + shift_type.")
-            continue
-        if op.op == "add_hard_rule" and (not op.rule_type or op.value is None):
-            notes.append(f"Dropped operation {i}: hard rule needs rule_type + value.")
-            continue
-        if op.op == "add_preference" and not op.kind:
-            notes.append(f"Dropped operation {i}: preference needs kind (prefer|avoid).")
+        if op.op == "add_instructor_unavailability" and op.day is None and op.period is None:
+            notes.append(f"Dropped operation {i}: unavailability needs a day or period.")
             continue
         valid.append(op)
     return valid, notes

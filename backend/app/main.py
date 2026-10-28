@@ -1,7 +1,8 @@
 """ScheduleGod AI — backend entry point.
 
-    text/voice request -> Muse Spark constraint parsing -> OR-Tools solve
-    -> schedule or infeasibility report -> self-healing agent loop.
+    instructor/chair message -> Muse Spark constraint parsing -> CP-SAT
+    solve -> timetable, minimal-conflict diagnosis, or verified emergency
+    coverage proposals.
 
 Built during the Meta Global AI Developer Hackathon (Oct 27 - Nov 4, 2026).
 """
@@ -15,13 +16,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app import config
-from app.models.results import CopilotResponse, SolveResult
+from app.models.results import CopilotResponse, EmergencyResponse, SolveResult
 from app.models.scenario import ParsedRequest, Scenario
 from app.parsing.parser import ConstraintParser, validate_operations
 from app.services.copilot import run_copilot
+from app.services.emergency import run_emergency
 from app.solver.scheduling_model import solve
 
-app = FastAPI(title="ScheduleGod AI", version="0.1.0")
+app = FastAPI(title="ScheduleGod AI", version="0.2.0")
 
 
 def load_seed_scenario() -> Scenario:
@@ -29,7 +31,7 @@ def load_seed_scenario() -> Scenario:
         return Scenario.model_validate(json.load(f))
 
 
-class CopilotRequest(BaseModel):
+class MessageRequest(BaseModel):
     message: str
     scenario: Optional[Scenario] = None
 
@@ -50,18 +52,26 @@ def get_scenario() -> Scenario:
 
 
 @app.post("/parse", response_model=ParsedRequest)
-def parse(req: CopilotRequest) -> ParsedRequest:
+def parse(req: MessageRequest) -> ParsedRequest:
     scenario = req.scenario or load_seed_scenario()
     return ConstraintParser().parse(req.message, scenario)
 
 
 @app.post("/solve", response_model=SolveResult)
 def solve_scenario(req: SolveRequest) -> SolveResult:
-    ops, _ = validate_operations(req.operations or [], req.scenario)
+    from app.models.scenario import Operation
+    ops, _ = validate_operations(
+        [Operation.model_validate(o) for o in (req.operations or [])], req.scenario)
     return solve(req.scenario, ops)
 
 
 @app.post("/copilot", response_model=CopilotResponse)
-def copilot(req: CopilotRequest) -> CopilotResponse:
+def copilot(req: MessageRequest) -> CopilotResponse:
     scenario = req.scenario or load_seed_scenario()
     return run_copilot(scenario, req.message)
+
+
+@app.post("/emergency", response_model=EmergencyResponse)
+def emergency(req: MessageRequest) -> EmergencyResponse:
+    scenario = req.scenario or load_seed_scenario()
+    return run_emergency(scenario, req.message)
