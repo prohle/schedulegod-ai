@@ -147,14 +147,14 @@ def solve(
     t: dict[tuple[str, str], cp_model.BoolVar] = {}
     for i in sc.instructors:
         courses = {sc.section_by_id(k[0]).course_id for k, v in a.items() if k[1] == i.id}
-        for cid in courses:
+        for cid in sorted(courses):  # sorted: deterministic constraint order
             tv = m.NewBoolVar(f"t_{i.id}_{cid}")
             t[(i.id, cid)] = tv
             for k, v in a.items():
                 if k[1] == i.id and sc.section_by_id(k[0]).course_id == cid:
                     m.Add(tv >= v)
         if courses:
-            m.Add(cp_model.LinearExpr.Sum([t[(i.id, c)] for c in courses]) <= i.max_preps)
+            m.Add(cp_model.LinearExpr.Sum([t[(i.id, c)] for c in sorted(courses)]) <= i.max_preps)
 
     # C17 instructor busy: one thing at a time per (day, period)
     for i in sc.instructors:
@@ -205,7 +205,7 @@ def solve(
         sids = {s.id for cid in sc.cohort_term_courses(c) for s in sc.sections_of_course(cid)}
         for d in range(5):
             covering = []
-            for sid in sids:
+            for sid in sorted(sids):  # sorted: deterministic constraint order
                 pattern = _pattern_of(sc, sid)
                 if pattern in ("MWF", "TTh"):
                     if d in PATTERN_DAYS[pattern]:
@@ -306,6 +306,8 @@ def solve(
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = config.SOLVER_TIME_LIMIT_S
+    # Deterministic solves (stable demo output; ties broken the same way every run)
+    solver.parameters.num_search_workers = 1
     status = solver.Solve(m)
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
 

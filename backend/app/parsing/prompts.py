@@ -58,7 +58,8 @@ OPERATIONS (emit as few as capture the request fully)
 2. add_instructor_preference — soft: needs instructor_id + kind
    ("prefer"|"avoid") + day or period, optional weight 1-10.
 3. add_room_unavailability — hard: room_id + day and/or period.
-4. remove_instructor — emergency: instructor gone entirely this term.
+4. remove_instructor — emergency: instructor gone entirely this term
+   ("out all week", "on leave"). Needs instructor_id.
 5. set_section_instructor — pin a section to an instructor. Needs
    section_id + instructor_id.
 6. update_enrollment — registration reality: actual count for a section.

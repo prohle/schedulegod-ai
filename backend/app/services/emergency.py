@@ -26,7 +26,14 @@ def run_emergency(
     parsed = parser.parse(message, scenario)
     ops, notes = validate_operations(parsed.operations, scenario)
 
-    removed = next((o for o in ops if o.op == "remove_instructor"), None)
+    removed = next((o for o in ops if o.op == "remove_instructor" and o.instructor_id), None)
+    if removed is None:
+        # "Out all week" often parses as full-week unavailability —
+        # semantically identical to a removal for scheduling purposes.
+        removed = next((o for o in ops
+                        if o.op == "add_instructor_unavailability"
+                        and o.instructor_id
+                        and o.day is None and o.period is None), None)
     if removed is None or not removed.instructor_id:
         return EmergencyResponse(
             removed_instructor_id="", removed_instructor_name="",
