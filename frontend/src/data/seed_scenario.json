@@ -1,0 +1,102 @@
+{
+  "name": "CS Department — Autumn Term Timetable",
+  "buildings": [
+    { "id": "S", "name": "Science Hall" },
+    { "id": "E", "name": "Engineering Quad" },
+    { "id": "L", "name": "Library" }
+  ],
+  "distances": {
+    "S": { "S": 0, "E": 15, "L": 5 },
+    "E": { "E": 0, "S": 15, "L": 8 },
+    "L": { "L": 0, "S": 5, "E": 8 }
+  },
+  "walk_limit_min": 10,
+  "rooms": [
+    { "id": "s-hall120", "name": "Science Hall 120", "building_id": "S", "capacity": 120, "room_type": "lecture", "equipment": ["projector", "mic", "lecture-capture"] },
+    { "id": "s-101", "name": "Science 101", "building_id": "S", "capacity": 36, "room_type": "lecture", "equipment": ["projector", "whiteboard"] },
+    { "id": "s-102", "name": "Science 102", "building_id": "S", "capacity": 40, "room_type": "lecture", "equipment": ["projector", "whiteboard"] },
+    { "id": "s-lab1", "name": "Science Lab 1", "building_id": "S", "capacity": 30, "room_type": "lab", "equipment": ["computers"] },
+    { "id": "e-201", "name": "Engineering 201", "building_id": "E", "capacity": 45, "room_type": "lecture", "equipment": ["projector", "whiteboard", "lecture-capture"] },
+    { "id": "e-lab2", "name": "Engineering Lab 2", "building_id": "E", "capacity": 28, "room_type": "lab", "equipment": ["computers", "oscilloscopes"] },
+    { "id": "l-sem", "name": "Library Seminar Room", "building_id": "L", "capacity": 30, "room_type": "seminar", "equipment": ["video-conf", "whiteboard"] }
+  ],
+  "room_blackouts": [
+    { "room_id": "s-102", "day": 4 }
+  ],
+  "instructors": [
+    {
+      "id": "chen", "name": "Dr. Chen",
+      "qualified_courses": ["cs301", "cs310"],
+      "max_sections": 2, "max_preps": 2
+    },
+    {
+      "id": "patel", "name": "Prof. Patel",
+      "qualified_courses": ["cs101", "math201"],
+      "max_sections": 2, "max_preps": 2,
+      "preferences": [{ "kind": "prefer", "period": 2, "weight": 6 }]
+    },
+    {
+      "id": "diaz", "name": "Dr. Diaz",
+      "qualified_courses": ["cs101", "math201", "cs201"],
+      "max_sections": 2, "max_preps": 2
+    },
+    {
+      "id": "okafor", "name": "Dr. Okafor",
+      "qualified_courses": ["cs201", "cs301", "cs350"],
+      "max_sections": 3, "max_preps": 2,
+      "hard_unavailable": [{ "day": 4, "period": 3 }]
+    },
+    {
+      "id": "lee", "name": "Prof. Lee",
+      "qualified_courses": ["cs210", "cs401"],
+      "max_sections": 2, "max_preps": 2
+    },
+    {
+      "id": "nguyen", "name": "Dr. Nguyen",
+      "qualified_courses": ["cs310", "cs401", "cs301", "cs350"],
+      "max_sections": 2, "max_preps": 2,
+      "preferences": [{ "kind": "avoid", "day": 4, "weight": 8 }]
+    }
+  ],
+  "courses": [
+    { "id": "cs101", "code": "CS 101", "title": "Introduction to Computer Science", "pattern": "MWF", "room_type": "lecture", "seats": 50, "equipment": ["projector"] },
+    { "id": "math201", "code": "MATH 201", "title": "Calculus II", "pattern": "MWF", "room_type": "lecture", "seats": 45, "equipment": ["projector"] },
+    { "id": "cs201", "code": "CS 201", "title": "Data Structures", "pattern": "MWF", "room_type": "lecture", "seats": 45, "equipment": ["projector"] },
+    { "id": "cs210", "code": "CS 210", "title": "Systems Lab", "pattern": "block", "room_type": "lab", "seats": 26, "equipment": ["computers"] },
+    { "id": "cs301", "code": "CS 301", "title": "Algorithms", "pattern": "MWF", "room_type": "lecture", "seats": 26, "equipment": ["whiteboard"] },
+    { "id": "cs310", "code": "CS 310", "title": "Artificial Intelligence", "pattern": "TTh", "room_type": "lecture", "seats": 25, "equipment": ["lecture-capture"] },
+    { "id": "cs350", "code": "CS 350", "title": "Programming Languages", "pattern": "MWF", "room_type": "lecture", "seats": 26, "equipment": [] },
+    { "id": "cs401", "code": "CS 401", "title": "Capstone Seminar", "pattern": "MWF", "room_type": "seminar", "seats": 25, "equipment": ["video-conf"] }
+  ],
+  "sections": [
+    { "id": "sec-cs101", "course_id": "cs101" },
+    { "id": "sec-math201", "course_id": "math201" },
+    { "id": "sec-cs201", "course_id": "cs201" },
+    { "id": "sec-cs210", "course_id": "cs210" },
+    { "id": "sec-cs301", "course_id": "cs301" },
+    { "id": "sec-cs310", "course_id": "cs310" },
+    { "id": "sec-cs350", "course_id": "cs350" },
+    { "id": "sec-cs401", "course_id": "cs401" }
+  ],
+  "programs": [
+    {
+      "id": "bscs", "name": "BSc Computer Science",
+      "roadmap": {
+        "1": [{ "course_id": "cs101", "required": true }],
+        "3": [{ "course_id": "cs201", "required": true }, { "course_id": "math201", "required": true }],
+        "5": [
+          { "course_id": "cs210", "required": true },
+          { "course_id": "cs301", "required": true },
+          { "course_id": "cs350", "required": false, "seat_estimate": 26 }
+        ],
+        "7": [{ "course_id": "cs310", "required": true }, { "course_id": "cs401", "required": true }]
+      }
+    }
+  ],
+  "cohorts": [
+    { "id": "cs2026", "program_id": "bscs", "name": "CS 2026 cohort", "admission_year": 2026, "graduation_year": 2030, "current_term": 1, "size": 50 },
+    { "id": "cs2025", "program_id": "bscs", "name": "CS 2025 cohort", "admission_year": 2025, "graduation_year": 2029, "current_term": 3, "size": 45 },
+    { "id": "cs2024", "program_id": "bscs", "name": "CS 2024 cohort", "admission_year": 2024, "graduation_year": 2028, "current_term": 5, "size": 26 },
+    { "id": "cs2023", "program_id": "bscs", "name": "CS 2023 cohort", "admission_year": 2023, "graduation_year": 2027, "current_term": 7, "size": 25 }
+  ]
+}
