@@ -38,7 +38,7 @@ from app.models.intelligence import (
 )
 from app.models.results import SolveResult
 from app.models.scenario import Operation, Program, RoadmapRequirement, Scenario, Section
-from app.intelligence.matrices import compute_margins
+from app.intelligence.matrices import cohort_pool, compute_margins
 from app.intelligence.spectral import analyze
 from app.solver.scheduling_model import solve
 
@@ -103,8 +103,16 @@ def _re_solve(scenario: Scenario, ops: list[Operation], skip_index: Optional[int
 
 
 def verify_move(scenario: Scenario, ops: list[Operation], move: TighteningMove,
+                base: SolveResult,
                 baseline_margin: dict[str, int]) -> tuple[bool, str, Optional[SolveResult], Optional[MarginsReport]]:
-    """Run the proposed move and judge it. (verified, detail, result, margins)"""
+    """Run the proposed move and judge it. (verified, detail, result, margins)
+
+    For `open_elective` the margin gain is measured against the CURRENT board
+    (the placements already on the wall) — the re-solve only proves the
+    enlarged offering remains solvable, because CP-SAT optimizes preference
+    penalties, not cohort margins, and a fresh re-placement could otherwise
+    mask or fake the improvement.
+    """
     if move.kind == "drop_request":
         if move.op_index is None or move.op_index >= len(ops):
             return False, "drop_request index out of range", None, None
@@ -114,17 +122,23 @@ def verify_move(scenario: Scenario, ops: list[Operation], move: TighteningMove,
                     f"#{move.op_index}" if ok else "still infeasible without it"), result, None
 
     mutated = apply_move(scenario, move)
+    if move.kind == "open_elective" and move.cohort_id:
+        # margin delta judged on the current timetable (widened pool only)
+        after_margins = compute_margins(mutated, base.timetable, config.MIN_COURSES_PER_COHORT)
+        after = {m.cohort_id: m.margin for m in after_margins.cohorts}.get(move.cohort_id, 0)
+        before = baseline_margin.get(move.cohort_id, 0)
+        result = solve(mutated, ops)  # enlarged offering must stay solvable
+        feasible = result.status in ("optimal", "feasible")
+        ok = after > before and feasible
+        detail = (f"margin {before} -> {after} against the current board; enlarged "
+                  f"scenario re-solves {result.status.upper()}")
+        return ok, detail, result, after_margins
+
     result = solve(mutated, ops)
     if result.status not in ("optimal", "feasible"):
         return False, "mutated scenario still infeasible — move rejected", result, None
     margins = compute_margins(mutated, result.timetable, config.MIN_COURSES_PER_COHORT)
     now = {m.cohort_id: m.margin for m in margins.cohorts}
-    if move.kind == "open_elective" and move.cohort_id:
-        before, after = baseline_margin.get(move.cohort_id, 0), now.get(move.cohort_id, 0)
-        ok = after > before
-        detail = (f"CP-SAT re-solved; {move.cohort_id} course margin {before} -> {after} "
-                  f"(needs {config.MIN_COURSES_PER_COHORT})")
-        return ok, detail, result, margins
     detail = "CP-SAT re-solves the mutated scenario " + result.status.upper()
     if margins.cohorts:
         detail += f"; four-course margins {now}"
@@ -141,7 +155,9 @@ def _muse_plan(scenario: Scenario, evidence: list[str], ops: list[Operation]) ->
     client = None
     if config.MUSE_API_KEY:
         from openai import OpenAI
-        client = OpenAI(base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY)
+        client = OpenAI(
+            base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY,
+            timeout=config.MUSE_TIMEOUT_S)
     if client is None:
         return None
     try:
@@ -182,11 +198,36 @@ def _validate_plan(plan: TighteningPlan, scenario: Scenario, ops: list[Operation
             moves.append(mv)
         elif (mv.kind == "open_elective" and mv.cohort_id in cohort_ids
               and mv.course_id in course_ids):
+            cohort = next(c for c in scenario.cohorts if c.id == mv.cohort_id)
+            _, pool = cohort_pool(scenario, cohort)
+            if mv.course_id in set(pool):
+                continue  # already eligible — a no-op the solver would reject
             moves.append(mv)
         elif (mv.kind == "drop_request" and mv.op_index is not None
               and 0 <= mv.op_index < len(ops) and mv.op_index in core):
             moves.append(mv)
     return TighteningPlan(assessment=plan.assessment, moves=moves)
+
+
+def _courses_non_overlap(slots: dict[str, list[set]], c1: str, c2: str) -> bool:
+    """True if some section of c1 and some section of c2 are disjoint (the
+    student can take both)."""
+    return any(not (a & b) for a in slots.get(c1, []) for b in slots.get(c2, []))
+
+
+def _mock_assessment(base: SolveResult, margins: MarginsReport, core: list[int]) -> str:
+    if core:
+        return ("(template) The request set is infeasible — CP-SAT names a conflict "
+                "core; withdrawing one request lets the timetable re-solve.")
+    shortfall = [m for m in margins.cohorts if not m.ok]
+    if base.status == "infeasible":
+        return ("(template) The base scenario is infeasible; proposing structural "
+                "repairs (load cap, qualification, section) that the solver can verify.")
+    if shortfall:
+        names = "; ".join(f"{m.name} ({m.margin}/{margins.min_courses})" for m in shortfall)
+        return (f"(template) C39 four-course shortfalls: {names}. Proposing elective "
+                f"openings from already-offered, conflict-free courses.")
+    return "(template) No blocking issue — no moves proposed."
 
 
 def _mock_plan(scenario: Scenario, evidence: list[str], base: SolveResult,
@@ -232,16 +273,26 @@ def _mock_plan(scenario: Scenario, evidence: list[str], base: SolveResult,
                     kind="add_section", course_id=course.id,
                     rationale=f"{course.code} demand {demand} exceeds offered seat supply {supply} (C5)."))
     if base.timetable is not None:
-        for m in margins.cohorts:
-            if m.ok:
-                continue
-            for cid in m.offered_pool_courses:
-                if cid not in m.pool_courses:
-                    code = scenario.course(cid).code
-                    moves.append(ProposedMove(
-                        kind="open_elective", cohort_id=m.cohort_id, course_id=cid,
-                        rationale=f"{m.name} can only fit {m.margin} non-conflicting courses; "
-                                  f"opening {code} as an elective widens their term plan (C39)."))
+        from app.intelligence.matrices import placement_intervals
+        slots: dict[str, list[set]] = {}
+        for pl in base.timetable.placements:
+            slots.setdefault(pl.course_id, []).append(placement_intervals(pl))
+        placed = set(slots)
+        shortfall = sorted((m for m in margins.cohorts if not m.ok), key=lambda m: m.margin)
+        for m in shortfall:
+            # open a course that is already offered AND currently placed so it
+            # does not collide with any course the cohort already takes — only
+            # then does it genuinely widen their non-conflicting set (C39).
+            for cid in sorted(placed - set(m.pool_courses)):
+                if not all(_courses_non_overlap(slots, cid, tc) for tc in m.example_track):
+                    continue
+                code = scenario.course(cid).code
+                moves.append(ProposedMove(
+                    kind="open_elective", cohort_id=m.cohort_id, course_id=cid,
+                    rationale=f"{m.name} can only fit {m.margin} non-conflicting courses; "
+                              f"opening {code} (already offered, placed clear of their track) "
+                              f"widens their term plan toward the "
+                              f"{config.MIN_COURSES_PER_COHORT}-course guarantee."))
     seen: set[tuple] = set()
     unique = []
     for mv in moves:
@@ -250,8 +301,7 @@ def _mock_plan(scenario: Scenario, evidence: list[str], base: SolveResult,
             seen.add(key)
             unique.append(mv)
     return TighteningPlan(
-        assessment="(template) " + ("; ".join(evidence[:3]) if evidence
-                                    else "Solver report shows no blocking issue."),
+        assessment=_mock_assessment(base, margins, core),
         moves=unique[:3])
 
 
@@ -295,24 +345,28 @@ def run_tightener(scenario: Scenario, ops: Optional[list[Operation]] = None) -> 
             mode = "muse-spark"
         else:
             plan = _mock_plan(scenario, evidence, base, margins, ops, core)
-            mode = "mock" if mode == "mock" else mode
+            mode = "mock"  # Muse absent or failed/timed out -> template fallback
 
     moves: list[TighteningMove] = []
-    best_result: SolveResult | None = base if base.status != "infeasible" else None
-    best_margins: MarginsReport | None = margins if margins.cohorts else None
+    best_result: SolveResult | None = None
+    best_margins: MarginsReport | None = None
     if plan is not None:
         baseline = {m.cohort_id: m.margin for m in margins.cohorts}
         for pm in plan.moves:
             tm = TighteningMove(
                 kind=pm.kind, instructor_id=pm.instructor_id, course_id=pm.course_id,
                 cohort_id=pm.cohort_id, op_index=pm.op_index, rationale=pm.rationale)
-            ok, detail, result, mg = verify_move(scenario, ops, tm, baseline)
+            ok, detail, result, mg = verify_move(scenario, ops, tm, base, baseline)
             tm.verified = ok
             tm.detail = detail
             moves.append(tm)
             if ok and result is not None and best_result is None:
                 best_result, best_margins = result, mg
         moves.sort(key=lambda m: not m.verified)
+
+    if best_result is None:  # no move verified -> report the base world
+        best_result = base if base.status != "infeasible" else None
+        best_margins = margins if margins.cohorts else None
 
     assessment = plan.assessment if plan is not None else (
         "No tightening needed: the timetable solves and every cohort clears the "
@@ -333,7 +387,10 @@ propose repairs from a CLOSED grammar of typed moves:
 - add_section: one more section of a course (needs course_id)
 - add_qualification: cross-train an instructor for a course (needs both ids)
 - open_elective: registrar adds a course to a cohort's current term plan as an
-  elective (needs cohort_id + course_id) — the fix for four-course shortfalls
+  elective (needs cohort_id + course_id) — the fix for four-course shortfalls.
+  The course MUST already be offered with a placed section and must NOT
+  already be in that cohort's term plan or prerequisite chain, otherwise it
+  is a no-op.
 - drop_request: withdraw one parsed request, by its index in the conflict core
 
 Rules: at most 3 moves, ranked most-promising first; every move will be

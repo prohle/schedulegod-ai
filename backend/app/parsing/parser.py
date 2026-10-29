@@ -31,7 +31,9 @@ class ConstraintParser:
         self._client = None
         if config.MUSE_API_KEY:
             from openai import OpenAI  # imported lazily so mock mode needs no SDK
-            self._client = OpenAI(base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY)
+            self._client = OpenAI(
+                base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY,
+                timeout=config.MUSE_TIMEOUT_S)
 
     def parse(self, message: str, scenario: Scenario) -> ParsedRequest:
         if self._client is None:

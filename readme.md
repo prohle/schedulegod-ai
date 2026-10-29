@@ -33,7 +33,7 @@ TIGHTEN    when the solver deadlocks or the four-course guarantee fails:
 
 When a request set is infeasible, the solver doesn't just fail — every incoming constraint is guarded by a CP-SAT *assumption literal*, so the model returns the **minimal conflicting subset** of the request. Then the two-layer self-heal fires: **Muse Spark translates the proof** (plain-English diagnosis + ranked resolutions, each dropping one conflicting request), and **CP-SAT re-solves every proposed resolution** before it can be shown — the agent presents only *proven* options, and auto-applies the least disruptive one.
 
-**Spectral deadlock prediction** runs before every solve: the section-conflict graph (cohort hard edges + instructor soft edges) yields Laplacian eigenvalues, Hoffman chromatic lower bound, exact max clique, Fiedler vector. If the conflict graph needs more colors than the period band has slots, or a same-pattern clique exceeds the 4-period MWF/TTh band, the timetable is *structurally infeasible* — we name the deadlock pre-solve and surface it to the tightener.
+**Spectral warm-start runs on every solve**: the section-conflict graph (cohort hard edges + instructor soft edges) yields Laplacian eigenvalues and the Fiedler vector, whose spectral coloring becomes CP-SAT `AddHint` hints. The same graph powers a **deadlock radar** — algebraic connectivity μ₂, Hoffman chromatic lower bound, exact max clique — that names a structural deadlock (a same-pattern clique exceeding the 4-period MWF/TTh band) *before* the solver wastes a solve, and feeds the tightener.
 
 **Four-course guarantee (C39)** audits every placed timetable: can each cohort assemble ≥4 distinct, mutually non-overlapping courses toward graduation? Shortfalls trigger the tightener's `open_elective` moves, which the solver verifies.
 
@@ -47,7 +47,7 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 | "Dr. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 2/3, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
 | "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. Muse Spark's diagnosis names the binding rule and ranks resolutions ("drop the CS 201 pin — Okafor has capacity to take it"); **every option is re-solved by CP-SAT with its own penalty delta**, the least disruptive one applies. |
 | "CS 350 enrollment jumped to 45 after registration ended." | The elective outgrew its room mid-flight: CS 350 re-shops into the 120-seat hall, CS 210 moves labs, zero cohort conflicts — active enrollment re-triggers every capacity check. |
-| *(spectral deadlock warning fires)* | "Three cohorts can't reach four courses — max independent set in the placed timetable is 3." → Muse proposes `open_elective(cs201→cs2025)`, `open_elective(cs310→cs2023)`, `open_elective(cs101→cs2026)` → CP-SAT verifies the first lifts cs2025 to 4/4, the others rejected because they don't move the margin. Timetable re-solves with the verified move. |
+| *(C39 shortfall fires)* | "CS 2023 cohort can only fit 2 of 4 non-conflicting courses." → the tightener proposes opening already-offered electives; CP-SAT verifies `cs101` and `cs201` lift the cohort to 3/4 against the current board, and **rejects `cs210`** (the 26-seat lab would overflow to 36). |
 
 ## Meta AI tooling at runtime
 

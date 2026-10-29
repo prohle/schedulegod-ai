@@ -38,6 +38,8 @@ along each cohort is.
 | Degree map requirements | C1, C2, C4, C35 |
 | Course optionality (required vs elective) | C35, C36 |
 | Active enrollment (post-registration reality) | C37 |
+| Full-time offering feasibility (≥4 non-conflicting courses per cohort) | C39 |
+| Structural infeasibility / deadlock prediction (spectral) | Intelligence layer |
 | Professor hard + soft constraints (semester-start intake) | C13–C22 + intake windows |
 
 ---
@@ -63,6 +65,7 @@ along each cohort is.
 | C10 | Cohort back-to-back meetings need buildings within walk distance for the gap | Soft→Hard by gap | ✓ |
 | C11 | Preserve a common lunch window per cohort | Soft | later |
 | C12 | Only cohorts whose progression satisfies prerequisites count demand for a course | Hard (demand model) | ✓ (seed) |
+| C39 | Full-time offering feasibility: each cohort's placed timetable (plan + prerequisite-chain-closed pool) admits ≥4 distinct, mutually non-overlapping courses toward graduation | Hard (offering audit) | ✓ |
 
 ## C. Instructor — "hard and soft schedule + preference" (per instructor)
 
@@ -176,7 +179,7 @@ requests produce the minimal conflicting subset, the self-healing hook.
 Decisions: for each section → (instructor, timeslot set, room).
 Fixed by seed: program offerings (C1/C2/C5 precomputed from cohorts),
 course catalog, room inventory, walk matrix.
-Modeled now: C7, C8, C9, C10, C13-C21, C23-C26, C29, C30, C32, C34-C38.
+Modeled now: C7, C8, C9, C10, C13-C21, C23-C26, C29, C30, C32, C34-C39.
 Deferred: C3, C6, C11, C22, C27, C28, C31, C33.
 
 Lifecycle features:
@@ -187,3 +190,31 @@ Lifecycle features:
 - Persistence (SQLite): constraint provenance + change/event log — powers
   the self-healing execution stream UI. Postgres via docker-compose stays a
   drop-in swap later.
+
+---
+
+## Intelligence layer (sparse matrices + spectral radar + AI tightening)
+
+A deterministic analysis pipeline over the same scenario, exposed as four
+backend endpoints (`backend/app/intelligence/`):
+
+- **Sparse matrices** (`matrices.py`, scipy CSR): classroom (rooms × courses,
+  seat headroom), degree fulfilment (cohorts × courses, depth-before-completion),
+  demand, cohort-section eligibility, faculty availability tensor (instructors ×
+  20 slots) + blackouts + preferences, qualifications. Stacking the faculty
+  tensor over the instructor axis yields the departmental capacity heatmap
+  `C_Dept(d,t) = Σ_p M_p(d,t)` and its dead zones.
+- **Spectral radar** (`spectral.py`): the section-conflict graph (hard = C7
+  cohort pairs that can overlap; soft = shared qualified-instructor pools) →
+  Laplacian spectrum (algebraic connectivity μ₂), Hoffman chromatic lower
+  bound, exact max clique (Bron–Kerbosch), Fiedler vector + 2-way partition.
+  A same-pattern clique larger than the 4-period MWF/TTh band is a *structural
+  deadlock* named before CP-SAT runs; the Fiedler-ordered greedy coloring
+  becomes CP-SAT `AddHint` warm-start hints on every solve.
+- **C39 audit** (`matrices.py::compute_margins`): per cohort, the max set of
+  distinct mutually non-overlapping courses in the placed timetable (plan +
+  chain-closed pool), reported as a margin vs the 4-course guarantee.
+- **AI tightening** (`tightener.py`): Muse Spark proposes typed moves from a
+  closed grammar (`raise_load_cap`, `add_section`, `add_qualification`,
+  `open_elective`, `drop_request`); CP-SAT re-solves each mutated scenario and
+  only verified moves are shown.

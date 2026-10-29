@@ -52,6 +52,21 @@ from app.models.scenario import (
 VAR_KEY = tuple  # (section_id, instructor_id, slot_key, room_id)
 
 
+def _default_spectral_hints(sc: Scenario) -> dict[str, int]:
+    """Spectral warm-start hints, computed lazily inside solve().
+
+    Imported at call time (not module load) so the solver never triggers an
+    import cycle with the intelligence package; any spectral failure degrades
+    to "no hints" rather than a broken solve — the radar is advisory, CP-SAT
+    still proves optimality either way.
+    """
+    try:
+        from app.intelligence.spectral import analyze
+        return analyze(sc).slot_hints
+    except Exception:
+        return {}
+
+
 def _pattern_of(sc: Scenario, section_id: str) -> str:
     return sc.course(sc.section_by_id(section_id).course_id).pattern
 
@@ -126,6 +141,9 @@ def solve(
     opts: dict[str, list[tuple[str, int, str, str]]] = {
         s.id: _options(sc, s) for s in sc.sections
     }
+
+    if slot_hints is None:
+        slot_hints = _default_spectral_hints(sc)
 
     a: dict[VAR_KEY, cp_model.BoolVar] = {}
     for s in sc.sections:

@@ -31,7 +31,9 @@ class DiagnosisParser:
         self._client = None
         if config.MUSE_API_KEY:
             from openai import OpenAI
-            self._client = OpenAI(base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY)
+            self._client = OpenAI(
+                base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY,
+                timeout=config.MUSE_TIMEOUT_S)
 
     def diagnose(
         self,

@@ -83,7 +83,10 @@ def cohort_pool(scenario: Scenario, cohort: Cohort) -> tuple[list[str], list[str
     program = program_of(scenario, cohort)
     depths = course_depths(program)
     term = cohort.current_term
-    plan = sorted(c for c, d in depths.items() if d == term)
+    # The current-term plan is read directly from the roadmap (not from the
+    # min-depth map) so an elective the registrar opens this term is eligible
+    # even if the same course also appears earlier in the roadmap.
+    plan = sorted(r.course_id for r in program.roadmap.get(str(term), []))
     pool = set(plan)
     for c, d in depths.items():
         if d > term and all(d2 <= term for d2 in depths.values() if d2 < d):

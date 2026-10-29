@@ -85,6 +85,43 @@ def print_emergency(message: str, resp: EmergencyResponse) -> None:
         print_timetable(resp.result, "TIMETABLE AFTER EMERGENCY")
 
 
+def print_intelligence(scenario) -> None:
+    """BEAT 5: sparse matrices + spectral radar + AI tightening on demand."""
+    from app import config
+    from app.intelligence import analyze, build_matrices, run_tightener
+
+    print("=" * 78)
+    print("BEAT 5 — INTELLIGENCE LAYER: spectral radar -> C39 audit -> AI tightening")
+
+    bundle = build_matrices(scenario)
+    print("  Sparse matrices (scipy CSR):")
+    for name in ("classroom", "fulfilment", "demand", "faculty_availability",
+                 "qualification"):
+        m = getattr(bundle, name)
+        print(f"    {name:<20} shape={m.shape} nnz={m.nnz} density={m.density}")
+
+    radar = analyze(scenario)
+    print("  Spectral radar:")
+    print(f"    algebraic connectivity mu2={radar.algebraic_connectivity}  "
+          f"Hoffman chi>={radar.hoffman_chromatic_lower_bound}  "
+          f"max clique={radar.max_clique}")
+    print(f"    slot hints (AddHint warm-start): {radar.slot_hints}")
+    for w in radar.deadlock_warnings:
+        print(f"    ! {w}")
+
+    resp = run_tightener(scenario)
+    print(f"  Tightener [{resp.trigger}] ({resp.muse_mode}): {resp.assessment}")
+    for mv in resp.moves:
+        mark = "OK " if mv.verified else "REJECTED"
+        print(f"    [{mark}] {mv.kind} {mv.instructor_id or ''}{mv.course_id or ''}"
+              f"{mv.cohort_id or ''} — {mv.detail}")
+    if resp.margins and resp.margins.cohorts:
+        print("  Four-course guarantee (C39) after verified moves:")
+        for m in resp.margins.cohorts:
+            print(f"    {m.cohort_id:<8} margin {m.margin}/{resp.margins.min_courses} "
+                  f"{'OK' if m.ok else 'SHORTFALL'}  track={m.example_track}")
+
+
 def main() -> None:
     scenario = load_seed_scenario()
     print("ScheduleGod AI — offline demo (mock parser; set MODEL_API_KEY for Muse Spark)")
@@ -103,6 +140,8 @@ def main() -> None:
     print_emergency(EMERGENCY_MSG, run_emergency(scenario, EMERGENCY_MSG))
     print_copilot(OVERLOAD_MSG, run_copilot(scenario, OVERLOAD_MSG))
     print_copilot(ENROLLMENT_MSG, run_copilot(scenario, ENROLLMENT_MSG))
+
+    print_intelligence(scenario)
 
 
 if __name__ == "__main__":
