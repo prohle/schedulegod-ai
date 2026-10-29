@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Scenario, SolveResult, CopilotResponse, Operation } from "@/types";
+import type {
+  Scenario, SolveResult, CopilotResponse, Operation,
+  MatricesReport, SpectralReport, MarginsReport, TightenResponse,
+} from "@/types";
 
 const API_BASE = "";
 
@@ -120,4 +123,72 @@ export function useParse() {
   }, []);
 
   return { parsed, loading, parse };
+}
+
+// --- Intelligence layer: sparse matrices + spectral radar + AI tightening ----
+export function useIntelligence() {
+  const [matrices, setMatrices] = useState<MatricesReport | null>(null);
+  const [spectral, setSpectral] = useState<SpectralReport | null>(null);
+  const [margins, setMargins] = useState<MarginsReport | null>(null);
+  const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
+  const [tighten, setTighten] = useState<TightenResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState<"solve" | "tighten" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const post = useCallback(async (path: string, body?: unknown) => {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    });
+    return res.json();
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [m, s, g] = await Promise.all([
+        fetch(`${API_BASE}/api/intelligence/matrices`).then((r) => r.json()),
+        fetch(`${API_BASE}/api/intelligence/spectral`).then((r) => r.json()),
+        fetch(`${API_BASE}/api/intelligence/margins`).then((r) => r.json()),
+      ]);
+      if (m.error) throw new Error(m.error);
+      setMatrices(m);
+      setSpectral(s);
+      setMargins(g);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load intelligence data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const runSolve = useCallback(async () => {
+    setBusy("solve");
+    try {
+      setSolveResult(await post(`${API_BASE}/api/solve`, { operations: [] }));
+    } finally {
+      setBusy(null);
+    }
+  }, [post]);
+
+  const runTighten = useCallback(async () => {
+    setBusy("tighten");
+    try {
+      setTighten(await post(`${API_BASE}/api/intelligence/tighten`));
+    } finally {
+      setBusy(null);
+    }
+  }, [post]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return {
+    matrices, spectral, margins, solveResult, tighten,
+    loading, busy, error, runSolve, runTighten, reload: load,
+  };
 }

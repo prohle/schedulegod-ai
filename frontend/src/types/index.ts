@@ -165,6 +165,111 @@ export interface CopilotResponse {
   parser_mode: "muse-spark" | "mock";
 }
 
+// --- Intelligence layer (sparse matrices + spectral radar + AI tightening) ---
+
+export interface SparseMatrixPayload {
+  name: string;
+  shape: [number, number];
+  row_labels: string[];
+  col_labels: string[];
+  rows: number[];
+  cols: number[];
+  values: number[];
+  nnz: number;
+  density: number;
+  notes: string;
+}
+
+export interface CohortDepth {
+  cohort_id: string;
+  name: string;
+  size: number;
+  current_term: number;
+  total_terms: number;
+  terms_remaining: number;
+  completion_fraction: number;
+  plan_courses: string[];
+  pool_courses: string[];
+}
+
+export interface MatricesReport {
+  classroom: SparseMatrixPayload;
+  fulfilment: SparseMatrixPayload;
+  demand: SparseMatrixPayload;
+  cohort_sections: SparseMatrixPayload;
+  faculty_availability: SparseMatrixPayload;
+  faculty_blackouts: SparseMatrixPayload;
+  faculty_preferences: SparseMatrixPayload;
+  qualification: SparseMatrixPayload;
+  department_capacity: number[][];
+  dead_zones: [number, number][];
+  depth: CohortDepth[];
+}
+
+export interface GraphEdge {
+  u: string;
+  v: string;
+  weight: number;
+  kind: "cohort" | "instructor";
+}
+
+export interface SpectralReport {
+  node_labels: string[];
+  edges: GraphEdge[];
+  laplacian_eigenvalues: number[];
+  algebraic_connectivity: number;
+  largest_laplacian_eigenvalue: number;
+  hoffman_chromatic_lower_bound: number;
+  max_clique: string[];
+  fiedler_vector: number[];
+  spectral_order: string[];
+  components: string[][];
+  spectral_partition: [string[], string[]];
+  deadlock_warnings: string[];
+  slot_hints: Record<string, number>;
+}
+
+export interface CohortMargin {
+  cohort_id: string;
+  name: string;
+  size: number;
+  terms_remaining: number;
+  plan_courses: string[];
+  pool_courses: string[];
+  offered_pool_courses: string[];
+  margin: number;
+  ok: boolean;
+  example_track: string[];
+  risk: string;
+}
+
+export interface MarginsReport {
+  min_courses: number;
+  cohorts: CohortMargin[];
+  all_ok: boolean;
+}
+
+export interface TighteningMove {
+  kind: "raise_load_cap" | "add_section" | "add_qualification" | "open_elective" | "drop_request";
+  instructor_id?: string;
+  course_id?: string;
+  cohort_id?: string;
+  op_index?: number;
+  rationale: string;
+  verified: boolean;
+  detail: string;
+}
+
+export interface TightenResponse {
+  trigger: "infeasible" | "margin_shortfall" | "deadlock_warning" | "none";
+  evidence: string[];
+  muse_mode: "muse-spark" | "mock";
+  assessment: string;
+  moves: TighteningMove[];
+  result?: SolveResult;
+  margins?: MarginsReport;
+}
+
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 export const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const PERIOD_NAMES = ["8:00", "10:00", "13:00", "15:00"];

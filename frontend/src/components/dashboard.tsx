@@ -14,6 +14,7 @@ import {
   Sparkles,
   AlertCircle,
   ChevronLeft,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,9 +31,10 @@ import { GraphView } from "./views/graph";
 import { CoursesView } from "./views/courses";
 import { StudentsView } from "./views/students";
 import { WizardView } from "./views/wizard";
+import { IntelligenceView } from "./views/intelligence";
 import { Sidebar } from "./sidebar";
 
-export type ActiveView = "master" | "faculty" | "graph" | "courses" | "students" | "wizard";
+export type ActiveView = "master" | "faculty" | "graph" | "courses" | "students" | "wizard" | "intelligence";
 
 const VIEW_CONFIG = {
   master: { label: "Master Timetable", icon: LayoutDashboard, desc: "Drag-drop grid, auto-solve" },
@@ -41,6 +43,7 @@ const VIEW_CONFIG = {
   courses: { label: "Cohort Demand", icon: BookOpen, desc: "Demand vs scheduled sections" },
   students: { label: "Student Audits", icon: GraduationCap, desc: "Conflict-free enrollment, progress" },
   wizard: { label: "Guided Wizard", icon: Zap, desc: "Step-by-step: Intake → Build → Review" },
+  intelligence: { label: "Intelligence", icon: Brain, desc: "Spectral radar, C39 audit, AI tightening" },
 } as const;
 
 type Mode = "simple" | "advanced";
@@ -48,7 +51,7 @@ type Mode = "simple" | "advanced";
 function DashboardInner() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mode, setMode] = useState<"simple" | "advanced">("simple");
-  const [activeView, setActiveView] = useState<"master" | "faculty" | "graph" | "courses" | "students" | "wizard">("wizard");
+  const [activeView, setActiveView] = useState<ActiveView>("wizard");
   const [toast, setToast] = useState<{ message: string; type: "info" | "success" | "warning" | "error" } | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
@@ -65,7 +68,7 @@ function DashboardInner() {
     else showToast("CSP solver could not satisfy all constraints — relax instructor availability", "warning");
   };
 
-  const availableViews = mode === "simple" ? ["wizard"] : ["master", "faculty", "graph", "courses", "students"];
+  const availableViews: ActiveView[] = mode === "simple" ? ["wizard"] : ["master", "faculty", "graph", "courses", "students", "intelligence"];
   if (mode === "simple" && activeView !== "wizard") setActiveView("wizard");
 
   return (
@@ -107,6 +110,7 @@ function DashboardInner() {
             {activeView === "graph" && <GraphView onToast={showToast} />}
             {activeView === "courses" && <CoursesView onToast={showToast} />}
             {activeView === "students" && <StudentsView onToast={showToast} />}
+            {activeView === "intelligence" && <IntelligenceView onToast={showToast} />}
           </div>
 
           <Footer />

@@ -9,10 +9,11 @@ import {
   Zap,
   Settings,
   ChevronLeft,
+  Brain,
 } from "lucide-react";
 import { useSchedule } from "@/lib/schedule-store";
 
-export type ActiveView = "master" | "faculty" | "graph" | "courses" | "students" | "wizard";
+export type ActiveView = "master" | "faculty" | "graph" | "courses" | "students" | "wizard" | "intelligence";
 export type Mode = "simple" | "advanced";
 
 const VIEW_CONFIG = {
@@ -22,6 +23,7 @@ const VIEW_CONFIG = {
   courses: { label: "Cohort Demand", icon: BookOpen, desc: "Demand vs scheduled sections" },
   students: { label: "Student Audits", icon: GraduationCap, desc: "Conflict-free enrollment, progress" },
   wizard: { label: "Guided Wizard", icon: Zap, desc: "Step-by-step: Intake → Build → Review" },
+  intelligence: { label: "Intelligence", icon: Brain, desc: "Spectral radar, C39 audit, AI tightening" },
 } as const;
 
 interface SidebarProps {
@@ -52,18 +54,19 @@ export function Sidebar({ activeView, setActiveView, mode, setMode, availableVie
           <div className="space-y-1">
             {availableViews.map((viewKey) => {
               const config = VIEW_CONFIG[viewKey];
+              const Icon = config.icon;
               const isActive = activeView === viewKey;
               return (
                 <button
                   key={viewKey}
-                  onClick={() => setActiveView(viewKey as "master" | "faculty" | "graph" | "courses" | "students" | "wizard")}
+                  onClick={() => setActiveView(viewKey as "master" | "faculty" | "graph" | "courses" | "students" | "wizard" | "intelligence")}
                   className={`w-full justify-start text-xs gap-2 px-2 py-2 rounded-lg transition-colors ${
                     activeView === viewKey
                       ? "bg-primary/10 text-primary border border-primary/30 shadow-sm"
                       : "hover:bg-muted text-foreground"
                   }`}
                 >
-                  {config.icon}
+                  <Icon className="w-4 h-4 shrink-0" />
                   <span className="flex-1 text-left">
                     <span className="block font-medium">{config.label}</span>
                     <span className="block text-[10px] text-muted-foreground">{config.desc}</span>

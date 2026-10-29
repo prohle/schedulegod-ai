@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ScheduleGod AI — Frontend
 
-## Getting Started
+Next.js 16 UI for ScheduleGod AI: a **Guided Wizard** (simple, step-by-step)
+and **Expert views** (master timetable, faculty, DAG, cohort demand, student
+audits, intelligence).
 
-First, run the development server:
+## The two interfaces
+
+- **Guided** (default) — step-by-step wizard: Intake → Build → Review → Emergency.
+- **Expert** — the full view set in the left sidebar, including **Intelligence**
+  (spectral radar, C39 four-course guarantee, real CP-SAT solve, and
+  Muse-proposed / CP-SAT-verified tightening moves).
+
+Switch modes with the **Guided / Expert** toggle at the bottom of the sidebar.
+
+## Run it
+
+The UI talks to the Python backend through its `/api/*` route handlers, which
+proxy to the FastAPI service. Start both:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. backend (FastAPI + OR-Tools CP-SAT)
+cd backend && .venv/bin/uvicorn app.main:app --port 8000
+
+# 2. frontend (Next.js)
+cd frontend && npm install && npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. The backend URL defaults to
+`http://localhost:8000`; override it with `BACKEND_URL=http://host:port`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+If the backend isn't reachable, the **Intelligence** view shows a clear
+"Backend not reachable" state with a retry button; the Guided wizard and the
+other views still work standalone against the in-browser demo data.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev     # dev server
+npm run build   # production build (typechecks + bundles)
+npm run start   # serve the production build
+npm run lint    # eslint
+```

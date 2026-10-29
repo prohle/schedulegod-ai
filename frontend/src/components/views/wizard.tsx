@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, ShieldCheck, AlertTriangle, Zap, Users, Building2, AlertCircle, GraduationCap } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle, Zap, Users, Building2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select } from "@/components/ui/select";
 import { useSchedule } from "@/lib/schedule-store";
 
 interface WizardViewProps {
@@ -30,10 +29,7 @@ export function WizardView({ onToast }: WizardViewProps) {
   const {
     professors,
     courses,
-    students,
     masterSchedule,
-    addCourse,
-    paintFacCell,
     autoSolveCSP,
     clearSchedule,
     getConstraintHealth,
@@ -41,33 +37,22 @@ export function WizardView({ onToast }: WizardViewProps) {
     getCourseCohortDemand,
   } = useSchedule();
 
-  const stepOrder = ["intake", "build", "review", "emergency"];
+  const stepOrder: StepId[] = ["intake", "build", "review", "emergency"];
   const currentIndex = stepOrder.indexOf(currentStep);
   const canGoNext = currentIndex < stepOrder.length - 1;
   const canGoPrev = currentIndex > 0;
 
-  const isStepComplete = (step: StepId) => {
-    switch (step) {
-      case "intake": return intakeSubmitted;
-      case "build": return buildCompleted;
-      case "review": return reviewCompleted;
-      case "emergency": return true;
-      default: return false;
-    }
-  };
-
   const handleNext = () => {
     if (!canGoNext) return;
-    const nextStep = stepOrder[currentIndex + 1] as StepId;
     if (currentStep === "intake") setIntakeSubmitted(true);
     if (currentStep === "build") setBuildCompleted(true);
     if (currentStep === "review") setReviewCompleted(true);
-    setCurrentStep(nextStep);
+    setCurrentStep(stepOrder[currentIndex + 1]);
   };
 
   const handlePrev = () => {
     if (!canGoPrev) return;
-    setCurrentStep(stepOrder[currentIndex - 1] as StepId);
+    setCurrentStep(stepOrder[currentIndex - 1]);
   };
 
   const handleIntakeSubmit = () => {
@@ -100,7 +85,6 @@ export function WizardView({ onToast }: WizardViewProps) {
   };
 
   const health = getConstraintHealth();
-  const totalSections = Object.keys(masterSchedule).length;
   const sectionsNeeded = courses.reduce((sum, c) => sum + getCourseCohortDemand(c.id).requiredSections, 0);
 
   return (
@@ -154,7 +138,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-bold text-sm">{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{p.dept} • {p.qualifiedCourses.join(", ")}</p>
+                      <p className="text-[10px] text-muted-foreground">{p.dept}</p>
                     </div>
                     <Badge variant={p.gridState && Object.keys(p.gridState).length > 0 ? "success" : "default"} className="text-[10px]">
                       {p.gridState && Object.keys(p.gridState).length > 0 ? "Constraints set" : "Not started"}
@@ -240,7 +224,7 @@ export function WizardView({ onToast }: WizardViewProps) {
           <div className="space-y-6 max-w-2xl mx-auto">
             <div className="bg-sky-50 border border-sky-200 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-3">
-                <div className="w-5 h-5 text-sky-600">✓</div>
+                <ShieldCheck className="w-5 h-5 text-sky-600" />
                 <h3 className="font-bold text-sky-800">Constraint Review & Validation</h3>
               </div>
               <p className="text-sm text-sky-700">
@@ -258,7 +242,7 @@ export function WizardView({ onToast }: WizardViewProps) {
               ].map(({ key, label }) => {
                 const passed = health[key as keyof typeof health];
                 return (
-                  <div className="flex items-center justify-between p-3 bg-card border rounded-lg">
+                  <div key={key} className="flex items-center justify-between p-3 bg-card border rounded-lg">
                     <span className="font-medium">{label}</span>
                     <span className={passed ? "bg-emerald-100 text-emerald-800 text-[11px] px-2 py-0.5 rounded" : "bg-amber-100 text-amber-800 text-[11px] px-2 py-0.5 rounded"}>
                       {passed ? "Satisfied" : "Unfulfilled"}
@@ -270,21 +254,21 @@ export function WizardView({ onToast }: WizardViewProps) {
 
             <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm">
               <div className="flex items-center space-x-2 mb-2">
-                <div className="w-4 h-4 text-muted-foreground">🕐</div>
+                <Zap className="w-4 h-4 text-muted-foreground" />
                 <span className="font-medium text-muted-foreground">Timetable Stats</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
                 <div className="bg-card border rounded p-2 text-center"><p className="font-bold text-primary">{Object.keys(masterSchedule).length}</p><p className="text-xs text-muted-foreground">Sections Placed</p></div>
-                <div className="bg-white border rounded p-2 text-center"><p className="font-bold text-primary">{courses.filter(c => getScheduledCount(c.id) > 0).length}</p><p className="text-xs text-muted-foreground">Courses Covered</p></div>
-                <div className="bg-white border rounded p-2 text-center"><p className="font-bold text-primary">{professors.length}</p><p className="text-xs text-muted-foreground">Instructors Active</p></div>
-                <div className="bg-white border rounded p-2 text-center"><p className="font-bold text-primary">{courses.length}</p><p className="text-xs text-muted-foreground">Total Courses</p></div>
+                <div className="bg-card border rounded p-2 text-center"><p className="font-bold text-primary">{courses.filter(c => getScheduledCount(c.id) > 0).length}</p><p className="text-xs text-muted-foreground">Courses Covered</p></div>
+                <div className="bg-card border rounded p-2 text-center"><p className="font-bold text-primary">{professors.length}</p><p className="text-xs text-muted-foreground">Instructors Active</p></div>
+                <div className="bg-card border rounded p-2 text-center"><p className="font-bold text-primary">{courses.length}</p><p className="text-xs text-muted-foreground">Total Courses</p></div>
               </div>
             </div>
 
-            <div style={{textAlign: "right"}}>
-              <button className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium" onClick={handleReviewComplete}>
+            <div className="flex justify-end">
+              <Button variant="primary" size="md" onClick={handleReviewComplete}>
                 Complete Review & Continue
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -293,7 +277,7 @@ export function WizardView({ onToast }: WizardViewProps) {
           <div className="space-y-6 max-w-2xl mx-auto">
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-3">
-                <div className="w-5 h-5 text-amber-600">⚠</div>
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
                 <h3 className="font-bold text-amber-800">Emergency Response</h3>
               </div>
               <p className="text-sm text-amber-700">
@@ -302,69 +286,67 @@ export function WizardView({ onToast }: WizardViewProps) {
               </p>
             </div>
 
-            <div style={{display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))"}}>
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="bg-card border border-border rounded-lg p-4">
-                <div style={{display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem"}}>
-                  <span style={{fontSize: "1.25rem"}}>👤</span>
-                  <h4 style={{fontWeight: "bold", color: "#92400E"}}>Instructor Out</h4>
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-4 h-4 text-amber-700" />
+                  <h4 className="font-bold text-amber-900 text-sm">Instructor Out</h4>
                 </div>
-                <p style={{fontSize: "0.875rem", color: "#92400E", marginBottom: "0.75rem"}}>Full-week unavailability → hard-blocks painted → CSP re-solves</p>
-                <button style={{width: "100%", padding: "0.5rem 1rem", border: "1px solid #d97706", borderRadius: "0.375rem", fontSize: "0.875rem", background: "white", color: "#92400E", cursor: "pointer"}} onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
+                <p className="text-xs text-muted-foreground mb-3">Full-week unavailability → hard-blocks painted → CSP re-solves</p>
+                <Button variant="outline" size="sm" className="w-full" onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
                   Open Emergency Drawer
-                </button>
+                </Button>
               </div>
 
-              <div style={{background: "white", border: "1px solid #d1d5db", borderRadius: "0.5rem", padding: "1rem"}}>
-                <div style={{display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem"}}>
-                  <span style={{fontSize: "1.25rem"}}>🏢</span>
-                  <h4 style={{fontWeight: "bold", color: "#92400E"}}>Room Closed</h4>
+              <div className="bg-card border border-border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className="w-4 h-4 text-amber-700" />
+                  <h4 className="font-bold text-amber-900 text-sm">Room Closed</h4>
                 </div>
-                <p style={{fontSize: "0.875rem", color: "#92400E", marginBottom: "0.75rem"}}>Facility outage → sections re-homed → CSP re-solves</p>
-                <button style={{width: "100%", padding: "0.5rem 1rem", border: "1px solid #d97706", borderRadius: "0.375rem", fontSize: "0.875rem", background: "white", color: "#92400E", cursor: "pointer"}} onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
+                <p className="text-xs text-muted-foreground mb-3">Facility outage → sections re-homed → CSP re-solves</p>
+                <Button variant="outline" size="sm" className="w-full" onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
                   Open Emergency Drawer
-                </button>
+                </Button>
               </div>
 
-              <div style={{background: "white", border: "1px solid #d1d5db", borderRadius: "0.5rem", padding: "1rem"}}>
-                <div style={{display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem"}}>
-                  <span style={{fontSize: "1.25rem"}>⚠</span>
-                  <h4 style={{fontWeight: "bold", color: "#92400E"}}>Enrollment Surge</h4>
+              <div className="bg-card border border-border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-amber-700" />
+                  <h4 className="font-bold text-amber-900 text-sm">Enrollment Surge</h4>
                 </div>
-                <p style={{fontSize: "0.875rem", color: "#92400E", marginBottom: "0.75rem"}}>Capacity exceeded → re-trigger capacity checks → CSP re-solves</p>
-                <button style={{width: "100%", padding: "0.5rem 1rem", border: "1px solid #d97706", borderRadius: "0.375rem", fontSize: "0.875rem", background: "white", color: "#92400E", cursor: "pointer"}} onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
+                <p className="text-xs text-muted-foreground mb-3">Capacity exceeded → re-trigger capacity checks → CSP re-solves</p>
+                <Button variant="outline" size="sm" className="w-full" onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
                   Open Emergency Drawer
-                </button>
+                </Button>
               </div>
             </div>
 
-            <div style={{background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "0.5rem", padding: "1rem"}}>
-              <div style={{fontWeight: "bold", color: "#065f46", marginBottom: "0.5rem"}}>Emergency protocol verified</div>
-              <p style={{fontSize: "0.875rem", color: "#047857", marginTop: "0.25rem"}}>All re-solves are verified by CP-SAT before application — no guesswork.</p>
-            </div>
-
-            <div style={{display: "flex", justifyContent: "space-between"}}>
-              <button style={{padding: "0.75rem 1.5rem", border: "1px solid #d1d5db", borderRadius: "0.375rem", fontSize: "0.875rem", fontWeight: "500", cursor: "pointer"}} onClick={handlePrev}>
-                ← Back to Review
-              </button>
-              <button style={{padding: "0.75rem 1.5rem", background: "#0284c7", color: "white", borderRadius: "0.375rem", fontSize: "0.875rem", fontWeight: "500", cursor: "pointer"}} onClick={handleEmergencySolve}>
-                Complete Wizard ✓
-              </button>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                <span className="font-bold text-emerald-800">Emergency protocol verified</span>
+              </div>
+              <p className="text-xs text-emerald-700">All re-solves are verified by CP-SAT before application — no guesswork.</p>
             </div>
           </div>
         )}
+      </div>
 
-        <div style={{position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "1px solid #e5e7eb", padding: "0.75rem 1rem", display: "flex", alignItems: "center", justifyContent: "spaceBetween"}}>
-          <button style={{padding: "0.5rem 1rem", border: "1px solid #d1d5db", borderRadius: "0.375rem", fontSize: "0.875rem", cursor: "pointer"}} onClick={handlePrev} disabled={!canGoPrev}>
-            ← Back
-          </button>
-          <div style={{fontSize: "0.875rem", color: "#64748b"}}>
-            Step {currentIndex + 1} of {STEPS.length}
-          </div>
-          <button style={{padding: "0.5rem 1rem", background: canGoNext ? "#0284c7" : "#94a3b8", color: "white", borderRadius: "0.375rem", fontSize: "0.875rem", fontWeight: "500", cursor: canGoNext ? "pointer" : "not-allowed"}} onClick={handleNext} disabled={!canGoNext}>
-            {currentStep === "emergency" ? "Complete" : "Next"}
-            {canGoNext && " →"}
-          </button>
-        </div>
+      {/* Wizard footer: single, simple Back / Next control */}
+      <div className="shrink-0 border-t border-border bg-card px-4 py-3 flex items-center justify-between">
+        <Button variant="outline" size="md" onClick={handlePrev} disabled={!canGoPrev} className="flex items-center gap-1.5">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </Button>
+        <span className="text-xs text-muted-foreground">Step {currentIndex + 1} of {STEPS.length}</span>
+        {currentStep === "emergency" ? (
+          <Button variant="primary" size="md" onClick={handleEmergencySolve} className="flex items-center gap-1.5">
+            Complete <CheckCircle2 className="w-4 h-4" />
+          </Button>
+        ) : (
+          <Button variant="primary" size="md" onClick={handleNext} disabled={!canGoNext} className="flex items-center gap-1.5">
+            Next <ArrowRight className="w-4 h-4" />
+          </Button>
+        )}
       </div>
     </div>
   );

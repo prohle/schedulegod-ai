@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-import seedScenario from "@/data/seed_scenario.json";
+import { forward } from "@/lib/backend";
 
 export async function GET() {
-  return NextResponse.json(seedScenario);
+  return forward("/scenario");
 }
