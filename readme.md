@@ -14,6 +14,10 @@ Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* 
 ## How it works
 
 ```
+INGEST     point the tool at free-form institutional data — course catalog,
+           degree maps, cohorts, faculty roster + availability, campus rooms —
+           in whatever messy shape it arrives; Muse Spark autocleans it into
+           typed entities, the normalizer assembles the Scenario
 INTAKE     each instructor gets a window with a deadline:
            free-text constraints -> Muse Spark (structured output)
            -> typed hard/soft constraints -> validated -> provenance stored

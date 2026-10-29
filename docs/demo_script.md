@@ -16,20 +16,18 @@ thirty instructors' constraints, four cohorts' degree roadmaps, room
 capacities, and campus walk times — in a spreadsheet that's wrong the moment
 reality changes. Scheduling is NP-hard. This is ScheduleGod AI."
 
-## Beat 2 — Intake → Build (0:20–1:10)
+## Beat 2 — Import → Build (0:20–1:20)
 
-**Visual:** the Guided wizard, Intake step. Type: *"Prof. Patel can't teach
-Mondays — committee duty. She'd rather not teach at 8:00."*
+**Visual:** the Guided wizard, **Import** step: paste the free-form dump (course
+catalog, degree maps, cohorts, faculty, rooms). Click **Auto-clean & Prepare**.
 
-**Narration:** "Natural language goes in. Muse Spark parses it into typed
-constraints — hard unavailability, soft preference — and CP-SAT rebuilds the
-timetable in milliseconds."
+**Narration:** "Point the tool at your data — catalog, degree maps, cohorts,
+faculty, rooms — in whatever messy shape it arrives. Muse Spark autocleans it
+into the structured model. No spreadsheet babysitting."
 
-**On-screen:** the parsed operations (`add_instructor_unavailability`,
-`add_instructor_preference`), then the **CP-SAT Solve** tab showing `OPTIMAL`,
-solve time, and the placements grid. Then the **Sparse Matrices** tab and the
-**Spectral Radar** tab — algebraic connectivity, Hoffman chromatic bound, max
-clique, and the Fiedler-colored warm-start hints.
+**On-screen:** the structured counts (8 courses, 6 instructors, 4 cohorts, 7
+rooms). Then the **Build** step → **Solve** → `OPTIMAL` + the placements grid.
+Then the **Sparse Matrices** and **Spectral Radar** tabs.
 
 ## Beat 3 — Emergency (1:10–2:10)
 
