@@ -5,6 +5,7 @@ pydantic
 httpx
 python-dotenv
 openai
+python-multipart
 numpy
 scipy
 sqlalchemy

@@ -33,6 +33,7 @@ SECTION_HINTS = (
     ("faculty", "instructor"), ("staff", "instructor"), ("instructor", "instructor"),
     ("cohort", "cohort"), ("student", "cohort"),
     ("room", "room"), ("facilit", "room"),
+    ("campus", "campus"), ("building", "campus"),
     ("degree", "degree"), ("roadmap", "degree"), ("map", "degree"),
 )
 
@@ -120,6 +121,11 @@ def mock_ingest(text: str) -> InstitutionData:
             pm = re.search(r"\((.*?)\)", line)
             if pm and section == "degree":
                 program = pm.group(1).strip()
+            continue
+
+        # campus map: building names, comma-separated or one per line
+        if section == "campus":
+            data.buildings.extend(b.strip() for b in line.split(",") if b.strip())
             continue
 
         m = course_pat.match(line)

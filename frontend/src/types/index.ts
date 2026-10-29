@@ -116,6 +116,9 @@ export interface Placement {
   period?: number;
   periods: number[];
   duration?: number;          // 1.5 or 3.0 (hours)
+  enrollment?: number;        // class size
+  start_time?: string;        // e.g. "8:00"
+  end_time?: string;          // e.g. "9:30"
   room_id: string;
   room_name: string;
   building_id: string;
@@ -247,10 +250,24 @@ export interface InstitutionData {
   degree_map: ExtractedRequirement[];
 }
 
+export interface DataCheck {
+  key: string;
+  label: string;
+  provided: boolean;
+  count: number;
+}
+
+export interface CompletenessReport {
+  checks: DataCheck[];
+  missing: string[];
+  complete: boolean;
+}
+
 export interface IngestResponse {
   scenario: Scenario;
   parsed: InstitutionData;
   parser_mode: "muse-spark" | "mock";
+  completeness: CompletenessReport;
 }
 
 // --- Intelligence layer (sparse matrices + spectral radar + AI tightening) ---

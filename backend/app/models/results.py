@@ -19,6 +19,9 @@ class Placement(BaseModel):
     period: Optional[int]    # one-period patterns; None for blocks
     periods: list[int]       # occupied periods (1 or 2 entries)
     duration: float = 1.5    # session length in hours (1.5 or 3.0)
+    enrollment: int = 0      # class size (active/projected)
+    start_time: str = ""     # clock time, e.g. "8:00"
+    end_time: str = ""       # clock time, e.g. "9:30"
     room_id: str
     room_name: str
     building_id: str

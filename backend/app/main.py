@@ -9,20 +9,22 @@ Built during the Meta Global AI Developer Hackathon (Oct 27 - Nov 4, 2026).
 
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel
 
 from app import config
 from app.db import init_db
-from app.ingestion import ingest
+from app.ingestion import check_completeness, ingest
 from app.ingestion.parser import IngestionParser
 from app.intelligence import analyze, build_matrices, compute_utilization, run_tightener
 from app.intelligence.matrices import compute_margins
-from app.models.ingestion import InstitutionData
+from app.models.ingestion import CompletenessReport, InstitutionData
 from app.models.intelligence import (
     MarginsReport,
     MatricesReport,
@@ -82,6 +84,24 @@ class IngestResponse(BaseModel):
     scenario: Scenario
     parsed: InstitutionData
     parser_mode: str
+    completeness: CompletenessReport
+
+
+def _ingest_text(text: str) -> IngestResponse:
+    """Shared ingest core: parse, assemble, store the current scenario, audit."""
+    global _current_scenario
+    parser = IngestionParser()
+    data = parser.parse(text)
+    scenario = ingest(text)[0]
+    _current_scenario = scenario
+    audit.record_submission(text[:500], data.summary, parser.mode)
+    audit.record_event("ingest",
+                       f"Ingested {len(data.courses)} courses, {len(data.instructors)} instructors, "
+                       f"{len(data.cohorts)} cohorts, {len(data.rooms)} rooms",
+                       {"courses": len(data.courses), "instructors": len(data.instructors),
+                        "cohorts": len(data.cohorts), "rooms": len(data.rooms)})
+    return IngestResponse(scenario=scenario, parsed=data, parser_mode=parser.mode,
+                          completeness=check_completeness(data))
 
 
 @app.get("/health")
@@ -105,18 +125,27 @@ def ingest_data(req: IngestRequest) -> IngestResponse:
     """Point the tool at free-form institutional data (catalog, degree maps,
     cohorts, faculty, campus, facilities). Muse Spark autocleans it into the
     structured scenario, which becomes current for every later call."""
-    global _current_scenario
-    parser = IngestionParser()
-    data = parser.parse(req.text)
-    scenario = ingest(req.text)[0]
-    _current_scenario = scenario
-    audit.record_submission(req.text[:500], data.summary, parser.mode)
-    audit.record_event("ingest",
-                       f"Ingested {len(data.courses)} courses, {len(data.instructors)} instructors, "
-                       f"{len(data.cohorts)} cohorts, {len(data.rooms)} rooms",
-                       {"courses": len(data.courses), "instructors": len(data.instructors),
-                        "cohorts": len(data.cohorts), "rooms": len(data.rooms)})
-    return IngestResponse(scenario=scenario, parsed=data, parser_mode=parser.mode)
+    return _ingest_text(req.text)
+
+
+@app.post("/ingest/files", response_model=IngestResponse)
+async def ingest_files(files: list[UploadFile] = File(...)) -> IngestResponse:
+    """Drop one file, many files, or a zip. Every file's text is concatenated
+    (zips are extracted) and autocleaned; the response reports which of the six
+    required inputs were found and which are missing."""
+    chunks: list[str] = []
+    for f in files:
+        content = await f.read()
+        if f.filename and f.filename.lower().endswith(".zip"):
+            with zipfile.ZipFile(io.BytesIO(content)) as z:
+                for name in z.namelist():
+                    if name.endswith("/"):
+                        continue
+                    chunks.append(f"\n--- {name} ---\n" + z.read(name).decode("utf-8", errors="replace"))
+        else:
+            chunks.append(f"\n--- {f.filename or 'file'} ---\n"
+                          + content.decode("utf-8", errors="replace"))
+    return _ingest_text("".join(chunks))
 
 
 @app.post("/scenario/reset", response_model=Scenario)

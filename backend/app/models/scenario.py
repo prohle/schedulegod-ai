@@ -35,6 +35,18 @@ PATTERN_DAYS: dict[str, list[int]] = {"MWF": [0, 2, 4], "TTh": [1, 3]}
 # 3h contiguous block — never 1h and never split.
 PATTERN_DURATION: dict[str, float] = {"MWF": 1.5, "TTh": 1.5, "block": 3.0}
 
+
+def period_start_time(period: int) -> str:
+    """Clock time a slot starts (e.g. period 2 -> "11:00")."""
+    return PERIOD_NAMES[period]
+
+
+def period_end_time(period: int, duration_hours: float) -> str:
+    """Clock time a session ends, given its start period and length."""
+    h, m = PERIOD_NAMES[period].split(":")
+    total = int(h) * 60 + int(m) + int(round(duration_hours * 60))
+    return f"{total // 60}:{total % 60:02d}"
+
 RoomType = Literal["lecture", "lab", "seminar"]
 Pattern = Literal["MWF", "TTh", "block"]
 

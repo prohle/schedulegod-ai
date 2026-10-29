@@ -63,3 +63,18 @@ class InstitutionData(BaseModel):
     rooms: list[ExtractedRoom] = []
     cohorts: list[ExtractedCohort] = []
     degree_map: list[ExtractedRequirement] = []
+
+
+class DataCheck(BaseModel):
+    key: str
+    label: str
+    provided: bool
+    count: int
+
+
+class CompletenessReport(BaseModel):
+    """Which scheduling inputs were found, and what is still missing."""
+
+    checks: list[DataCheck]
+    missing: list[str]
+    complete: bool

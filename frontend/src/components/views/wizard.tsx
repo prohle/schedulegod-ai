@@ -8,6 +8,7 @@ import { useState } from "react";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle, Zap,
   Users, Loader2, CircleCheck, CircleX, Sparkles, Wrench, Radar, Database,
+  UploadCloud, FileText, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -132,6 +133,8 @@ export function WizardView({ onToast }: WizardViewProps) {
   const { margins, spectral, solveResult, busy, error, runSolve } = useIntelligence();
   const [step, setStep] = useState<StepId>("import");
   const [importText, setImportText] = useState(SAMPLE_DUMP);
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const [ingestBusy, setIngestBusy] = useState(false);
   const [ingest, setIngest] = useState<IngestResponse | null>(null);
   const [intakeMsg, setIntakeMsg] = useState("Prof. Patel can't teach Mondays — committee duty. She'd rather not teach at 8:00.");
@@ -151,13 +154,32 @@ export function WizardView({ onToast }: WizardViewProps) {
       body: JSON.stringify(body),
     })).json();
 
+  const addFiles = (incoming: FileList | File[]) => {
+    setFiles((prev) => [...prev, ...Array.from(incoming)]);
+  };
+
+  const handleImportFiles = async () => {
+    if (files.length === 0) return;
+    setIngestBusy(true);
+    try {
+      const fd = new FormData();
+      files.forEach((f) => fd.append("files", f, f.name));
+      const r: IngestResponse = await (await fetch("/api/ingest/files", { method: "POST", body: fd })).json();
+      setIngest(r);
+      if (r.completeness.complete) onToast("All six inputs present — ready to build", "success");
+      else onToast(`Missing: ${r.completeness.missing.join(", ")}`, "warning");
+    } finally {
+      setIngestBusy(false);
+    }
+  };
+
   const handleImport = async () => {
     setIngestBusy(true);
     try {
       const r: IngestResponse = await post("/api/ingest", { text: importText });
       setIngest(r);
-      const p = r.parsed;
-      onToast(`Auto-cleaned: ${p.courses.length} courses, ${p.instructors.length} instructors, ${p.cohorts.length} cohorts, ${p.rooms.length} rooms`, "success");
+      if (r.completeness.complete) onToast("All six inputs present — ready to build", "success");
+      else onToast(`Missing: ${r.completeness.missing.join(", ")}`, "warning");
     } finally {
       setIngestBusy(false);
     }
@@ -232,23 +254,54 @@ export function WizardView({ onToast }: WizardViewProps) {
 
         {step === "import" && (
           <div className="space-y-4 max-w-3xl mx-auto">
-            <Section title="Point the tool at your data" icon={<Database className="w-5 h-5 text-primary" />} tone="primary">
+            <Section title="Drop your scheduling data" icon={<Database className="w-5 h-5 text-primary" />} tone="primary">
               <p className="text-sm text-muted-foreground mb-3">
-                Paste your course catalog, degree maps, cohorts, faculty, and facilities — in whatever messy
-                shape they arrive. Muse Spark autocleans it into the structured model; the normalizer assembles
-                the scenario; CP-SAT schedules; the audit trail monitors.
+                Drop a zipped file, one file, or many — degree catalog, degree maps, student bodies, faculty
+                availability, facilities, and the campus map. Muse Spark autocleans whatever shape they arrive in.
               </p>
-              <textarea
-                value={importText}
-                onChange={(e) => setImportText(e.target.value)}
-                rows={16}
-                spellCheck={false}
-                className="w-full border border-input rounded-lg p-2 text-xs font-mono bg-background"
-              />
-              <Button variant="primary" size="md" onClick={handleImport} disabled={ingestBusy} className="mt-3 flex items-center gap-2">
-                {ingestBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                Auto-clean & Prepare
-              </Button>
+
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+                onClick={() => document.getElementById("file-input")?.click()}
+                className={cn(
+                  "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors",
+                  dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                )}
+              >
+                <UploadCloud className="w-6 h-6 mx-auto text-muted-foreground" />
+                <p className="text-sm font-medium mt-2">Drag &amp; drop files here, or click to browse</p>
+                <p className="text-[11px] text-muted-foreground mt-1">.zip · .txt · .csv · .json · .md — one at a time or many</p>
+                <input id="file-input" type="file" multiple className="hidden"
+                  onChange={(e) => e.target.files && addFiles(e.target.files)} />
+              </div>
+
+              {files.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {files.map((f, i) => (
+                    <div key={`${f.name}-${i}`} className="flex items-center gap-2 text-xs bg-muted/50 border border-border rounded px-2 py-1">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <span className="text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
+                      <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <Button variant="primary" size="md" onClick={handleImportFiles} disabled={ingestBusy} className="mt-2 flex items-center gap-2">
+                    {ingestBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    Process {files.length} file{files.length > 1 ? "s" : ""}
+                  </Button>
+                </div>
+              )}
+
+              <details className="mt-3 text-xs">
+                <summary className="text-muted-foreground cursor-pointer">…or paste the data as text</summary>
+                <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={10} spellCheck={false}
+                  className="w-full border border-input rounded-lg p-2 text-[11px] font-mono bg-background mt-2" />
+                <Button variant="outline" size="sm" onClick={handleImport} disabled={ingestBusy} className="mt-2">Auto-clean pasted text</Button>
+              </details>
             </Section>
 
             {ingest && (
@@ -257,24 +310,20 @@ export function WizardView({ onToast }: WizardViewProps) {
                   <span className={cn("px-2 py-0.5 rounded font-bold uppercase", ingest.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
                     {ingest.parser_mode}
                   </span>
-                  {ingest.parsed.summary || "Data prepared."}
+                  {ingest.completeness.complete
+                    ? <span className="text-emerald-700 font-semibold">Complete — ready to build the schedule</span>
+                    : <span className="text-amber-700 font-semibold">Missing {ingest.completeness.missing.length} input{ingest.completeness.missing.length > 1 ? "s" : ""}</span>}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    ["Courses", ingest.parsed.courses.length],
-                    ["Instructors", ingest.parsed.instructors.length],
-                    ["Cohorts", ingest.parsed.cohorts.length],
-                    ["Rooms", ingest.parsed.rooms.length],
-                  ].map(([label, n]) => (
-                    <div key={String(label)} className="bg-card border border-border rounded-lg p-3 text-center">
-                      <div className="text-xl font-extrabold text-primary">{n}</div>
-                      <div className="text-[11px] text-muted-foreground">{label}</div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {ingest.completeness.checks.map((chk) => (
+                    <div key={chk.key} className={cn("flex items-center gap-2 border rounded-lg p-2.5", chk.provided ? "bg-emerald-50/40 border-emerald-200" : "bg-amber-50/60 border-amber-200")}>
+                      {chk.provided ? <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0" /> : <CircleX className="w-4 h-4 text-amber-600 shrink-0" />}
+                      <span className="flex-1">
+                        <span className="block text-xs font-medium">{chk.label}</span>
+                        <span className="block text-[10px] text-muted-foreground">{chk.provided ? `${chk.count} found` : "missing"}</span>
+                      </span>
                     </div>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {ingest.parsed.courses.map((c) => (
-                    <span key={c.code} className="px-2 py-0.5 bg-muted rounded text-[11px] font-mono">{c.code}</span>
                   ))}
                 </div>
               </div>

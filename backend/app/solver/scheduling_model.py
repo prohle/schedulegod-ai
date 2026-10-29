@@ -47,6 +47,8 @@ from app.models.scenario import (
     PERIOD_NAMES,
     Scenario,
     Section,
+    period_end_time,
+    period_start_time,
 )
 
 VAR_KEY = tuple  # (section_id, instructor_id, slot_key, room_id)
@@ -351,11 +353,15 @@ def solve(
                 days, period, periods = PATTERN_DAYS[course.pattern], key, [key]
             else:
                 days, period, periods = [key], None, list(BLOCK_PERIODS)
+            start_period = period if period is not None else periods[0]
             placements.append(Placement(
                 section_id=sid, course_id=course.id, course_code=course.code,
                 instructor_id=iid, instructor_name=inst.name,
                 days=days, period=period, periods=periods,
                 duration=course.duration_hours(),
+                enrollment=sc.enrollment_for_section(sc.section_by_id(sid)),
+                start_time=period_start_time(start_period),
+                end_time=period_end_time(start_period, course.duration_hours()),
                 room_id=room.id, room_name=room.name, building_id=room.building_id))
             counts[iid] = counts.get(iid, 0) + 1
         for i in sc.instructors:
