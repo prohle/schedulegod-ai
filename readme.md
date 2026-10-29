@@ -59,11 +59,21 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 
 | # | Runtime call | Model | Code | When it fires |
 |---|---|---|---|---|
-| 1 | Constraint parsing → typed operations (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` | every intake submission, chair request, emergency message |
-| 2 | Self-healing diagnosis → conflict explanation + ranked resolutions (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/diagnosis.py` | whenever CP-SAT proves a request infeasible |
-| 3 | Intelligence tightening → typed repair moves (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/intelligence/tightener.py` | spectral deadlock warning, C39 margin shortfall, or base infeasibility |
+| 1 | Data ingestion → autoclean free-form institutional data into the structured scenario (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/ingestion/parser.py` | you paste a catalog / degree maps / cohorts / faculty / rooms |
+| 2 | Constraint parsing → typed operations (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` | every intake submission, chair request, emergency message |
+| 3 | Self-healing diagnosis → conflict explanation + ranked resolutions (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/diagnosis.py` | whenever CP-SAT proves a request infeasible |
+| 4 | Intelligence tightening → typed repair moves (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/intelligence/tightener.py` | spectral deadlock warning, C39 margin shortfall, or base infeasibility |
 
-*Parsing and diagnosis run on the contributor model because all data is synthetic; a real institution would use standard mode (`muse-spark-1.3`) so no staff data ever trains Meta's models. Dev-time coding tools are unrestricted by the hackathon and touch nothing at runtime.*
+**Set your key** (the repo ships `.env.example` — copy it to `.env` and fill in `MODEL_API_KEY`; `.env` is gitignored):
+
+```bash
+cp .env.example .env        # then paste your key from https://dev.meta.ai/dashboard
+docker compose up --build   # live Muse Spark
+```
+
+**Sample outputs / provenance:** `backend/muse-verification.json` is a captured run of all four roles against the seed (parse + diagnosis + tighten + ingestion), showing real structured outputs and latencies.
+
+*All four roles run on the contributor model because the data is synthetic; a real institution would use standard mode (`muse-spark-1.3`) so no staff data ever trains Meta's models. Dev-time coding tools are unrestricted by the hackathon and touch nothing at runtime.*
 
 ## Intelligence layer (scipy sparse + spectral + AI)
 
