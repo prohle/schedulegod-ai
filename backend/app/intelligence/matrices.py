@@ -204,8 +204,13 @@ def build_matrices(scenario: Scenario) -> IntelligenceBundle:
             if req.course_id in course_ix:
                 d_rows.append(ki)
                 d_cols.append(course_ix[req.course_id])
-                d_vals.append(float(req.seat_estimate if not req.required
-                                    else cohort.size))
+                # elective take-up falls back to the C35 default (same as
+                # enrollment_for_section) when no explicit estimate is given.
+                if req.required:
+                    demand = cohort.size
+                else:
+                    demand = req.seat_estimate or int(cohort.size * 0.4)
+                d_vals.append(float(demand))
     fulfilment = LabeledSparse.from_coo(
         (len(cohort_labels), len(course_labels)), f_rows, f_cols, f_vals,
         cohort_labels, course_labels,
