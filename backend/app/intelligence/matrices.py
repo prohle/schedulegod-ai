@@ -34,8 +34,11 @@ import numpy as np
 from app.models.intelligence import (
     CohortDepth,
     CohortMargin,
+    FacultyLoad,
     MarginsReport,
     MatricesReport,
+    RoomUtilization,
+    UtilizationReport,
 )
 from app.models.results import Timetable
 from app.models.scenario import (
@@ -336,3 +339,42 @@ def compute_margins(scenario: Scenario, timetable: Timetable | None,
                   f"non-conflicting courses fit the placed timetable")))
     return MarginsReport(min_courses=min_courses, cohorts=cohorts,
                          all_ok=all(c.ok for c in cohorts))
+
+
+def compute_utilization(scenario: Scenario, timetable: Timetable | None) -> UtilizationReport:
+    """Campus + faculty utilization against a placed timetable.
+
+    Room utilization = scheduled seats / room capacity (C24's complement);
+    faculty utilization = assigned sections / max_sections (C15's complement).
+    """
+    placements = timetable.placements if timetable else []
+    loads = timetable.sections_per_instructor if timetable else {}
+
+    rooms: list[RoomUtilization] = []
+    total_cap = 0
+    total_peak = 0
+    for room in scenario.rooms:
+        placed = [p for p in placements if p.room_id == room.id]
+        # a room hosts one section per slot (C23); peak = its busiest booking
+        peak = max((scenario.enrollment_for_section(scenario.section_by_id(p.section_id))
+                    for p in placed), default=0)
+        total_cap += room.capacity
+        total_peak += peak
+        rooms.append(RoomUtilization(
+            room_id=room.id, name=room.name, capacity=room.capacity,
+            peak_seats=peak,
+            utilization=round(peak / room.capacity, 3) if room.capacity else 0.0,
+        ))
+
+    faculty: list[FacultyLoad] = []
+    for inst in scenario.instructors:
+        load = loads.get(inst.id, 0)
+        faculty.append(FacultyLoad(
+            instructor_id=inst.id, name=inst.name, load=load,
+            max_sections=inst.max_sections, satisfied=load <= inst.max_sections,
+            utilization=round(load / inst.max_sections, 3) if inst.max_sections else 0.0,
+        ))
+
+    return UtilizationReport(
+        room_utilization=round(total_peak / total_cap, 3) if total_cap else 0.0,
+        rooms=rooms, faculty=faculty, all_loads_met=all(f.satisfied for f in faculty))

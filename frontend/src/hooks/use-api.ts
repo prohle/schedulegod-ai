@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type {
   Scenario, SolveResult, CopilotResponse, Operation,
-  MatricesReport, SpectralReport, MarginsReport, TightenResponse,
+  MatricesReport, SpectralReport, MarginsReport, TightenResponse, UtilizationReport,
 } from "@/types";
 
 const API_BASE = "";
@@ -130,6 +130,7 @@ export function useIntelligence() {
   const [matrices, setMatrices] = useState<MatricesReport | null>(null);
   const [spectral, setSpectral] = useState<SpectralReport | null>(null);
   const [margins, setMargins] = useState<MarginsReport | null>(null);
+  const [utilization, setUtilization] = useState<UtilizationReport | null>(null);
   const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
   const [tighten, setTighten] = useState<TightenResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -149,15 +150,17 @@ export function useIntelligence() {
     setLoading(true);
     setError(null);
     try {
-      const [m, s, g] = await Promise.all([
+      const [m, s, g, u] = await Promise.all([
         fetch(`${API_BASE}/api/intelligence/matrices`).then((r) => r.json()),
         fetch(`${API_BASE}/api/intelligence/spectral`).then((r) => r.json()),
         fetch(`${API_BASE}/api/intelligence/margins`).then((r) => r.json()),
+        fetch(`${API_BASE}/api/intelligence/utilization`).then((r) => r.json()),
       ]);
       if (m.error) throw new Error(m.error);
       setMatrices(m);
       setSpectral(s);
       setMargins(g);
+      setUtilization(u);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load intelligence data");
     } finally {
@@ -188,7 +191,7 @@ export function useIntelligence() {
   }, [load]);
 
   return {
-    matrices, spectral, margins, solveResult, tighten,
+    matrices, spectral, margins, utilization, solveResult, tighten,
     loading, busy, error, runSolve, runTighten, reload: load,
   };
 }

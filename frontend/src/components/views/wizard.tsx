@@ -89,6 +89,7 @@ function PlacementsTable({ placements, dense }: { placements: Placement[]; dense
             <th className="text-left px-3 py-1.5 font-semibold">Instructor</th>
             <th className="text-left px-3 py-1.5 font-semibold">Room</th>
             <th className="text-left px-3 py-1.5 font-semibold">Slot</th>
+            <th className="text-right px-3 py-1.5 font-semibold">Length</th>
           </tr>
         </thead>
         <tbody>
@@ -98,6 +99,7 @@ function PlacementsTable({ placements, dense }: { placements: Placement[]; dense
               <td className={cn("px-3 py-1.5 text-muted-foreground", dense && "py-1")}>{p.instructor_name}</td>
               <td className={cn("px-3 py-1.5 text-muted-foreground", dense && "py-1")}>{p.room_name} <span className="text-[10px]">[{p.building_id}]</span></td>
               <td className={cn("px-3 py-1.5 font-mono text-muted-foreground", dense && "py-1")}>{placementSlot(p)}</td>
+              <td className={cn("px-3 py-1.5 text-right font-mono text-muted-foreground", dense && "py-1")}>{p.duration ?? 1.5}h</td>
             </tr>
           ))}
         </tbody>

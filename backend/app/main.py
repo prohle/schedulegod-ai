@@ -20,7 +20,7 @@ from app import config
 from app.db import init_db
 from app.ingestion import ingest
 from app.ingestion.parser import IngestionParser
-from app.intelligence import analyze, build_matrices, run_tightener
+from app.intelligence import analyze, build_matrices, compute_utilization, run_tightener
 from app.intelligence.matrices import compute_margins
 from app.models.ingestion import InstitutionData
 from app.models.intelligence import (
@@ -28,6 +28,7 @@ from app.models.intelligence import (
     MatricesReport,
     SpectralReport,
     TightenResponse,
+    UtilizationReport,
 )
 from app.models.results import CopilotResponse, EmergencyResponse, SolveResult
 from app.models.scenario import Operation, ParsedRequest, Scenario
@@ -177,6 +178,14 @@ def intelligence_margins() -> MarginsReport:
     scenario = get_current_scenario()
     result = solve(scenario)
     return compute_margins(scenario, result.timetable, config.MIN_COURSES_PER_COHORT)
+
+
+@app.get("/intelligence/utilization", response_model=UtilizationReport)
+def intelligence_utilization() -> UtilizationReport:
+    """Campus (room) + faculty utilization against a fresh CP-SAT solve."""
+    scenario = get_current_scenario()
+    result = solve(scenario)
+    return compute_utilization(scenario, result.timetable)
 
 
 @app.post("/intelligence/tighten", response_model=TightenResponse)

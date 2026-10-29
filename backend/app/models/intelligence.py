@@ -105,6 +105,30 @@ class MarginsReport(BaseModel):
     all_ok: bool
 
 
+class RoomUtilization(BaseModel):
+    room_id: str
+    name: str
+    capacity: int
+    peak_seats: int          # peak simultaneous seats (a room hosts one section/slot)
+    utilization: float       # peak_seats / capacity
+
+
+class FacultyLoad(BaseModel):
+    instructor_id: str
+    name: str
+    load: int
+    max_sections: int
+    satisfied: bool          # within contract cap
+    utilization: float       # load / max_sections
+
+
+class UtilizationReport(BaseModel):
+    room_utilization: float          # scheduled seats / total capacity
+    rooms: list[RoomUtilization]
+    faculty: list[FacultyLoad]
+    all_loads_met: bool
+
+
 class TighteningMove(BaseModel):
     """One AI-proposed, solver-verified repair of a deadlock or shortfall."""
 

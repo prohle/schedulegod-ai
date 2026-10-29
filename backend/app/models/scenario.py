@@ -20,14 +20,20 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-PERIOD_NAMES = ["8:00", "10:00", "13:00", "15:00"]
+# Four 1.5-hour slots: 8:00, 9:30, 11:00, 12:30.
+# A 1.5h course occupies one slot; a 3h course occupies two consecutive slots
+# (the weekly "block" occupies periods 2 and 3 = 11:00–14:00).
+PERIOD_NAMES = ["8:00", "9:30", "11:00", "12:30"]
 
-# A weekly "block" (lab) occupies two consecutive afternoon periods,
-# scheduled on one of these days.
+# A weekly 3h block occupies two consecutive afternoon slots, on one of these days.
 BLOCK_DAYS = [1, 2, 3]
 BLOCK_PERIODS = [2, 3]
 
 PATTERN_DAYS: dict[str, list[int]] = {"MWF": [0, 2, 4], "TTh": [1, 3]}
+
+# Session length in hours, by pattern. Every class is a full 1.5h or a full
+# 3h contiguous block — never 1h and never split.
+PATTERN_DURATION: dict[str, float] = {"MWF": 1.5, "TTh": 1.5, "block": 3.0}
 
 RoomType = Literal["lecture", "lab", "seminar"]
 Pattern = Literal["MWF", "TTh", "block"]
@@ -84,6 +90,10 @@ class Course(BaseModel):
     room_type: RoomType
     seats: int  # minimum room capacity needed (per-section enrollment)
     equipment: list[str] = []  # required equipment subset of Room.equipment
+    duration: float = 1.5  # session length in hours (1.5 or 3.0)
+
+    def duration_hours(self) -> float:
+        return self.duration or PATTERN_DURATION.get(self.pattern, 1.5)
 
 
 class Section(BaseModel):

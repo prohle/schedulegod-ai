@@ -16,6 +16,7 @@ from app.models.scenario import (
     Cohort,
     Course,
     Instructor,
+    PATTERN_DURATION,
     Program,
     RoadmapRequirement,
     Room,
@@ -62,7 +63,7 @@ def build_scenario(data: InstitutionData) -> Scenario:
         courses.append(Course(
             id=cid, code=c.code.strip(), title=c.title or c.code,
             pattern=_pattern(c.pattern), room_type=_room_type(c.room_type), seats=c.seats,
-            equipment=c.equipment,
+            equipment=c.equipment, duration=PATTERN_DURATION.get(_pattern(c.pattern), 1.5),
         ))
         sections.append(Section(id=f"sec-{cid}", course_id=cid))
 

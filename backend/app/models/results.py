@@ -18,6 +18,7 @@ class Placement(BaseModel):
     days: list[int]          # meeting days
     period: Optional[int]    # one-period patterns; None for blocks
     periods: list[int]       # occupied periods (1 or 2 entries)
+    duration: float = 1.5    # session length in hours (1.5 or 3.0)
     room_id: str
     room_name: str
     building_id: str

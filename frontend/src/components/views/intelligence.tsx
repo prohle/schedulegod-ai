@@ -8,7 +8,7 @@
 import { Fragment, useState, type ReactNode } from "react";
 import {
   Radar, ShieldCheck, Sparkles, GitFork, Activity, Wrench,
-  CircleCheck, CircleX, Loader2, Database, Network, RefreshCw,
+  CircleCheck, CircleX, Loader2, Database, Network, RefreshCw, Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -61,8 +61,8 @@ function placementSlot(p: Placement): string {
 const MATRIX_ROWS: [string, keyof ReturnType<typeof Object>][] = [];
 
 export function IntelligenceView({ onToast }: IntelligenceViewProps) {
-  const { matrices, spectral, margins, solveResult, tighten, loading, busy, error, runSolve, runTighten, reload } = useIntelligence();
-  const [tab, setTab] = useState<"radar" | "margins" | "matrices" | "solve" | "tighten">("radar");
+  const { matrices, spectral, margins, utilization, solveResult, tighten, loading, busy, error, runSolve, runTighten, reload } = useIntelligence();
+  const [tab, setTab] = useState<"radar" | "margins" | "matrices" | "utilization" | "solve" | "tighten">("radar");
 
   if (error) {
     return (
@@ -92,6 +92,7 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
   const tabs = [
     { id: "radar" as const, label: "Spectral Radar", icon: <Radar className="w-3.5 h-3.5" /> },
     { id: "margins" as const, label: "4-Course Guarantee", icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+    { id: "utilization" as const, label: "Utilization", icon: <Gauge className="w-3.5 h-3.5" /> },
     { id: "matrices" as const, label: "Sparse Matrices", icon: <Database className="w-3.5 h-3.5" /> },
     { id: "solve" as const, label: "CP-SAT Solve", icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: "tighten" as const, label: "AI Tightening", icon: <Wrench className="w-3.5 h-3.5" /> },
@@ -245,6 +246,43 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
           </div>
         )}
 
+        {tab === "utilization" && utilization && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="Campus utilization (peak)" value={`${Math.round(utilization.room_utilization * 100)}%`} hint="peak seats ÷ total capacity across rooms" />
+              <Stat label="Faculty within load caps" value={utilization.all_loads_met ? <span className="text-emerald-600">✓ all</span> : <span className="text-amber-600">⚠ some over</span>} hint="no instructor over max_sections" />
+            </div>
+
+            <Card title="Room utilization (peak)" icon={<Gauge className="w-4 h-4 text-primary" />}>
+              <div className="space-y-2">
+                {utilization.rooms.map((r) => (
+                  <div key={r.room_id} className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-foreground w-40 truncate">{r.name}</span>
+                    <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
+                      <div className={cn("h-full rounded", r.utilization > 0.9 ? "bg-amber-400" : "bg-emerald-500")} style={{ width: `${Math.round(r.utilization * 100)}%` }} />
+                    </div>
+                    <span className="text-[11px] font-mono text-muted-foreground w-24 text-right">{r.peak_seats}/{r.capacity} · {Math.round(r.utilization * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card title="Faculty load (vs contract cap)" icon={<ShieldCheck className="w-4 h-4 text-emerald-600" />}>
+              <div className="space-y-2">
+                {utilization.faculty.map((f) => (
+                  <div key={f.instructor_id} className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-foreground w-40 truncate">{f.name}</span>
+                    <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
+                      <div className={cn("h-full rounded", f.satisfied ? "bg-emerald-500" : "bg-red-400")} style={{ width: `${Math.round(f.utilization * 100)}%` }} />
+                    </div>
+                    <span className="text-[11px] font-mono text-muted-foreground w-24 text-right">{f.load}/{f.max_sections} sections</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
         {tab === "matrices" && matrices && (
           <div className="space-y-4">
             <div className="overflow-x-auto border border-border rounded-lg">
@@ -327,6 +365,7 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
                           <th className="text-left px-3 py-2 font-semibold">Instructor</th>
                           <th className="text-left px-3 py-2 font-semibold">Room</th>
                           <th className="text-left px-3 py-2 font-semibold">Slot</th>
+                          <th className="text-right px-3 py-2 font-semibold">Length</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -336,6 +375,7 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
                             <td className="px-3 py-1.5 text-muted-foreground">{p.instructor_name}</td>
                             <td className="px-3 py-1.5 text-muted-foreground">{p.room_name} <span className="text-[10px]">[{p.building_id}]</span></td>
                             <td className="px-3 py-1.5 font-mono text-muted-foreground">{placementSlot(p)}</td>
+                            <td className="px-3 py-1.5 text-right font-mono text-muted-foreground">{p.duration ?? 1.5}h</td>
                           </tr>
                         ))}
                       </tbody>

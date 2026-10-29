@@ -355,6 +355,7 @@ def solve(
                 section_id=sid, course_id=course.id, course_code=course.code,
                 instructor_id=iid, instructor_name=inst.name,
                 days=days, period=period, periods=periods,
+                duration=course.duration_hours(),
                 room_id=room.id, room_name=room.name, building_id=room.building_id))
             counts[iid] = counts.get(iid, 0) + 1
         for i in sc.instructors:

@@ -115,6 +115,7 @@ export interface Placement {
   days: number[];
   period?: number;
   periods: number[];
+  duration?: number;          // 1.5 or 3.0 (hours)
   room_id: string;
   room_name: string;
   building_id: string;
@@ -357,9 +358,33 @@ export interface TightenResponse {
   margins?: MarginsReport;
 }
 
+export interface RoomUtilization {
+  room_id: string;
+  name: string;
+  capacity: number;
+  peak_seats: number;
+  utilization: number;
+}
+
+export interface FacultyLoad {
+  instructor_id: string;
+  name: string;
+  load: number;
+  max_sections: number;
+  satisfied: boolean;
+  utilization: number;
+}
+
+export interface UtilizationReport {
+  room_utilization: number;
+  rooms: RoomUtilization[];
+  faculty: FacultyLoad[];
+  all_loads_met: boolean;
+}
+
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 export const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-export const PERIOD_NAMES = ["8:00", "10:00", "13:00", "15:00"];
+export const PERIOD_NAMES = ["8:00", "9:30", "11:00", "12:30"];
 export const PATTERN_DAYS: Record<string, number[]> = { MWF: [0, 2, 4], TTh: [1, 3] };
 export const BLOCK_DAYS = [1, 2, 3];
 export const BLOCK_PERIODS = [2, 3];
