@@ -18,6 +18,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODE="${1:-dev}"
 
+# Pick up the repo-root .env so the banner (and the backend) agree on the key.
+if [ -f "$ROOT/.env" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ROOT/.env"
+  set +a
+fi
+
 # Python interpreter (backend requires it).
 PYTHON_BIN="python3"
 command -v "$PYTHON_BIN" >/dev/null 2>&1 || PYTHON_BIN="python"
@@ -65,7 +73,9 @@ else
 fi
 
 MUSE_MODE="mock parser/tightener (no MODEL_API_KEY — zero credits)"
-[ -n "${MODEL_API_KEY:-}" ] && MUSE_MODE="live Muse Spark (MODEL_API_KEY set)"
+if [ -n "${MODEL_API_KEY:-}" ] || [ -n "${MUSE_API_KEY:-}" ]; then
+  MUSE_MODE="live Muse Spark (Meta Model API key set)"
+fi
 
 echo ""
 echo "  ScheduleGod AI starting…"

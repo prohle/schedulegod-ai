@@ -129,11 +129,12 @@ What a chair/secretary actually says mid-term, and what each maps to:
 | **(intake window)** "I can't do Mondays, committee Wed 2-4, I'd love CS310, keep me ≤2 preps" | same vocabulary below — parsed from instructor submissions, not just chair directives |
 | "Dr. Chen can't teach Tuesdays anymore — committee duty" | `add_instructor_unavailability` (hard) |
 | "Dr. Rao would rather not teach before 10" | `add_instructor_preference` (soft) |
-| "The CS 2025 cohort tested out of MATH201; they need CS310 this term" | `update_cohort_plan` (changes demand + C1) |
+| "The CS 2025 cohort tested out of MATH201; they need CS310 this term" | roadmap edit (`update_cohort_plan`, v2) |
 | "East lab is closed for renovation all October" | `add_room_unavailability` |
-| "Enrollment surged — CS210 needs another section" | `add_section` (re-opens offering decision) |
+| "Enrollment surged — CS210 needs another section" | tightener move `add_section` (CP-SAT-verified; not a direct request op in v1) |
 | "Dr. Lee is covering for Dr. Okafor in CS220" | `set_section_instructor` |
 | "Move the intro lecture to the big hall, the small one is packed" | `set_section_room` |
+| "Keep me under 3 preps" / "cap me at two sections" | `set_prep_cap` / `set_load_cap` |
 | "CS 350 enrollment jumped to 45 after registration ended" | `update_enrollment` (re-triggers C24 capacity) |
 | **(emergency)** "Dr. Chen is out all next week — who can cover her sections?" | `propose_candidates` — a **query**, not an edit: ranked coverage proposals |
 
@@ -171,6 +172,12 @@ requests produce the minimal conflicting subset, the self-healing hook.
      distance impact, plain-English reason}` — the LLM explains, the solver
      verifies.
 - Scheduler picks a candidate → change applies → timetable re-solves → diff.
+- **Zero-ripple guarantee:** every unaffected placement is frozen (`pins_exact`)
+  during the final emergency solve; only the affected sections may move. The
+  before/after diff in the UI shows exactly that.
+- **Durable apply:** accepted requests are committed to the current scenario
+  (`POST /apply`), so the next build/review/emergency solve builds on the new
+  world instead of reverting to the seed.
 
 ---
 

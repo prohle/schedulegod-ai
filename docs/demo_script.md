@@ -25,22 +25,26 @@ catalog, degree maps, cohorts, faculty, rooms). Click **Auto-clean & Prepare**.
 faculty, rooms — in whatever messy shape it arrives. Muse Spark autocleans it
 into the structured model. No spreadsheet babysitting."
 
-**On-screen:** the structured counts (8 courses, 6 instructors, 4 cohorts, 7
-rooms). Then the **Build** step → **Solve** → `OPTIMAL` + the placements grid.
-Then the **Sparse Matrices** and **Spectral Radar** tabs.
+**On-screen:** the structured counts (courses, instructors, cohorts, rooms —
+whatever Muse extracted). Then the **Build** step → **Solve** → `OPTIMAL` + the **visual
+timetable grid** (days × periods, colored sections, 3h block badge). Then the
+**Sparse Matrices** and **Spectral Radar** tabs.
 
 ## Beat 3 — Emergency (1:10–2:10)
 
-**Visual:** Emergency step. Type: *"Dr. Chen is out all week — who could cover
-her sections?"*
+**Visual:** Emergency step. Click **Record voice note** and say *"Dr. Chen is
+out all week — who could cover her sections?"* (or upload a WAV). Muse Voice
+Transcribe shows the transcript, then the same verified flow runs.
 
-**Narration:** "Reality breaks the term mid-flight. The co-pilot doesn't guess
+**Narration:** "Reality breaks the term mid-flight. A voice note is enough:
+Muse Voice Transcribe turns it into a request, then the co-pilot doesn't guess
 who can cover — it probes every qualified instructor with CP-SAT and ranks the
 zero-ripple swaps."
 
 **On-screen:** ranked proposals with `feasible` / `objective_delta` /
-`load_after`; the chosen candidate; the timetable morphing. Show the audit
-trail (`/history`) lighting up with the `emergency` event.
+`load_after`; the chosen candidate; the **Before / After grids** with changed
+sections ringed in amber; the "Emergency applied" toast. Then the **Audit
+Trail** tab showing the `emergency` and `apply` events land in the ledger.
 
 ## Beat 4 — Self-heal (2:10–2:40)
 
@@ -52,9 +56,11 @@ core — Diaz's load cap. Muse Spark translates the proof into ranked
 resolutions; every one is re-solved before it's shown; the least disruptive
 one applies."
 
-**On-screen:** the diagnosis + the solver-verified resolution options, then
-the **AI Tightening** tab: Muse proposes typed moves, CP-SAT verifies each
-(accepted and rejected moves shown).
+**On-screen:** the diagnosis + the **solver-verified resolution options**
+(each with `status` + penalty), then the **AI Tightening** tab: Muse proposes
+typed moves, CP-SAT verifies each (accepted and rejected moves shown). Point
+at the live `muse-spark` / model / latency badge so the 25% Meta criterion is
+visible on screen.
 
 ## Beat 5 — Architecture (2:40–3:00)
 
@@ -73,7 +79,8 @@ audit trail. One command brings it all up: `docker compose up`."
 ## Recording checklist
 
 - [ ] `docker compose up --build` boots cleanly (db healthy → backend → frontend)
-- [ ] Muse calls show live `muse-spark` mode (or `mock` if no key — say so)
+- [ ] **Record with `MODEL_API_KEY` set** — every Muse beat shows `muse-spark`,
+      the model id, and latency. Do not ship a `MOCK` video for the 25% criterion.
 - [ ] Each beat's output matches the script (re-record any drift)
 - [ ] Fast-forward long solves; keep the typed-ops and verification visible
 - [ ] 3:00 max — trim Beat 1 first if over
