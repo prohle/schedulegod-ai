@@ -3,11 +3,13 @@
 from app.intelligence.matrices import (
     build_matrices, compute_margins, compute_utilization, cohort_pool, depth_rows,
 )
+from app.intelligence.planning import CHANGES, whatif
 from app.intelligence.spectral import analyze, conflict_graph
 from app.intelligence.tightener import run_tightener, apply_move, apply_moves
 
 __all__ = [
     "build_matrices", "compute_margins", "compute_utilization", "cohort_pool", "depth_rows",
+    "whatif", "CHANGES",
     "analyze", "conflict_graph",
     "run_tightener", "apply_move", "apply_moves",
 ]

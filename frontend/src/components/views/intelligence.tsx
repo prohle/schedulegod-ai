@@ -8,14 +8,14 @@
 import { Fragment, useState, type ReactNode } from "react";
 import {
   Radar, ShieldCheck, Sparkles, GitFork, Activity, Wrench,
-  CircleCheck, CircleX, Loader2, Database, Network, RefreshCw, Gauge,
+  CircleCheck, CircleX, Loader2, Database, Network, RefreshCw, Gauge, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useIntelligence } from "@/hooks/use-api";
 import {
   DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
-  type Placement, type SparseMatrixPayload,
+  type Placement, type SparseMatrixPayload, type SolveResult, type WhatIfReport,
 } from "@/types";
 
 interface IntelligenceViewProps {
@@ -61,8 +61,46 @@ function placementSlot(p: Placement): string {
 const MATRIX_ROWS: [string, keyof ReturnType<typeof Object>][] = [];
 
 export function IntelligenceView({ onToast }: IntelligenceViewProps) {
-  const { matrices, spectral, margins, utilization, solveResult, tighten, loading, busy, error, runSolve, runTighten, reload } = useIntelligence();
-  const [tab, setTab] = useState<"radar" | "margins" | "matrices" | "utilization" | "solve" | "tighten">("radar");
+  const { matrices, spectral, margins, utilization, solveResult, setSolveResult, tighten, loading, busy, error, runSolve, runTighten, reload } = useIntelligence();
+  const [tab, setTab] = useState<"radar" | "margins" | "matrices" | "utilization" | "solve" | "tighten" | "planning">("radar");
+  const [options, setOptions] = useState<SolveResult[] | null>(null);
+  const [locked, setLocked] = useState<Record<string, boolean>>({});
+  const [busyOptions, setBusyOptions] = useState(false);
+  const [whatif, setWhatif] = useState<WhatIfReport | null>(null);
+  const [whatifBusy, setWhatifBusy] = useState(false);
+
+  const runWhatif = async (changeId: string) => {
+    setWhatifBusy(true);
+    try {
+      setWhatif(await (await fetch(`/api/planning/whatif/${changeId}`)).json());
+    } finally {
+      setWhatifBusy(false);
+    }
+  };
+
+  const runOptions = async () => {
+    setBusyOptions(true);
+    try {
+      const res = await fetch("/api/schedule/options", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      setOptions(await res.json());
+      onToast("3 schedule options generated", "success");
+    } finally {
+      setBusyOptions(false);
+    }
+  };
+
+  const runPin = async () => {
+    const placements = solveResult?.timetable?.placements ?? [];
+    const pins: Record<string, Record<string, unknown>> = {};
+    placements.forEach((p) => {
+      if (locked[p.section_id]) {
+        pins[p.section_id] = { instructor_id: p.instructor_id, room_id: p.room_id, period: p.period, day: p.days[0] };
+      }
+    });
+    const res = await fetch("/api/schedule/pin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pins }) });
+    setSolveResult(await res.json());
+    onToast("Re-solved, keeping the locked placements", "success");
+  };
 
   if (error) {
     return (
@@ -96,6 +134,7 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
     { id: "matrices" as const, label: "Sparse Matrices", icon: <Database className="w-3.5 h-3.5" /> },
     { id: "solve" as const, label: "CP-SAT Solve", icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: "tighten" as const, label: "AI Tightening", icon: <Wrench className="w-3.5 h-3.5" /> },
+    { id: "planning" as const, label: "Planning", icon: <Building2 className="w-3.5 h-3.5" /> },
   ];
 
   const matrixRows: [string, SparseMatrixPayload][] = matrices ? [
@@ -341,9 +380,44 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
 
         {tab === "solve" && (
           <div className="space-y-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={runSolve} disabled={busy !== null || busyOptions} className="flex items-center gap-1.5">
+                {busy === "solve" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                Solve
+              </Button>
+              <Button variant="outline" size="sm" onClick={runOptions} disabled={busyOptions} className="flex items-center gap-1.5">
+                {busyOptions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitFork className="w-3.5 h-3.5" />}
+                Generate 3 options
+              </Button>
+            </div>
+
+            {options && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {options.map((o) => {
+                  const loads = o.timetable?.sections_per_instructor ?? {};
+                  const vals = Object.values(loads);
+                  const maxLoad = vals.length ? Math.max(...vals) : 0;
+                  const idle = vals.filter((n) => n === 0).length;
+                  const label = o.objective_name === "balanced_load" ? "Balanced faculty load"
+                    : o.objective_name === "room_fit" ? "Tightest room fit" : "Preference-optimal";
+                  const active = solveResult === o;
+                  return (
+                    <button key={o.objective_name} onClick={() => setSolveResult(o)}
+                      className={cn("text-left border rounded-lg p-3 transition-colors", active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40")}>
+                      <div className="font-bold text-sm text-foreground">{label}</div>
+                      <div className="text-[11px] text-muted-foreground mt-1">max load {maxLoad} · {idle} idle · {o.solve_time_ms} ms</div>
+                      <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">
+                        {Object.entries(loads).sort().map(([k, v]) => `${k}:${v}`).join("  ")}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {!solveResult ? (
-              <div className="text-center py-10 text-muted-foreground text-sm">
-                Run <strong className="text-foreground">CP-SAT Solve</strong> to generate the real timetable (backend OR-Tools, not the toy solver).
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                <strong className="text-foreground">Solve</strong> for one timetable, or <strong className="text-foreground">Generate 3 options</strong> to compare objectives.
               </div>
             ) : solveResult.status === "infeasible" ? (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
@@ -352,15 +426,20 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
             ) : (
               <>
                 <div className="flex items-center gap-4 flex-wrap">
-                  <Stat label="Status" value={<span className="text-emerald-600">{solveResult.status.toUpperCase()}</span>} />
+                  <Stat label="Objective" value={<span className="text-emerald-600">{solveResult.objective_name ?? "preference"}</span>} />
                   <Stat label="Solve time" value={`${solveResult.solve_time_ms} ms`} />
-                  <Stat label="Objective (preference penalty)" value={solveResult.objective ?? "—"} />
+                  {Object.values(locked).some(Boolean) && (
+                    <Button variant="primary" size="sm" onClick={runPin} className="flex items-center gap-1.5">
+                      Re-solve, keep {Object.values(locked).filter(Boolean).length} locked
+                    </Button>
+                  )}
                 </div>
                 <Card title="Placements" icon={<Sparkles className="w-4 h-4 text-primary" />}>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead className="bg-muted text-muted-foreground">
                         <tr>
+                          <th className="text-left px-2 py-2 font-semibold">Keep</th>
                           <th className="text-left px-3 py-2 font-semibold">Course</th>
                           <th className="text-left px-3 py-2 font-semibold">Instructor</th>
                           <th className="text-left px-3 py-2 font-semibold">Room</th>
@@ -371,6 +450,11 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
                       <tbody>
                         {(solveResult.timetable?.placements ?? []).map((p) => (
                           <tr key={p.section_id} className="border-t border-border">
+                            <td className="px-2 py-1.5">
+                              <input type="checkbox" checked={!!locked[p.section_id]}
+                                onChange={() => setLocked((prev) => ({ ...prev, [p.section_id]: !prev[p.section_id] }))}
+                                className="h-3.5 w-3.5" aria-label={`keep ${p.course_code}`} />
+                            </td>
                             <td className="px-3 py-1.5 font-semibold text-foreground">{p.course_code}</td>
                             <td className="px-3 py-1.5 text-muted-foreground">{p.instructor_name}</td>
                             <td className="px-3 py-1.5 text-muted-foreground">{p.room_name} <span className="text-[10px]">[{p.building_id}]</span></td>
@@ -433,6 +517,58 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
                   </Card>
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {tab === "planning" && (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              What-if planning: simulate a change and see the before/after impact on feasibility,
+              utilization, and the four-course guarantee.
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { id: "add_lab", label: "Build a new lab", desc: "Add a 35-seat computer lab" },
+                { id: "grow_enrollment", label: "20% growth", desc: "Every cohort grows 20%" },
+                { id: "repurpose_hall", label: "Repurpose a hall", desc: "Largest lecture → lab" },
+              ].map((c) => (
+                <Button key={c.id} variant="outline" size="md" onClick={() => runWhatif(c.id)} disabled={whatifBusy} className="flex flex-col items-start gap-0.5 h-auto py-2.5">
+                  <span className="font-semibold">{c.label}</span>
+                  <span className="text-[11px] text-muted-foreground">{c.desc}</span>
+                </Button>
+              ))}
+            </div>
+
+            {whatifBusy && (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" /> solving the what-if…
+              </div>
+            )}
+
+            {whatif && (
+              <Card title={whatif.label} icon={<Building2 className="w-4 h-4 text-primary" />}>
+                <p className="text-xs text-muted-foreground mb-3">{whatif.description}</p>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <Stat label="Utilization" value={`${Math.round(whatif.before_utilization * 100)}% → ${Math.round(whatif.after_utilization * 100)}%`} />
+                  <Stat label="Feasibility" value={
+                    <span className={cn("text-sm", whatif.after_status === "infeasible" ? "text-red-600" : "text-emerald-600")}>
+                      {whatif.before_status} → {whatif.after_status}
+                    </span>
+                  } />
+                  <Stat label="Four-course guarantee" value={
+                    <span className={cn("text-sm", whatif.after_margins_ok ? "text-emerald-600" : "text-amber-600")}>
+                      {whatif.before_margins_ok ? "✓" : "✗"} → {whatif.after_margins_ok ? "✓" : "✗"}
+                    </span>
+                  } />
+                  <Stat label="Faculty load (max)" value={
+                    `${Math.max(0, ...Object.values(whatif.before_loads))} → ${Math.max(0, ...Object.values(whatif.after_loads))}`
+                  } />
+                </div>
+                <div className={cn("border rounded-lg p-3 text-sm", whatif.after_status === "infeasible" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-emerald-50 border-emerald-200 text-emerald-800")}>
+                  {whatif.verdict}
+                </div>
+              </Card>
             )}
           </div>
         )}

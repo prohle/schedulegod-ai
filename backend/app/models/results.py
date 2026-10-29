@@ -44,6 +44,7 @@ class SolveResult(BaseModel):
     status: Literal["optimal", "feasible", "infeasible"]
     timetable: Optional[Timetable] = None
     objective: Optional[int] = None
+    objective_name: str = "preference"   # preference | balanced_load | room_fit
     conflicts: Optional[ConflictReport] = None
     solve_time_ms: int
 

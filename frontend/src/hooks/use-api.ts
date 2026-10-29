@@ -192,6 +192,6 @@ export function useIntelligence() {
 
   return {
     matrices, spectral, margins, utilization, solveResult, tighten,
-    loading, busy, error, runSolve, runTighten, reload: load,
+    setSolveResult, loading, busy, error, runSolve, runTighten, reload: load,
   };
 }

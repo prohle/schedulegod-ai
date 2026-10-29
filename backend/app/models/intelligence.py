@@ -129,6 +129,23 @@ class UtilizationReport(BaseModel):
     all_loads_met: bool
 
 
+class WhatIfReport(BaseModel):
+    """Before/after impact of a hypothetical change (new room, growth, repurpose)."""
+
+    change_id: str
+    label: str
+    description: str
+    before_status: str                # feasible / optimal / infeasible
+    after_status: str
+    before_utilization: float
+    after_utilization: float
+    before_loads: dict[str, int]      # instructor_id -> sections
+    after_loads: dict[str, int]
+    before_margins_ok: bool
+    after_margins_ok: bool
+    verdict: str
+
+
 class TighteningMove(BaseModel):
     """One AI-proposed, solver-verified repair of a deadlock or shortfall."""
 

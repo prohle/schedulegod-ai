@@ -95,7 +95,8 @@ def mock_ingest(text: str) -> InstitutionData:
     program: str = ""
     course_pat = re.compile(r"^([A-Z]{2,5}\s*\d{3})\s+(.+?)\s*[—–-]\s*(.+)$")
     inst_pat = re.compile(r"^(.+?)\s+teaches\s+(.+)$")
-    cohort_pat = re.compile(r"^(.+?)\s*\(class\s+of\s+(\d{4})\).*?term\s+(\d+).*?(\d+)\s+students", re.I)
+    cohort_pat = re.compile(
+        r"^(.+?)\s*\((?:([^,()]+),\s*)?class\s+of\s+(\d{4})\).*?term\s+(\d+).*?(\d+)\s+students", re.I)
     room_pat = re.compile(r"^(.+?)\s*[—–-]\s*(\d+)\s*seats?\s*,\s*(lecture|lab|seminar)", re.I)
     term_pat = re.compile(r"term\s+(\d+)\s*:\s*(.+)$", re.I)
     req_pat = re.compile(r"([A-Z]{2,5}\s*\d{3})\s*\(?(required|elective)\)?", re.I)
@@ -150,10 +151,11 @@ def mock_ingest(text: str) -> InstitutionData:
             continue
         m = cohort_pat.match(line)
         if m and section == "cohort":
-            name, grad, term, size = m.groups()
+            name, program, grad, term, size = m.groups()
             data.cohorts.append(ExtractedCohort(
-                name=name.strip(), graduation_year=int(grad),
-                admission_year=int(grad) - 4, current_term=int(term), size=int(size)))
+                name=name.strip(), program=(program or "").strip(),
+                graduation_year=int(grad), admission_year=int(grad) - 4,
+                current_term=int(term), size=int(size)))
             continue
         m = room_pat.match(line)
         if m and section == "room":

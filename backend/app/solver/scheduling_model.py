@@ -135,6 +135,7 @@ def solve(
     pins_exact: Optional[dict[str, tuple[str, int, str]]] = None,
     instructor_pins: Optional[dict[str, str]] = None,
     slot_hints: Optional[dict[str, int]] = None,
+    objective: str = "preference",
 ) -> SolveResult:
     t0 = time.perf_counter()
     request_ops = list(request_ops or [])
@@ -305,33 +306,50 @@ def solve(
                 if k[0] == op.section_id and sc.room(k[3]).capacity < (op.value or 0):
                     m.Add(v == 0).OnlyEnforceIf(lit)
 
-    # ---- soft preferences (C19/C20) as objective ----------------------------
-    prefs: list[tuple[str, InstructorPreference]] = []
-    for i in sc.instructors:
-        for p in i.preferences:
-            prefs.append((i.id, p))
-    for op in request_ops:
-        if op.op == "add_instructor_preference" and op.instructor_id:
-            prefs.append((op.instructor_id, InstructorPreference(
-                kind=op.kind or "avoid", day=op.day, period=op.period,
-                weight=op.weight or 10)))
+    # ---- objective (selectable: a few schedule options for the reviewer) -------
+    obj_terms: list = []
+    if objective == "balanced_load":
+        # minimize the heaviest instructor load -> even spread across faculty
+        max_load = m.NewIntVar(0, sum(i.max_sections for i in sc.instructors), "max_load")
+        for i in sc.instructors:
+            covering = [v for k, v in a.items() if k[1] == i.id]
+            if covering:
+                m.Add(max_load >= cp_model.LinearExpr.Sum(covering))
+        m.Minimize(max_load)
+    elif objective == "room_fit":
+        # prefer the tightest room that fits each section (least wasted space)
+        terms = []
+        for (sid, _iid, _key, rid), v in a.items():
+            room = sc.room(rid)
+            enroll = sc.enrollment_for_section(sc.section_by_id(sid))
+            terms.append((room.capacity - enroll) * v)
+        m.Minimize(cp_model.LinearExpr.Sum(terms))
+    else:  # "preference" (default)
+        prefs: list[tuple[str, InstructorPreference]] = []
+        for i in sc.instructors:
+            for p in i.preferences:
+                prefs.append((i.id, p))
+        for op in request_ops:
+            if op.op == "add_instructor_preference" and op.instructor_id:
+                prefs.append((op.instructor_id, InstructorPreference(
+                    kind=op.kind or "avoid", day=op.day, period=op.period,
+                    weight=op.weight or 10)))
 
-    obj_terms = []
-    for iid, p in prefs:
-        if p.period is not None:
-            covering = [v for k, v in a.items() if k[1] == iid and _covers(sc, k[0], k[2], None, p.period)]
-            if covering:
-                iv = m.NewIntVar(0, 4, f"ip_{iid}_{p.period}")
-                m.Add(cp_model.LinearExpr.Sum(covering) == iv)
-                obj_terms.append(p.weight * iv if p.kind == "avoid" else -p.weight * iv)
-        elif p.day is not None:
-            covering = [v for k, v in a.items() if k[1] == iid and _covers(sc, k[0], k[2], p.day, None)]
-            if covering:
-                dv = m.NewIntVar(0, 5, f"id_{iid}_{p.day}")
-                m.Add(cp_model.LinearExpr.Sum(covering) == dv)
-                obj_terms.append(p.weight * dv if p.kind == "avoid" else -p.weight * dv)
-    if obj_terms:
-        m.Minimize(cp_model.LinearExpr.Sum(obj_terms))
+        for iid, p in prefs:
+            if p.period is not None:
+                covering = [v for k, v in a.items() if k[1] == iid and _covers(sc, k[0], k[2], None, p.period)]
+                if covering:
+                    iv = m.NewIntVar(0, 4, f"ip_{iid}_{p.period}")
+                    m.Add(cp_model.LinearExpr.Sum(covering) == iv)
+                    obj_terms.append(p.weight * iv if p.kind == "avoid" else -p.weight * iv)
+            elif p.day is not None:
+                covering = [v for k, v in a.items() if k[1] == iid and _covers(sc, k[0], k[2], p.day, None)]
+                if covering:
+                    dv = m.NewIntVar(0, 5, f"id_{iid}_{p.day}")
+                    m.Add(cp_model.LinearExpr.Sum(covering) == dv)
+                    obj_terms.append(p.weight * dv if p.kind == "avoid" else -p.weight * dv)
+        if obj_terms:
+            m.Minimize(cp_model.LinearExpr.Sum(obj_terms))
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = config.SOLVER_TIME_LIMIT_S
@@ -369,7 +387,8 @@ def solve(
         return SolveResult(
             status="optimal" if status == cp_model.OPTIMAL else "feasible",
             timetable=Timetable(placements=placements, sections_per_instructor=counts),
-            objective=int(solver.ObjectiveValue()) if obj_terms else None,
+            objective=int(solver.ObjectiveValue()),
+            objective_name=objective,
             solve_time_ms=elapsed_ms,
         )
 

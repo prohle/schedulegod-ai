@@ -8,7 +8,7 @@ import { useState } from "react";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle, Zap,
   Users, Loader2, CircleCheck, CircleX, Sparkles, Wrench, Radar, Database,
-  UploadCloud, FileText, X,
+  UploadCloud, FileText, X, ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { useIntelligence } from "@/hooks/use-api";
 import {
   DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
   type Placement, type CopilotResponse, type EmergencyResponse, type IngestResponse,
+  type InstitutionData,
 } from "@/types";
 
 interface WizardViewProps {
@@ -31,6 +32,17 @@ const STEPS = [
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
+
+type ReviewSection = [string, keyof InstitutionData, (x: any) => string];
+
+const REVIEW_SECTIONS: ReviewSection[] = [
+  ["Courses", "courses", (x) => `${x?.code ?? "?"} · ${x?.title ?? ""}`],
+  ["Faculty", "instructors", (x) => x?.name ?? "?"],
+  ["Cohorts", "cohorts", (x) => `${x?.name ?? "?"} (${x?.size ?? 0})`],
+  ["Facilities", "rooms", (x) => `${x?.name ?? "?"} (${x?.capacity ?? 0})`],
+  ["Degree map", "degree_map", (x) => `${x?.course ?? "?"} · term ${x?.term ?? "?"}`],
+  ["Buildings", "buildings", (x) => x],
+];
 
 const SAMPLE_DUMP = `Course catalog:
 CS 101 Intro to Programming — MWF, lecture, 50 seats, projector
@@ -137,6 +149,7 @@ export function WizardView({ onToast }: WizardViewProps) {
   const [dragOver, setDragOver] = useState(false);
   const [ingestBusy, setIngestBusy] = useState(false);
   const [ingest, setIngest] = useState<IngestResponse | null>(null);
+  const [edited, setEdited] = useState<InstitutionData | null>(null);
   const [intakeMsg, setIntakeMsg] = useState("Prof. Patel can't teach Mondays — committee duty. She'd rather not teach at 8:00.");
   const [intakeBusy, setIntakeBusy] = useState(false);
   const [copilot, setCopilot] = useState<CopilotResponse | null>(null);
@@ -166,6 +179,7 @@ export function WizardView({ onToast }: WizardViewProps) {
       files.forEach((f) => fd.append("files", f, f.name));
       const r: IngestResponse = await (await fetch("/api/ingest/files", { method: "POST", body: fd })).json();
       setIngest(r);
+      setEdited(JSON.parse(JSON.stringify(r.parsed)));
       if (r.completeness.complete) onToast("All six inputs present — ready to build", "success");
       else onToast(`Missing: ${r.completeness.missing.join(", ")}`, "warning");
     } finally {
@@ -178,11 +192,67 @@ export function WizardView({ onToast }: WizardViewProps) {
     try {
       const r: IngestResponse = await post("/api/ingest", { text: importText });
       setIngest(r);
+      setEdited(JSON.parse(JSON.stringify(r.parsed)));
       if (r.completeness.complete) onToast("All six inputs present — ready to build", "success");
       else onToast(`Missing: ${r.completeness.missing.join(", ")}`, "warning");
     } finally {
       setIngestBusy(false);
     }
+  };
+
+  const removeEntity = (field: keyof InstitutionData, index: number) => {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      const arr = (prev[field] as unknown[]).filter((_, i) => i !== index);
+      return { ...prev, [field]: arr };
+    });
+  };
+
+  const keepAll = () => setEdited(ingest ? JSON.parse(JSON.stringify(ingest.parsed)) : null);
+
+  const removeInvalid = () => {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        courses: prev.courses.filter((c) => c.code && c.seats > 0),
+        instructors: prev.instructors.filter((i) => i.name && i.qualified_courses.length > 0),
+        rooms: prev.rooms.filter((r) => r.name && r.capacity > 0),
+        cohorts: prev.cohorts.filter((c) => c.name && c.size > 0),
+      };
+    });
+  };
+
+  const localCompleteness = (d: InstitutionData | null) => {
+    if (!d) return null;
+    const defs: [string, string, keyof InstitutionData][] = [
+      ["degree_catalog", "Degree catalog", "courses"],
+      ["degree_maps", "Degree maps", "degree_map"],
+      ["student_bodies", "Student bodies", "cohorts"],
+      ["faculty", "Faculty availability", "instructors"],
+      ["facilities", "Facilities", "rooms"],
+      ["campus_map", "Campus map", "buildings"],
+    ];
+    return defs.map(([key, label, field]) => {
+      const count = (d[field] as unknown[]).length;
+      return { key, label, provided: count > 0, count };
+    });
+  };
+
+  const handleNext = async () => {
+    if (currentIndex >= stepOrder.length - 1) return;
+    // Leaving Import: finalize the reviewed (keep/changed) data so the solver
+    // builds from exactly what the user kept.
+    if (step === "import" && edited) {
+      setIngestBusy(true);
+      try {
+        const r: IngestResponse = await post("/api/ingest/apply", { data: edited });
+        setIngest(r);
+      } finally {
+        setIngestBusy(false);
+      }
+    }
+    setStep(stepOrder[currentIndex + 1]);
   };
 
   const handleIntake = async () => {
@@ -304,28 +374,70 @@ export function WizardView({ onToast }: WizardViewProps) {
               </details>
             </Section>
 
-            {ingest && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className={cn("px-2 py-0.5 rounded font-bold uppercase", ingest.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
-                    {ingest.parser_mode}
-                  </span>
-                  {ingest.completeness.complete
-                    ? <span className="text-emerald-700 font-semibold">Complete — ready to build the schedule</span>
-                    : <span className="text-amber-700 font-semibold">Missing {ingest.completeness.missing.length} input{ingest.completeness.missing.length > 1 ? "s" : ""}</span>}
+            {ingest && edited && (
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className={cn("px-2 py-0.5 rounded font-bold uppercase", ingest.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
+                      {ingest.parser_mode}
+                    </span>
+                    {(() => {
+                      const checks = localCompleteness(edited) ?? [];
+                      const missing = checks.filter((c) => !c.provided).map((c) => c.label);
+                      return missing.length === 0
+                        ? <span className="text-emerald-700 font-semibold">Complete — ready to build the schedule</span>
+                        : <span className="text-amber-700 font-semibold">Missing {missing.length}: {missing.join(", ")}</span>;
+                    })()}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(localCompleteness(edited) ?? []).map((chk) => (
+                      <div key={chk.key} className={cn("flex items-center gap-2 border rounded-lg p-2.5", chk.provided ? "bg-emerald-50/40 border-emerald-200" : "bg-amber-50/60 border-amber-200")}>
+                        {chk.provided ? <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0" /> : <CircleX className="w-4 h-4 text-amber-600 shrink-0" />}
+                        <span className="flex-1">
+                          <span className="block text-xs font-medium">{chk.label}</span>
+                          <span className="block text-[10px] text-muted-foreground">{chk.provided ? `${chk.count} kept` : "missing"}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {ingest.completeness.checks.map((chk) => (
-                    <div key={chk.key} className={cn("flex items-center gap-2 border rounded-lg p-2.5", chk.provided ? "bg-emerald-50/40 border-emerald-200" : "bg-amber-50/60 border-amber-200")}>
-                      {chk.provided ? <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0" /> : <CircleX className="w-4 h-4 text-amber-600 shrink-0" />}
-                      <span className="flex-1">
-                        <span className="block text-xs font-medium">{chk.label}</span>
-                        <span className="block text-[10px] text-muted-foreground">{chk.provided ? `${chk.count} found` : "missing"}</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <Section title="Review & adjust what to keep" icon={<ListChecks className="w-5 h-5 text-primary" />} tone="default">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Button variant="outline" size="sm" onClick={keepAll}>Keep all</Button>
+                    <Button variant="outline" size="sm" onClick={removeInvalid}>Remove invalid</Button>
+                    <span className="text-[11px] text-muted-foreground">remove any row with ✕ — the solver builds only from what you keep</span>
+                  </div>
+
+                  {[
+                    ["Courses", "courses", (x: { code?: string; title?: string }) => `${x.code ?? "?"} · ${x.title ?? ""}`],
+                    ["Faculty", "instructors", (x: { name?: string }) => x.name ?? "?"],
+                    ["Cohorts", "cohorts", (x: { name?: string; size?: number }) => `${x.name ?? "?"} (${x.size ?? 0})`],
+                    ["Facilities", "rooms", (x: { name?: string; capacity?: number }) => `${x.name ?? "?"} (${x.capacity ?? 0})`],
+                    ["Degree map", "degree_map", (x: { course?: string; term?: number }) => `${x.course ?? "?"} · term ${x.term ?? "?"}`],
+                    ["Buildings", "buildings", (x: string) => x],
+                  ].map((row) => {
+                    const [label, field, fmt] = row as unknown as ReviewSection;
+                    const items = (edited[field as keyof InstitutionData] as unknown[]) ?? [];
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={String(label)} className="mb-3 last:mb-0">
+                        <div className="text-[11px] font-semibold text-muted-foreground mb-1">{label} ({items.length})</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {items.map((item, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted rounded text-[11px] font-mono">
+                              {fmt(item)}
+                              <button onClick={() => removeEntity(field as keyof InstitutionData, i)} className="text-muted-foreground hover:text-destructive" aria-label={`remove ${label}`}>
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </Section>
               </div>
             )}
           </div>
@@ -500,7 +612,8 @@ export function WizardView({ onToast }: WizardViewProps) {
         </Button>
         <span className="text-xs text-muted-foreground">Step {currentIndex + 1} of {STEPS.length}</span>
         {currentIndex < stepOrder.length - 1 ? (
-          <Button variant="primary" size="md" onClick={() => setStep(stepOrder[currentIndex + 1])} className="flex items-center gap-1.5">
+          <Button variant="primary" size="md" onClick={handleNext} disabled={ingestBusy} className="flex items-center gap-1.5">
+            {ingestBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Next <ArrowRight className="w-4 h-4" />
           </Button>
         ) : (

@@ -21,8 +21,9 @@ from pydantic import BaseModel
 from app import config
 from app.db import init_db
 from app.ingestion import check_completeness, ingest
+from app.ingestion.normalize import build_scenario
 from app.ingestion.parser import IngestionParser
-from app.intelligence import analyze, build_matrices, compute_utilization, run_tightener
+from app.intelligence import analyze, build_matrices, compute_utilization, run_tightener, whatif
 from app.intelligence.matrices import compute_margins
 from app.models.ingestion import CompletenessReport, InstitutionData
 from app.models.intelligence import (
@@ -31,6 +32,7 @@ from app.models.intelligence import (
     SpectralReport,
     TightenResponse,
     UtilizationReport,
+    WhatIfReport,
 )
 from app.models.results import CopilotResponse, EmergencyResponse, SolveResult
 from app.models.scenario import Operation, ParsedRequest, Scenario
@@ -78,6 +80,10 @@ class SolveRequest(BaseModel):
 
 class IngestRequest(BaseModel):
     text: str
+
+
+class ApplyRequest(BaseModel):
+    data: InstitutionData
 
 
 class IngestResponse(BaseModel):
@@ -148,6 +154,21 @@ async def ingest_files(files: list[UploadFile] = File(...)) -> IngestResponse:
     return _ingest_text("".join(chunks))
 
 
+@app.post("/ingest/apply", response_model=IngestResponse)
+def ingest_apply(req: ApplyRequest) -> IngestResponse:
+    """Finalize an edited extraction: rebuild the scenario from the reviewed
+    (keep/changed) entities and make it current. The frontend sends back the
+    user-edited InstitutionData after the review panel."""
+    global _current_scenario
+    scenario = build_scenario(req.data)
+    _current_scenario = scenario
+    audit.record_event("ingest-apply",
+                       f"Applied edited data: {len(req.data.courses)} courses, "
+                       f"{len(req.data.instructors)} instructors, {len(req.data.cohorts)} cohorts")
+    return IngestResponse(scenario=scenario, parsed=req.data, parser_mode="reviewed",
+                          completeness=check_completeness(req.data))
+
+
 @app.post("/scenario/reset", response_model=Scenario)
 def reset_scenario() -> Scenario:
     """Discard the ingested scenario and return to the seed."""
@@ -168,6 +189,42 @@ def solve_scenario(req: SolveRequest) -> SolveResult:
     ops, _ = validate_operations(
         [Operation.model_validate(o) for o in (req.operations or [])], req.scenario)
     return solve(req.scenario, ops)
+
+
+class OptionsRequest(BaseModel):
+    scenario: Optional[Scenario] = None
+    operations: Optional[list] = None
+
+
+class PinRequest(BaseModel):
+    scenario: Optional[Scenario] = None
+    # section_id -> {"instructor_id", "room_id", "period" (MWF/TTh) or "day" (block)}
+    pins: dict[str, dict] = {}
+
+
+@app.post("/schedule/options", response_model=list[SolveResult])
+def schedule_options(req: OptionsRequest) -> list[SolveResult]:
+    """A few schedule options: the same hard constraints, different objectives
+    (preference-optimal, balanced faculty load, tightest room fit)."""
+    scenario = req.scenario or get_current_scenario()
+    ops, _ = validate_operations(
+        [Operation.model_validate(o) for o in (req.operations or [])], scenario)
+    return [solve(scenario, ops, objective=name)
+            for name in ("preference", "balanced_load", "room_fit")]
+
+
+@app.post("/schedule/pin", response_model=SolveResult)
+def schedule_pin(req: PinRequest) -> SolveResult:
+    """Keep chosen placements (pin them) and re-solve the rest — 'what to keep'."""
+    scenario = req.scenario or get_current_scenario()
+    pins_exact: dict[str, tuple[str, int, str]] = {}
+    for sid, pin in req.pins.items():
+        section = scenario.section_by_id(sid)
+        course = scenario.course(section.course_id)
+        key = pin.get("period") if course.pattern in ("MWF", "TTh") else pin.get("day")
+        if pin.get("instructor_id") and key is not None and pin.get("room_id"):
+            pins_exact[sid] = (pin["instructor_id"], key, pin["room_id"])
+    return solve(scenario, pins_exact=pins_exact)
 
 
 @app.post("/copilot", response_model=CopilotResponse)
@@ -215,6 +272,13 @@ def intelligence_utilization() -> UtilizationReport:
     scenario = get_current_scenario()
     result = solve(scenario)
     return compute_utilization(scenario, result.timetable)
+
+
+@app.get("/planning/whatif/{change_id}", response_model=WhatIfReport)
+def planning_whatif(change_id: str) -> WhatIfReport:
+    """What-if planning: simulate a change (new lab, growth, repurpose) and
+    report the before/after impact."""
+    return whatif(get_current_scenario(), change_id)
 
 
 @app.post("/intelligence/tighten", response_model=TightenResponse)

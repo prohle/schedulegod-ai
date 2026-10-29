@@ -133,6 +133,7 @@ export interface SolveResult {
   status: "optimal" | "feasible" | "infeasible";
   timetable?: Timetable;
   objective?: number;
+  objective_name?: string;
   solve_time_ms: number;
 }
 
@@ -397,6 +398,21 @@ export interface UtilizationReport {
   rooms: RoomUtilization[];
   faculty: FacultyLoad[];
   all_loads_met: boolean;
+}
+
+export interface WhatIfReport {
+  change_id: string;
+  label: string;
+  description: string;
+  before_status: string;
+  after_status: string;
+  before_utilization: number;
+  after_utilization: number;
+  before_loads: Record<string, number>;
+  after_loads: Record<string, number>;
+  before_margins_ok: boolean;
+  after_margins_ok: boolean;
+  verdict: string;
 }
 
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
