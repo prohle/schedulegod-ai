@@ -117,6 +117,7 @@ def solve(
     request_ops: Optional[list[Operation]] = None,
     pins_exact: Optional[dict[str, tuple[str, int, str]]] = None,
     instructor_pins: Optional[dict[str, str]] = None,
+    slot_hints: Optional[dict[str, int]] = None,
 ) -> SolveResult:
     t0 = time.perf_counter()
     request_ops = list(request_ops or [])
@@ -248,6 +249,14 @@ def solve(
         m.Add(cp_model.LinearExpr.Sum(
             [v for k, v in a.items() if k[0] == sid and k[1] == iid]
         ) == 1)
+
+    # spectral warm start (intelligence layer): color-derived period hints on
+    # cohort-conflicting sections. Hints only guide the search — they can
+    # never make a feasible model infeasible.
+    for sid, key in (slot_hints or {}).items():
+        for k, v in a.items():
+            if k[0] == sid:
+                m.AddHint(v, 1 if k[2] == key else 0)
 
     # ---- request operations behind assumption literals ----------------------
     lit_to_op: dict[int, int] = {}

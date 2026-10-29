@@ -31,7 +31,12 @@ from typing import Iterable
 
 import numpy as np
 
-from app.models.intelligence import CohortDepth, MarginsReport, MatricesReport
+from app.models.intelligence import (
+    CohortDepth,
+    CohortMargin,
+    MarginsReport,
+    MatricesReport,
+)
 from app.models.results import Timetable
 from app.models.scenario import (
     DAY_NAMES,
