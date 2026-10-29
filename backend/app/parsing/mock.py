@@ -57,9 +57,15 @@ def _first_period(message: str):
     return None
 
 
-def mock_parse(message: str, scenario: Scenario) -> ParsedRequest:
+def mock_parse(message: str, scenario: Scenario,
+               speaker_id: str | None = None) -> ParsedRequest:
     lower = message.lower()
     instructors = _mentioned_instructors(message, scenario)
+    if not instructors and speaker_id:
+        try:
+            instructors = [scenario.instructor(speaker_id)]
+        except StopIteration:
+            pass
     courses = _mentioned_courses(message, scenario)
     ops: list[Operation] = []
     parts: list[str] = []
@@ -94,6 +100,14 @@ def mock_parse(message: str, scenario: Scenario) -> ParsedRequest:
                                   day=day,
                                   explanation=f"{inst.name} can't teach on {DAY_NAMES[day]}s."))
             parts.append(f"{inst.name} unavailable {DAY_NAMES[day]}")
+
+    # prep cap: "keep me under 3 preps"
+    prep = re.search(r"under\s+(\d+)\s+preps?|max(?:imum)?\s+(\d+)\s+preps?", lower)
+    if inst and prep:
+        value = int(prep.group(1) or prep.group(2))
+        ops.append(Operation(op="set_prep_cap", instructor_id=inst.id, value=value,
+                             explanation=f"{inst.name} caps prep at {value}."))
+        parts.append(f"{inst.name} prep cap {value}")
 
     # soft preference: "would rather not teach at 8:00"
     if inst and re.search(r"\b(?:rather not|prefers?|likes?|avoid)\b", lower):

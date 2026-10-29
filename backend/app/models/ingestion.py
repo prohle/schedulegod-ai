@@ -53,6 +53,12 @@ class ExtractedRequirement(BaseModel):
     required: bool = True
 
 
+class ExtractedDistance(BaseModel):
+    from_building: str
+    to_building: str
+    minutes: int
+
+
 class InstitutionData(BaseModel):
     """Everything Muse extracted from the free-form dump, plus a summary."""
 
@@ -63,6 +69,7 @@ class InstitutionData(BaseModel):
     rooms: list[ExtractedRoom] = []
     cohorts: list[ExtractedCohort] = []
     degree_map: list[ExtractedRequirement] = []
+    distances: list[ExtractedDistance] = []
 
 
 class DataCheck(BaseModel):

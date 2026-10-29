@@ -18,6 +18,7 @@ from app import config
 from app.models.ingestion import (
     ExtractedCohort,
     ExtractedCourse,
+    ExtractedDistance,
     ExtractedInstructor,
     ExtractedRequirement,
     ExtractedRoom,
@@ -41,6 +42,8 @@ SECTION_HINTS = (
 class IngestionParser:
     def __init__(self) -> None:
         self.mode: str = "mock" if not config.MUSE_API_KEY else "muse-spark"
+        self.model: str | None = config.MUSE_MODEL if config.MUSE_API_KEY else None
+        self.last_latency_ms: int | None = None
         self._client = None
         if config.MUSE_API_KEY:
             from openai import OpenAI
@@ -49,8 +52,12 @@ class IngestionParser:
                 timeout=config.MUSE_TIMEOUT_S)
 
     def parse(self, text: str) -> InstitutionData:
+        import time
+        t0 = time.perf_counter()
         if self._client is None:
-            return mock_ingest(text)
+            parsed = mock_ingest(text)
+            self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
+            return parsed
         try:
             response = self._client.beta.chat.completions.parse(
                 model=config.MUSE_MODEL,
@@ -64,11 +71,15 @@ class IngestionParser:
             parsed: Optional[InstitutionData] = response.choices[0].message.parsed
             if parsed is None:
                 raise ValueError("model returned no parsed data")
+            self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
             logger.info("muse-spark ingestion ok (model=%s)", config.MUSE_MODEL)
             return parsed
         except Exception:
             logger.exception("Muse Spark ingestion failed; falling back to mock parser")
-            return mock_ingest(text)
+            parsed = mock_ingest(text)
+            self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
+            self.mode = "mock"
+            return parsed
 
 
 def _current_section(line: str, current: Optional[str]) -> Optional[str]:
@@ -100,11 +111,23 @@ def mock_ingest(text: str) -> InstitutionData:
     room_pat = re.compile(r"^(.+?)\s*[—–-]\s*(\d+)\s*seats?\s*,\s*(lecture|lab|seminar)", re.I)
     term_pat = re.compile(r"term\s+(\d+)\s*:\s*(.+)$", re.I)
     req_pat = re.compile(r"([A-Z]{2,5}\s*\d{3})\s*\(?(required|elective)\)?", re.I)
+    dist_pat = re.compile(
+        r"^(.+?)\s+(?:to|->|—|-)\s+(.+?)\s*[:\-]?\s*(\d+)\s*min", re.I)
 
     for raw in text.splitlines():
         line = raw.strip()
         if not line:
             continue
+
+        # Campus distance lines also contain ':' — handle them before headers.
+        if section == "campus":
+            dm = dist_pat.match(line)
+            if dm:
+                data.distances.append(ExtractedDistance(
+                    from_building=dm.group(1).strip(),
+                    to_building=dm.group(2).strip(),
+                    minutes=int(dm.group(3))))
+                continue
 
         # Degree-term lines contain ':' but are data, not section headers.
         m = term_pat.match(line)
@@ -139,7 +162,13 @@ def mock_ingest(text: str) -> InstitutionData:
             continue
         m = inst_pat.match(line)
         if m and section == "instructor":
-            name, courses = m.groups()
+            name, rest = m.groups()
+            availability = ""
+            # "Dr. Lee teaches CS 210, CS 401 — unavailable Fridays"
+            parts = re.split(r"\s*[—–]\s*|\s+-\s+", rest, maxsplit=1)
+            courses = parts[0]
+            if len(parts) > 1:
+                availability = parts[1].strip()
             max_sections = 2
             mm = re.search(r"max\s+(\d+)", courses, re.I)
             if mm:
@@ -147,7 +176,8 @@ def mock_ingest(text: str) -> InstitutionData:
                 courses = courses[:mm.start()]
             quals = [c.strip("() ").strip() for c in courses.split(",") if c.strip()]
             data.instructors.append(ExtractedInstructor(
-                name=name.strip(), qualified_courses=quals, max_sections=max_sections))
+                name=name.strip(), qualified_courses=quals,
+                max_sections=max_sections, availability=availability))
             continue
         m = cohort_pat.match(line)
         if m and section == "cohort":
@@ -162,8 +192,16 @@ def mock_ingest(text: str) -> InstitutionData:
             name, cap, rtype = m.groups()
             # equipment is everything after the room type (index 1 of a "," split)
             equip = [w.strip() for w in line.split(",")[2:] if w.strip()]
+            # Infer the building from the room-name prefix when the dump has a
+            # campus map ("Science Hall 120" -> Science).
+            building = ""
+            for b in ("Science", "Engineering", "Library"):
+                if name.strip().lower().startswith(b.lower()):
+                    building = b
+                    break
             data.rooms.append(ExtractedRoom(
-                name=name.strip(), capacity=int(cap), room_type=rtype.lower(), equipment=equip))
+                name=name.strip(), building=building, capacity=int(cap),
+                room_type=rtype.lower(), equipment=equip))
             continue
 
     return data

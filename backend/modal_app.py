@@ -1,0 +1,43 @@
+"""Modal deployment: the FastAPI backend as a public, scale-to-zero ASGI app.
+
+    cd backend
+    modal secret create meta-api MODEL_API_KEY=...
+    modal deploy modal_app.py
+
+The UI (Vercel) proxies through its Next.js API routes, so `BACKEND_URL` is the
+only setting it needs. SQLite lives on a Modal Volume; reset the demo term with
+`POST /scenario/reset`.
+"""
+
+from __future__ import annotations
+
+import modal
+
+app = modal.App("schedulegod-ai")
+
+image = (
+    modal.Image.debian_slim(python_version="3.12")
+    .pip_install_from_requirements("requirements.txt")
+    .add_local_python_source("app")
+    .add_local_dir("app/data", remote_path="/root/app/data")
+)
+
+volume = modal.Volume.from_name("schedulegod-data", create_if_missing=True)
+
+
+@app.function(
+    image=image,
+    secrets=[modal.Secret.from_name("meta-api")],
+    volumes={"/data": volume},
+    env={"DATABASE_URL": "sqlite:////data/schedulegod.db"},
+    timeout=300,          # Muse calls can take 30-90s
+    cpu=2,
+    memory=4096,
+    max_containers=2,     # cap cost; the demo is single-tenant
+    min_containers=0,     # scale to zero; warm only around judging
+)
+@modal.asgi_app()
+def api():
+    from app.main import app as web_app
+
+    return web_app

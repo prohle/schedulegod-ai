@@ -29,10 +29,11 @@ def run_copilot(
     message: str,
     parser: ConstraintParser | None = None,
     diagnoser: DiagnosisParser | None = None,
+    speaker_id: str | None = None,
 ) -> CopilotResponse:
     parser = parser or ConstraintParser()
     diagnoser = diagnoser or DiagnosisParser()
-    parsed = parser.parse(message, scenario)
+    parsed = parser.parse(message, scenario, speaker_id)
     record_submission(message, parsed.summary, parser.mode)  # type: ignore[arg-type]
 
     ops, notes = validate_operations(parsed.operations, scenario)
@@ -112,4 +113,6 @@ def run_copilot(
         options=options,
         result=result,
         parser_mode=parser.mode,  # type: ignore[arg-type]
+        model=parser.model,
+        parser_latency_ms=parser.last_latency_ms,
     )

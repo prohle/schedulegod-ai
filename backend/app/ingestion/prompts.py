@@ -14,6 +14,8 @@ prose, partial records). Your job is to AUTOCLEAN it into a typed extraction:
 - cohorts: name, program, admission year, graduation year, current term, size
 - degree_map: per program and term, which courses are required or elective
 - buildings: distinct building names
+- distances: building-pair walk minutes when the dump states them
+  (e.g. "Science to Engineering: 8 min")
 - summary: 1-2 sentences of what you found
 
 Rules: invent nothing — leave fields empty rather than guessing; infer the

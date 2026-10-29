@@ -16,15 +16,71 @@ from app.models.scenario import (
     Cohort,
     Course,
     Instructor,
+    InstructorPreference,
     PATTERN_DURATION,
     Program,
     RoadmapRequirement,
     Room,
     Scenario,
     Section,
+    SlotRef,
 )
 
 DEFAULT_WALK_MIN = 5  # between distinct buildings when no campus map is given
+
+_DAY_WORDS = {
+    "monday": 0, "mondays": 0, "tuesday": 1, "tuesdays": 1,
+    "wednesday": 2, "wednesdays": 2, "thursday": 3, "thursdays": 3,
+    "friday": 4, "fridays": 4,
+}
+_PERIOD_WORDS = {
+    "morning": 0, "mornings": 0, "8:00": 0, "8am": 0, "before 10": 0,
+    "10:00": 1, "10am": 1,
+    "afternoon": 2, "afternoons": 2, "1:00": 2, "1pm": 2,
+    "3:00": 3, "3pm": 3,
+}
+_HARD_RE = re.compile(r"\b(?:unavailable|can'?t|cannot|not available|no|blocked|avoid)\b")
+_SOFT_RE = re.compile(r"\b(?:prefer|prefers|rather|like|likes)\b")
+
+
+def _availability(text: str) -> tuple[list[SlotRef], list[InstructorPreference]]:
+    """Turn a free-form availability note into typed slots/preferences.
+
+    Heuristic on purpose: the live Muse extraction keeps the note as text, and
+    this normalizer is the deterministic bridge to the solver. Unknown phrasing
+    is ignored rather than guessed.
+    """
+    low = (text or "").lower()
+    hard: list[SlotRef] = []
+    prefs: list[InstructorPreference] = []
+    if not low:
+        return hard, prefs
+
+    for clause in re.split(r"[;,.]", low):
+        if not clause.strip():
+            continue
+        is_hard = bool(_HARD_RE.search(clause))
+        is_soft = bool(_SOFT_RE.search(clause))
+        if not (is_hard or is_soft):
+            continue
+
+        for word, day in _DAY_WORDS.items():
+            if not re.search(rf"\b{word}\b", clause):
+                continue
+            if is_hard:
+                hard.extend(SlotRef(day=day, period=p) for p in range(4))
+            else:
+                prefs.append(InstructorPreference(kind="prefer", day=day))
+
+        for word, period in _PERIOD_WORDS.items():
+            if not re.search(rf"\b{re.escape(word)}\b", clause):
+                continue
+            if is_hard:
+                hard.extend(SlotRef(day=d, period=period) for d in range(5))
+            else:
+                prefs.append(InstructorPreference(kind="prefer", period=period))
+
+    return hard, prefs
 
 
 def slug(s: str) -> str:
@@ -75,10 +131,11 @@ def build_scenario(data: InstitutionData) -> Scenario:
     for inst in data.instructors:
         iid = slug(inst.name) or f"instructor-{len(instructors)}"
         qualified = [c for c in (resolve_code(q) for q in inst.qualified_courses) if c]
+        hard, prefs = _availability(inst.availability)
         instructors.append(Instructor(
             id=iid, name=inst.name, qualified_courses=qualified,
             max_sections=inst.max_sections, max_preps=inst.max_preps,
-            hard_unavailable=[], preferences=[],
+            hard_unavailable=hard, preferences=prefs,
         ))
 
     # --- rooms --------------------------------------------------------------
@@ -126,6 +183,12 @@ def build_scenario(data: InstitutionData) -> Scenario:
         for b2 in buildings:
             row[b2.id] = 0 if b1.id == b2.id else DEFAULT_WALK_MIN
         distances[b1.id] = row
+    for d in data.distances:
+        a, b = slug(d.from_building), slug(d.to_building)
+        if a in distances and b in distances[a] and a != b:
+            minutes = max(0, d.minutes)
+            distances[a][b] = minutes
+            distances[b][a] = minutes
 
     return Scenario(
         name="Ingested scenario", buildings=buildings, rooms=rooms,

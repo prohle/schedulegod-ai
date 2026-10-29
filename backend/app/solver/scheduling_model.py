@@ -265,11 +265,28 @@ def solve(
     for sid, (iid, key, rid) in (pins_exact or {}).items():
         m.Add(a[(sid, iid, key, rid)] == 1)
 
-    # hard instructor pins (emergency: chosen candidate keeps the section)
-    for sid, iid in (instructor_pins or {}).items():
-        m.Add(cp_model.LinearExpr.Sum(
-            [v for k, v in a.items() if k[0] == sid and k[1] == iid]
-        ) == 1)
+    # durable world-state pins: decisions the coordinator already accepted.
+    # Request ops override them, and probe pins freeze everything else.
+    op_instructor_sections = {op.section_id for op in request_ops
+                              if op.op == "set_section_instructor"}
+    op_room_sections = {op.section_id for op in request_ops
+                        if op.op == "set_section_room"}
+    exact_sections = set((pins_exact or {}).keys())
+
+    merged_instructor_pins = {**sc.instructor_pins, **(instructor_pins or {})}
+    for sid, iid in merged_instructor_pins.items():
+        if sid in exact_sections or sid in op_instructor_sections:
+            continue
+        terms = [v for k, v in a.items() if k[0] == sid and k[1] == iid]
+        if terms:
+            m.Add(cp_model.LinearExpr.Sum(terms) == 1)
+
+    for sid, rid in sc.room_pins.items():
+        if sid in exact_sections or sid in op_room_sections:
+            continue
+        for k, v in a.items():
+            if k[0] == sid and k[3] != rid:
+                m.Add(v == 0)
 
     # spectral warm start (intelligence layer): color-derived period hints on
     # cohort-conflicting sections. Hints only guide the search — they can
@@ -299,6 +316,30 @@ def solve(
                 m.Add(cp_model.LinearExpr.Sum(terms) == 1).OnlyEnforceIf(lit)
             else:
                 m.Add(lit == 0)  # impossible ask -> surfaces as conflict on this op
+        elif op.op == "set_section_room" and op.section_id and op.room_id:
+            terms = [v for k, v in a.items() if k[0] == op.section_id and k[3] == op.room_id]
+            if terms:
+                m.Add(cp_model.LinearExpr.Sum(terms) == 1).OnlyEnforceIf(lit)
+            else:
+                m.Add(lit == 0)
+        elif op.op == "remove_instructor" and op.instructor_id:
+            # An instructor out for the term cannot hold any section. The
+            # solver either re-homes every section or proves the request
+            # infeasible and returns this op in the conflict core.
+            for k, v in a.items():
+                if k[1] == op.instructor_id:
+                    m.Add(v == 0).OnlyEnforceIf(lit)
+        elif op.op == "set_load_cap" and op.instructor_id and op.value is not None:
+            covering = [v for k, v in a.items() if k[1] == op.instructor_id]
+            if covering:
+                m.Add(cp_model.LinearExpr.Sum(covering) <= op.value).OnlyEnforceIf(lit)
+        elif op.op == "set_prep_cap" and op.instructor_id and op.value is not None:
+            terms = [t[(op.instructor_id, c)] for c in sorted(
+                {sc.section_by_id(k[0]).course_id for k, v in a.items()
+                 if k[1] == op.instructor_id})
+                if (op.instructor_id, c) in t]
+            if terms:
+                m.Add(cp_model.LinearExpr.Sum(terms) <= op.value).OnlyEnforceIf(lit)
         elif op.op == "update_enrollment" and op.section_id and op.value:
             # C37: active enrollment re-triggers the capacity check (C24):
             # every too-small room for this section is blocked while the op holds.
@@ -333,7 +374,7 @@ def solve(
             if op.op == "add_instructor_preference" and op.instructor_id:
                 prefs.append((op.instructor_id, InstructorPreference(
                     kind=op.kind or "avoid", day=op.day, period=op.period,
-                    weight=op.weight or 10)))
+                    course_id=op.course_id, weight=op.weight or 10)))
 
         for iid, p in prefs:
             if p.period is not None:
@@ -348,6 +389,13 @@ def solve(
                     dv = m.NewIntVar(0, 5, f"id_{iid}_{p.day}")
                     m.Add(cp_model.LinearExpr.Sum(covering) == dv)
                     obj_terms.append(p.weight * dv if p.kind == "avoid" else -p.weight * dv)
+            if p.course_id is not None:
+                covering = [v for k, v in a.items()
+                            if k[1] == iid and sc.section_by_id(k[0]).course_id == p.course_id]
+                if covering:
+                    cv = m.NewIntVar(0, len(covering), f"ic_{iid}_{p.course_id}")
+                    m.Add(cp_model.LinearExpr.Sum(covering) == cv)
+                    obj_terms.append(p.weight * cv if p.kind == "avoid" else -p.weight * cv)
         if obj_terms:
             m.Minimize(cp_model.LinearExpr.Sum(obj_terms))
 

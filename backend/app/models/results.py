@@ -94,6 +94,9 @@ class EmergencyResponse(BaseModel):
     healing_notes: list[str]
     result: Optional[SolveResult] = None
     parser_mode: Literal["muse-spark", "mock"]
+    model: Optional[str] = None
+    parser_latency_ms: Optional[int] = None
+    transcript: Optional[str] = None
 
 
 class CopilotResponse(BaseModel):
@@ -107,3 +110,5 @@ class CopilotResponse(BaseModel):
     options: list[ResolutionOption] = []
     result: Optional[SolveResult] = None
     parser_mode: Literal["muse-spark", "mock"]
+    model: Optional[str] = None
+    parser_latency_ms: Optional[int] = None

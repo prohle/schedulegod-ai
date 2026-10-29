@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 class ConstraintParser:
     def __init__(self) -> None:
         self.mode: str = "mock" if not config.MUSE_API_KEY else "muse-spark"
+        self.model: str | None = config.MUSE_MODEL if config.MUSE_API_KEY else None
+        self.last_latency_ms: int | None = None
         self._client = None
         if config.MUSE_API_KEY:
             from openai import OpenAI  # imported lazily so mock mode needs no SDK
@@ -35,15 +37,20 @@ class ConstraintParser:
                 base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY,
                 timeout=config.MUSE_TIMEOUT_S)
 
-    def parse(self, message: str, scenario: Scenario) -> ParsedRequest:
+    def parse(self, message: str, scenario: Scenario,
+              speaker_id: str | None = None) -> ParsedRequest:
+        import time
+        t0 = time.perf_counter()
         if self._client is None:
-            return mock_parse(message, scenario)
+            parsed = mock_parse(message, scenario, speaker_id)
+            self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
+            return parsed
 
         try:
             kwargs = dict(
                 model=config.MUSE_MODEL,
                 messages=[
-                    {"role": "system", "content": build_system_prompt(scenario)},
+                    {"role": "system", "content": build_system_prompt(scenario, speaker_id)},
                     {"role": "user", "content": message},
                 ],
                 response_format=ParsedRequest,
@@ -54,11 +61,15 @@ class ConstraintParser:
             parsed: Optional[ParsedRequest] = response.choices[0].message.parsed
             if parsed is None:
                 raise ValueError("model returned no parsed content")
+            self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
             logger.info("muse-spark parse ok (model=%s)", config.MUSE_MODEL)
             return parsed
         except Exception:
             logger.exception("Muse Spark parse failed; falling back to mock parser")
-            return mock_parse(message, scenario)
+            parsed = mock_parse(message, scenario, speaker_id)
+            self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
+            self.mode = "mock"
+            return parsed
 
 
 def validate_operations(ops: list[Operation], scenario: Scenario) -> tuple[list[Operation], list[str]]:
@@ -79,16 +90,25 @@ def validate_operations(ops: list[Operation], scenario: Scenario) -> tuple[list[
             if not op.room_id or op.room_id not in room_ids:
                 notes.append(f"Dropped operation {i}: unknown room '{op.room_id}'.")
                 continue
-        if op.op == "set_section_instructor":
+        if op.op in ("set_section_instructor", "set_section_room"):
             if not op.section_id or op.section_id not in section_ids:
                 notes.append(f"Dropped operation {i}: unknown section '{op.section_id}'.")
+                continue
+        if op.op == "set_section_room":
+            if not op.room_id or op.room_id not in room_ids:
+                notes.append(f"Dropped operation {i}: unknown room '{op.room_id}'.")
+                continue
+        if op.op in ("set_prep_cap", "set_load_cap"):
+            if op.value is None or op.value < 0:
+                notes.append(f"Dropped operation {i}: {op.op} needs a non-negative value.")
                 continue
         if op.op == "update_enrollment":
             if not op.section_id or op.section_id not in section_ids or not op.value:
                 notes.append(f"Dropped operation {i}: enrollment update needs section_id + value.")
                 continue
-        if op.op == "add_instructor_preference" and op.day is None and op.period is None:
-            notes.append(f"Dropped operation {i}: preference needs a day or a period.")
+        if (op.op == "add_instructor_preference"
+                and op.day is None and op.period is None and not op.course_id):
+            notes.append(f"Dropped operation {i}: preference needs a day, a period, or a course.")
             continue
         if op.op == "add_instructor_unavailability" and op.day is None and op.period is None:
             notes.append(f"Dropped operation {i}: unavailability needs a day or period.")

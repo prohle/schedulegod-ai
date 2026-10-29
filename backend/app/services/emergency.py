@@ -27,6 +27,7 @@ def run_emergency(
     parsed = parser.parse(message, scenario)
     record_submission(message, parsed.summary, parser.mode)  # type: ignore[arg-type]
     ops, notes = validate_operations(parsed.operations, scenario)
+    muse = {"model": parser.model, "parser_latency_ms": parser.last_latency_ms}
 
     removed = next((o for o in ops if o.op == "remove_instructor" and o.instructor_id), None)
     if removed is None:
@@ -41,7 +42,7 @@ def run_emergency(
             removed_instructor_id="", removed_instructor_name="",
             affected_section_ids=[], proposals=[], chosen={}, healing_notes=
             ["No instructor removal found in the message."] + notes,
-            result=None, parser_mode=parser.mode,  # type: ignore[arg-type]
+            result=None, parser_mode=parser.mode, **muse,  # type: ignore[arg-type]
         )
 
     removed_id = removed.instructor_id
@@ -52,7 +53,7 @@ def run_emergency(
             removed_instructor_name=scenario.instructor(removed_id).name,
             affected_section_ids=[], proposals=[], chosen={},
             healing_notes=["Base timetable is already infeasible."] + notes,
-            result=base, parser_mode=parser.mode,  # type: ignore[arg-type]
+            result=base, parser_mode=parser.mode, **muse,  # type: ignore[arg-type]
         )
 
     affected_ids = [p.section_id for p in base.timetable.placements
@@ -72,7 +73,7 @@ def run_emergency(
             removed_instructor_name=scenario.instructor(removed_id).name,
             affected_section_ids=[], proposals=[], chosen={},
             healing_notes=healing_notes + ["That instructor had no sections to lose."],
-            result=base, parser_mode=parser.mode,  # type: ignore[arg-type]
+            result=base, parser_mode=parser.mode, **muse,  # type: ignore[arg-type]
         )
 
     proposals = propose_candidates(scenario, base, removed_id)
@@ -96,14 +97,37 @@ def run_emergency(
         else:
             healing_notes.append(f"No verified candidate found for section {sid}; leaving it to re-solve freely.")
 
+    # The absent instructor must be gone from the result, even for a section
+    # with no verified candidate. Otherwise the "after" timetable quietly puts
+    # them back on the board.
+    remove_op = Operation(
+        op="remove_instructor", instructor_id=removed_id,
+        explanation=f"{scenario.instructor(removed_id).name} is out.")
+
     result: SolveResult | None = None
     if chosen:
-        result = solve(scenario, instructor_pins=chosen)
+        # Freeze every unaffected placement: the coverage swap must be
+        # zero-ripple, not a global reshuffle. Only the affected sections may
+        # move (and only if the candidate needs a different slot/room).
+        pins_exact = {
+            p.section_id: (p.instructor_id,
+                           p.period if p.period is not None else p.days[0],
+                           p.room_id)
+            for p in base.timetable.placements
+            if p.section_id not in affected_ids
+        }
+        result = solve(scenario, [remove_op],
+                       instructor_pins=chosen, pins_exact=pins_exact)
         if result.status == "infeasible":
-            healing_notes.append("Pinned choices conflicted; re-solving freely instead.")
-            result = solve(scenario)
+            healing_notes.append(
+                "Zero-ripple coverage is not possible; re-solving the affected sections.")
+            result = solve(scenario, [remove_op])
     else:
-        result = solve(scenario)
+        result = solve(scenario, [remove_op])
+    if result.status == "infeasible":
+        healing_notes.append(
+            "No verified coverage exists for every affected section — "
+            "the request needs a structural change (new section, qualification, or load cap).")
 
     return EmergencyResponse(
         removed_instructor_id=removed_id,
@@ -113,5 +137,5 @@ def run_emergency(
         chosen=chosen,
         healing_notes=healing_notes,
         result=result,
-        parser_mode=parser.mode,  # type: ignore[arg-type]
+        parser_mode=parser.mode, **muse,  # type: ignore[arg-type]
     )

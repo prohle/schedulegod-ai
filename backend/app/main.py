@@ -38,8 +38,10 @@ from app.models.results import CopilotResponse, EmergencyResponse, SolveResult
 from app.models.scenario import Operation, ParsedRequest, Scenario
 from app.parsing.parser import ConstraintParser, validate_operations
 from app.services import audit
+from app.services.apply import apply_operations
 from app.services.copilot import run_copilot
 from app.services.emergency import run_emergency
+from app.services.voice import transcribe_wav
 from app.solver.scheduling_model import solve
 
 
@@ -71,6 +73,16 @@ def get_current_scenario() -> Scenario:
 class MessageRequest(BaseModel):
     message: str
     scenario: Optional[Scenario] = None
+    speaker_id: Optional[str] = None  # intake window: who is speaking
+
+
+class ApplyOpsRequest(BaseModel):
+    """Commit a verified proposal to the durable term state."""
+
+    operations: list[Operation] = []
+    pins: dict[str, str] = {}          # section_id -> instructor_id
+    remove_instructor_id: Optional[str] = None
+    scenario: Optional[Scenario] = None
 
 
 class SolveRequest(BaseModel):
@@ -91,6 +103,8 @@ class IngestResponse(BaseModel):
     parsed: InstitutionData
     parser_mode: str
     completeness: CompletenessReport
+    model: Optional[str] = None
+    parser_latency_ms: Optional[int] = None
 
 
 def _ingest_text(text: str) -> IngestResponse:
@@ -107,7 +121,8 @@ def _ingest_text(text: str) -> IngestResponse:
                        {"courses": len(data.courses), "instructors": len(data.instructors),
                         "cohorts": len(data.cohorts), "rooms": len(data.rooms)})
     return IngestResponse(scenario=scenario, parsed=data, parser_mode=parser.mode,
-                          completeness=check_completeness(data))
+                          completeness=check_completeness(data),
+                          model=parser.model, parser_latency_ms=parser.last_latency_ms)
 
 
 @app.get("/health")
@@ -177,10 +192,37 @@ def reset_scenario() -> Scenario:
     return get_current_scenario()
 
 
+@app.post("/apply", response_model=Scenario)
+def apply_request(req: ApplyOpsRequest) -> Scenario:
+    """Commit a verified co-pilot/emergency proposal to the current term.
+
+    This is the explicit "accept" step: after it, every later solve builds on
+    the new world state instead of silently reverting to the seed.
+    """
+    global _current_scenario
+    base = req.scenario or get_current_scenario()
+    ops = list(req.operations)
+    if req.remove_instructor_id:
+        ops.append(Operation(
+            op="remove_instructor", instructor_id=req.remove_instructor_id,
+            explanation=f"Remove {req.remove_instructor_id} for the term."))
+    for sid, iid in req.pins.items():
+        ops.append(Operation(
+            op="set_section_instructor", section_id=sid, instructor_id=iid,
+            explanation=f"Keep {sid} with {iid}."))
+    validated, notes = validate_operations(ops, base)
+    scenario = apply_operations(base, validated)
+    _current_scenario = scenario
+    audit.record_event(
+        "apply", f"Applied {len(validated)} operation(s) to the term",
+        {"operations": [o.op for o in validated], "notes": notes})
+    return scenario
+
+
 @app.post("/parse", response_model=ParsedRequest)
 def parse(req: MessageRequest) -> ParsedRequest:
     scenario = req.scenario or get_current_scenario()
-    return ConstraintParser().parse(req.message, scenario)
+    return ConstraintParser().parse(req.message, scenario, req.speaker_id)
 
 
 @app.post("/solve", response_model=SolveResult)
@@ -230,13 +272,23 @@ def schedule_pin(req: PinRequest) -> SolveResult:
 @app.post("/copilot", response_model=CopilotResponse)
 def copilot(req: MessageRequest) -> CopilotResponse:
     scenario = req.scenario or get_current_scenario()
-    return run_copilot(scenario, req.message)
+    return run_copilot(scenario, req.message, speaker_id=req.speaker_id)
 
 
 @app.post("/emergency", response_model=EmergencyResponse)
 def emergency(req: MessageRequest) -> EmergencyResponse:
     scenario = req.scenario or get_current_scenario()
     return run_emergency(scenario, req.message)
+
+
+@app.post("/emergency/audio", response_model=EmergencyResponse)
+async def emergency_audio(file: UploadFile = File(...)) -> EmergencyResponse:
+    """Voice call-in: Muse Voice Transcribe -> the same verified emergency flow."""
+    audio = await file.read()
+    transcript = transcribe_wav(audio, file.filename or "voice-note.wav")
+    response = run_emergency(get_current_scenario(), transcript)
+    response.transcript = transcript
+    return response
 
 
 # --- intelligence services: sparse matrices, spectral radar, AI tightening ----

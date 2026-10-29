@@ -155,6 +155,10 @@ class Scenario(BaseModel):
     room_blackouts: list[RoomBlackout] = []
     walk_limit_min: int = 10  # max walk between back-to-back classes
     active_enrollment: dict[str, int] = {}  # section_id -> registered count (post add/drop)
+    # Durable decisions from applied requests (the "world state" after a
+    # coordinator accepts a proposal): section_id -> instructor / room.
+    instructor_pins: dict[str, str] = Field(default_factory=dict)
+    room_pins: dict[str, str] = Field(default_factory=dict)
 
     # --- lookups -----------------------------------------------------------
     def course(self, course_id: str) -> Course:
@@ -239,16 +243,20 @@ class Operation(BaseModel):
         "add_room_unavailability",
         "remove_instructor",
         "set_section_instructor",
+        "set_section_room",
+        "set_prep_cap",
+        "set_load_cap",
         "update_enrollment",
     ]
     instructor_id: Optional[str] = None
     section_id: Optional[str] = None
     room_id: Optional[str] = None
+    course_id: Optional[str] = None  # course preference
     day: Optional[int] = Field(default=None, ge=0, le=4)
     period: Optional[int] = Field(default=None, ge=0, le=3)
     kind: Optional[Literal["prefer", "avoid"]] = None
     weight: Optional[int] = None
-    value: Optional[int] = None  # update_enrollment: new active count
+    value: Optional[int] = None  # update_enrollment / set_*_cap: new number
     explanation: str
 
 
