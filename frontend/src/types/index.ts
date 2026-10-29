@@ -165,6 +165,34 @@ export interface CopilotResponse {
   parser_mode: "muse-spark" | "mock";
 }
 
+export interface ConflictReport {
+  conflicting_operation_indices: number[];
+  explanation: string;
+  suggestion: string;
+}
+
+export interface CandidateProposal {
+  section_id: string;
+  course_code: string;
+  instructor_id: string;
+  instructor_name: string;
+  feasible: boolean;
+  objective_delta?: number;
+  load_after?: number;
+  reason: string;
+}
+
+export interface EmergencyResponse {
+  removed_instructor_id: string;
+  removed_instructor_name: string;
+  affected_section_ids: string[];
+  proposals: CandidateProposal[];
+  chosen: Record<string, string>;
+  healing_notes: string[];
+  result?: SolveResult;
+  parser_mode: "muse-spark" | "mock";
+}
+
 // --- Intelligence layer (sparse matrices + spectral radar + AI tightening) ---
 
 export interface SparseMatrixPayload {

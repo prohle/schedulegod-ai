@@ -14,6 +14,7 @@ from __future__ import annotations
 from app.models.results import EmergencyResponse, SolveResult
 from app.models.scenario import Operation, Scenario
 from app.parsing.parser import ConstraintParser, validate_operations
+from app.services.audit import record_event, record_submission
 from app.solver.scheduling_model import propose_candidates, solve
 
 
@@ -24,6 +25,7 @@ def run_emergency(
 ) -> EmergencyResponse:
     parser = parser or ConstraintParser()
     parsed = parser.parse(message, scenario)
+    record_submission(message, parsed.summary, parser.mode)  # type: ignore[arg-type]
     ops, notes = validate_operations(parsed.operations, scenario)
 
     removed = next((o for o in ops if o.op == "remove_instructor" and o.instructor_id), None)
@@ -55,6 +57,9 @@ def run_emergency(
 
     affected_ids = [p.section_id for p in base.timetable.placements
                     if p.instructor_id == removed_id]
+    record_event("emergency",
+                 f"{scenario.instructor(removed_id).name} out — {len(affected_ids)} section(s) affected",
+                 {"instructor_id": removed_id, "sections": affected_ids})
     healing_notes = list(notes)
     healing_notes.append(
         f"Base timetable built ({base.status}, {base.solve_time_ms} ms) — "

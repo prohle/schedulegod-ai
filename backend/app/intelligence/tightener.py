@@ -40,6 +40,7 @@ from app.models.results import SolveResult
 from app.models.scenario import Operation, Program, RoadmapRequirement, Scenario, Section
 from app.intelligence.matrices import cohort_pool, compute_margins
 from app.intelligence.spectral import analyze
+from app.services.audit import record_event
 from app.solver.scheduling_model import solve
 
 logger = logging.getLogger(__name__)
@@ -373,6 +374,9 @@ def run_tightener(scenario: Scenario, ops: Optional[list[Operation]] = None) -> 
     assessment = plan.assessment if plan is not None else (
         "No tightening needed: the timetable solves and every cohort clears the "
         "four-course guarantee.")
+    record_event("tighten",
+                 f"trigger={trigger}; {sum(1 for m in moves if m.verified)}/{len(moves)} moves verified",
+                 {"trigger": trigger, "moves": [m.kind for m in moves]})
     return TightenResponse(
         trigger=trigger, evidence=evidence, muse_mode=mode,  # type: ignore[arg-type]
         assessment=assessment, moves=moves,

@@ -7,3 +7,5 @@ python-dotenv
 openai
 numpy
 scipy
+sqlalchemy
+psycopg[binary]

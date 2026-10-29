@@ -76,10 +76,27 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 - **Frontend:** Next.js
 - **Intelligence:** `scipy.sparse` CSR matrices, `numpy`/`scipy` spectral graph (Laplacian, Fiedler, Hoffman bound, exact max clique)
 - **Inference:** Meta Model API (OpenAI-compatible, `beta.chat.completions.parse` structured output) — deterministic mock parser included so dev/tests burn zero credits
-- **Persistence (planned):** SQLite — constraint provenance + change log
-- **Deploy:** local-first demo; free-tier hosting (HF Spaces / Render for the API, Vercel for the UI) — Modal if partner credits arrive
+- **Persistence:** SQLAlchemy over **Postgres 16** (Docker) or **SQLite** (no-Docker fallback) — constraint provenance + the self-healing audit trail (`/history`)
+- **Deploy:** `docker compose up` (db + backend + frontend) or `./start.sh` for a no-Docker local run
 
-## Run the offline demo
+## Run it
+
+**Full stack (one command):**
+
+```bash
+docker compose up --build
+# frontend http://localhost:3000 · backend http://localhost:8000/docs · db postgres:5432
+# taken ports?  BACKEND_PORT=8011 FRONTEND_PORT=3011 docker compose up --build
+# live Muse?    MODEL_API_KEY=... docker compose up --build
+```
+
+**No Docker (local dev):**
+
+```bash
+./start.sh        # bootstraps venv + node_modules, auto-picks free ports, Ctrl-C stops both
+```
+
+**Backend only:**
 
 ```bash
 cd backend

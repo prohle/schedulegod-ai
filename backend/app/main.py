@@ -10,12 +10,14 @@ Built during the Meta Global AI Developer Hackathon (Oct 27 - Nov 4, 2026).
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app import config
+from app.db import init_db
 from app.intelligence import analyze, build_matrices, run_tightener
 from app.intelligence.matrices import compute_margins
 from app.models.intelligence import (
@@ -27,11 +29,19 @@ from app.models.intelligence import (
 from app.models.results import CopilotResponse, EmergencyResponse, SolveResult
 from app.models.scenario import Operation, ParsedRequest, Scenario
 from app.parsing.parser import ConstraintParser, validate_operations
+from app.services import audit
 from app.services.copilot import run_copilot
 from app.services.emergency import run_emergency
 from app.solver.scheduling_model import solve
 
-app = FastAPI(title="ScheduleGod AI", version="0.2.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()  # create provenance tables if they don't exist (best-effort)
+    yield
+
+
+app = FastAPI(title="ScheduleGod AI", version="0.2.0", lifespan=lifespan)
 
 
 def load_seed_scenario() -> Scenario:
@@ -52,6 +62,12 @@ class SolveRequest(BaseModel):
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "service": "schedulegod-ai-backend"}
+
+
+@app.get("/history")
+def history() -> dict:
+    """The audit trail: every intake submission + change event, most recent first."""
+    return audit.history()
 
 
 @app.get("/scenario", response_model=Scenario)

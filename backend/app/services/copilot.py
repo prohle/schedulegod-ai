@@ -18,6 +18,7 @@ from app.agent.diagnosis import DiagnosisParser
 from app.models.results import CopilotResponse, ResolutionOption, SolveResult
 from app.models.scenario import Operation, Scenario
 from app.parsing.parser import ConstraintParser, validate_operations
+from app.services.audit import record_event, record_submission
 from app.solver.scheduling_model import solve
 
 MAX_HEALING_ROUNDS = 5
@@ -32,6 +33,7 @@ def run_copilot(
     parser = parser or ConstraintParser()
     diagnoser = diagnoser or DiagnosisParser()
     parsed = parser.parse(message, scenario)
+    record_submission(message, parsed.summary, parser.mode)  # type: ignore[arg-type]
 
     ops, notes = validate_operations(parsed.operations, scenario)
     healing_notes = list(notes)
@@ -83,6 +85,8 @@ def run_copilot(
                 )
                 remaining = [o for i, o in enumerate(remaining)
                              if i != best.dropped_operation_index]
+                record_event("drop", f"Self-healed: dropped '{victim.explanation}' — {best.tradeoff}",
+                             {"op": victim.op, "explanation": victim.explanation})
                 result = best.result
                 break
 
@@ -90,6 +94,8 @@ def run_copilot(
         drop_idx = max(core)
         victim = remaining.pop(drop_idx)
         dropped.append(victim)
+        record_event("drop", f"Dropped '{victim.explanation}' — conflicts with the other request(s).",
+                     {"op": victim.op, "explanation": victim.explanation})
         healing_notes.append(
             f"Self-healing: dropped '{victim.explanation}' — it conflicts with the other "
             f"request(s). {conflict.suggestion}"

@@ -1,0 +1,49 @@
+# ScheduleGod AI — full stack: database + backend + frontend.
+#
+#   docker compose up --build          # build and boot everything
+#   docker compose down                # stop
+#
+# Host ports are configurable so this works even when 8000/3000 are taken:
+#   BACKEND_PORT=8011 FRONTEND_PORT=3011 docker compose up --build
+#
+# To use live Muse Spark (optional; defaults to the deterministic mock),
+#   MODEL_API_KEY=... docker compose up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: schedulegod
+      POSTGRES_PASSWORD: schedulegod
+      POSTGRES_DB: schedulegod
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U schedulegod -d schedulegod"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://schedulegod:schedulegod@db:5432/schedulegod
+      MODEL_API_KEY: ${MODEL_API_KEY:-}
+      MUSE_API_KEY: ${MUSE_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  db_data:
