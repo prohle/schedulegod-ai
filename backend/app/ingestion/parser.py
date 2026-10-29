@@ -1,0 +1,161 @@
+"""Data-ingestion parser: free-form institutional dump -> typed entities.
+
+Real path: Muse Spark structured output (`InstitutionData`) — the LLM
+autocleans the messy dump. Mock path: a deterministic line parser for the same
+free-form shapes, so the ingestion flow is fully demoable with zero credits.
+
+Either way, the output feeds `normalize.build_scenario` and every id is
+slugified there — the LLM never decides the final ids that reach the solver.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+from typing import Optional
+
+from app import config
+from app.models.ingestion import (
+    ExtractedCohort,
+    ExtractedCourse,
+    ExtractedInstructor,
+    ExtractedRequirement,
+    ExtractedRoom,
+    InstitutionData,
+)
+from app.ingestion.prompts import INGESTION_SYSTEM_PROMPT
+
+logger = logging.getLogger(__name__)
+
+COURSE_REST = re.compile(r"(MWF|TTh|block)\s*,\s*(lecture|lab|seminar)\s*,\s*(\d+)\s*seats?", re.I)
+SECTION_HINTS = (
+    ("catalog", "course"), ("course", "course"),
+    ("faculty", "instructor"), ("staff", "instructor"), ("instructor", "instructor"),
+    ("cohort", "cohort"), ("student", "cohort"),
+    ("room", "room"), ("facilit", "room"),
+    ("degree", "degree"), ("roadmap", "degree"), ("map", "degree"),
+)
+
+
+class IngestionParser:
+    def __init__(self) -> None:
+        self.mode: str = "mock" if not config.MUSE_API_KEY else "muse-spark"
+        self._client = None
+        if config.MUSE_API_KEY:
+            from openai import OpenAI
+            self._client = OpenAI(
+                base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY,
+                timeout=config.MUSE_TIMEOUT_S)
+
+    def parse(self, text: str) -> InstitutionData:
+        if self._client is None:
+            return mock_ingest(text)
+        try:
+            response = self._client.beta.chat.completions.parse(
+                model=config.MUSE_MODEL,
+                messages=[
+                    {"role": "system", "content": INGESTION_SYSTEM_PROMPT},
+                    {"role": "user", "content": text},
+                ],
+                response_format=InstitutionData,
+                reasoning_effort=config.MUSE_REASONING_EFFORT,
+            )
+            parsed: Optional[InstitutionData] = response.choices[0].message.parsed
+            if parsed is None:
+                raise ValueError("model returned no parsed data")
+            logger.info("muse-spark ingestion ok (model=%s)", config.MUSE_MODEL)
+            return parsed
+        except Exception:
+            logger.exception("Muse Spark ingestion failed; falling back to mock parser")
+            return mock_ingest(text)
+
+
+def _current_section(line: str, current: Optional[str]) -> Optional[str]:
+    low = line.lower()
+    if ":" in line:
+        for hint, sec in SECTION_HINTS:
+            if hint in low:
+                return sec
+    return current
+
+
+def _parse_course_rest(rest: str):
+    pattern, rtype, seats = "MWF", "lecture", 30
+    m = COURSE_REST.search(rest)
+    if m:
+        pattern, rtype, seats = m.group(1).lower(), m.group(2).lower(), int(m.group(3))
+    equipment = [w.strip() for w in rest.split(",")[3:] if w.strip() and not w.strip().endswith("seats")]
+    return pattern, rtype, seats, equipment
+
+
+def mock_ingest(text: str) -> InstitutionData:
+    data = InstitutionData(summary="mock-parsed institutional dump")
+    section: Optional[str] = None
+    program: str = ""
+    course_pat = re.compile(r"^([A-Z]{2,5}\s*\d{3})\s+(.+?)\s*[—–-]\s*(.+)$")
+    inst_pat = re.compile(r"^(.+?)\s+teaches\s+(.+)$")
+    cohort_pat = re.compile(r"^(.+?)\s*\(class\s+of\s+(\d{4})\).*?term\s+(\d+).*?(\d+)\s+students", re.I)
+    room_pat = re.compile(r"^(.+?)\s*[—–-]\s*(\d+)\s*seats?\s*,\s*(lecture|lab|seminar)", re.I)
+    term_pat = re.compile(r"term\s+(\d+)\s*:\s*(.+)$", re.I)
+    req_pat = re.compile(r"([A-Z]{2,5}\s*\d{3})\s*\(?(required|elective)\)?", re.I)
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+
+        # Degree-term lines contain ':' but are data, not section headers.
+        m = term_pat.match(line)
+        if m and section == "degree":
+            term = int(m.group(1))
+            for req_m in req_pat.finditer(m.group(2)):
+                data.degree_map.append(ExtractedRequirement(
+                    program=program, term=term,
+                    course=req_m.group(1).strip(),
+                    required=req_m.group(2).lower() == "required"))
+            continue
+
+        if ":" in line:
+            section = _current_section(line, section)
+            pm = re.search(r"\((.*?)\)", line)
+            if pm and section == "degree":
+                program = pm.group(1).strip()
+            continue
+
+        m = course_pat.match(line)
+        if m and section == "course":
+            code, title, rest = m.groups()
+            pattern, rtype, seats, equip = _parse_course_rest(rest)
+            data.courses.append(ExtractedCourse(code=code, title=title.strip(),
+                                                pattern=pattern, room_type=rtype,
+                                                seats=seats, equipment=equip))
+            continue
+        m = inst_pat.match(line)
+        if m and section == "instructor":
+            name, courses = m.groups()
+            max_sections = 2
+            mm = re.search(r"max\s+(\d+)", courses, re.I)
+            if mm:
+                max_sections = int(mm.group(1))
+                courses = courses[:mm.start()]
+            quals = [c.strip("() ").strip() for c in courses.split(",") if c.strip()]
+            data.instructors.append(ExtractedInstructor(
+                name=name.strip(), qualified_courses=quals, max_sections=max_sections))
+            continue
+        m = cohort_pat.match(line)
+        if m and section == "cohort":
+            name, grad, term, size = m.groups()
+            data.cohorts.append(ExtractedCohort(
+                name=name.strip(), graduation_year=int(grad),
+                admission_year=int(grad) - 4, current_term=int(term), size=int(size)))
+            continue
+        m = room_pat.match(line)
+        if m and section == "room":
+            name, cap, rtype = m.groups()
+            # equipment is everything after the room type (index 1 of a "," split)
+            equip = [w.strip() for w in line.split(",")[2:] if w.strip()]
+            data.rooms.append(ExtractedRoom(
+                name=name.strip(), capacity=int(cap), room_type=rtype.lower(), equipment=equip))
+            continue
+
+    return data

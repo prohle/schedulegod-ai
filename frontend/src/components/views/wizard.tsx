@@ -7,14 +7,14 @@
 import { useState } from "react";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle, Zap,
-  Users, Loader2, CircleCheck, CircleX, Sparkles, Wrench, Radar,
+  Users, Loader2, CircleCheck, CircleX, Sparkles, Wrench, Radar, Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useIntelligence } from "@/hooks/use-api";
 import {
   DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
-  type Placement, type CopilotResponse, type EmergencyResponse,
+  type Placement, type CopilotResponse, type EmergencyResponse, type IngestResponse,
 } from "@/types";
 
 interface WizardViewProps {
@@ -22,6 +22,7 @@ interface WizardViewProps {
 }
 
 const STEPS = [
+  { id: "import", label: "Import", desc: "Point the tool at your data — AI autocleans it", icon: Database },
   { id: "intake", label: "Intake", desc: "Type a constraint → Muse parses it", icon: Users },
   { id: "build", label: "Build", desc: "Run the CP-SAT solver", icon: Zap },
   { id: "review", label: "Review", desc: "C39 audit + spectral radar", icon: ShieldCheck },
@@ -29,6 +30,45 @@ const STEPS = [
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
+
+const SAMPLE_DUMP = `Course catalog:
+CS 101 Intro to Programming — MWF, lecture, 50 seats, projector
+MATH 201 Calculus I — MWF, lecture, 45 seats, projector
+CS 201 Data Structures — MWF, lecture, 45 seats, projector
+CS 210 Systems Lab — block, lab, 26 seats, computers
+CS 301 Algorithms — MWF, lecture, 26 seats, whiteboard
+CS 310 Operating Systems — TTh, lecture, 25 seats, lecture-capture
+CS 350 Machine Learning — MWF, lecture, 26 seats
+CS 401 Capstone — MWF, seminar, 25 seats, video-conf
+
+Faculty:
+Dr. Chen teaches CS 301, CS 310
+Prof. Patel teaches CS 101, MATH 201
+Dr. Diaz teaches CS 101, MATH 201, CS 201
+Dr. Okafor teaches CS 201, CS 301, CS 350 (max 3 sections)
+Prof. Lee teaches CS 210, CS 401
+Dr. Nguyen teaches CS 310, CS 401, CS 301, CS 350
+
+Degree map (BSc Computer Science):
+term 1: CS 101 (required)
+term 3: CS 201 (required), MATH 201 (required)
+term 5: CS 210 (required), CS 301 (required), CS 350 (elective)
+term 7: CS 310 (required), CS 401 (required)
+
+Cohorts:
+CS 2026 (class of 2030), term 1, 50 students
+CS 2025 (class of 2029), term 3, 45 students
+CS 2024 (class of 2028), term 5, 26 students
+CS 2023 (class of 2027), term 7, 25 students
+
+Rooms:
+Science Hall 120 — 120 seats, lecture, projector, lecture-capture
+Science 101 — 36 seats, lecture, whiteboard
+Science 102 — 40 seats, lecture
+Science Lab 1 — 30 seats, lab, computers
+Engineering 201 — 45 seats, lecture, projector
+Engineering Lab 2 — 28 seats, lab, computers
+Library Seminar — 30 seats, seminar, video-conf`;
 
 function placementSlot(p: Placement): string {
   if (p.period != null) {
@@ -88,7 +128,10 @@ function Section({ title, icon, children, tone = "default" }: {
 
 export function WizardView({ onToast }: WizardViewProps) {
   const { margins, spectral, solveResult, busy, error, runSolve } = useIntelligence();
-  const [step, setStep] = useState<StepId>("intake");
+  const [step, setStep] = useState<StepId>("import");
+  const [importText, setImportText] = useState(SAMPLE_DUMP);
+  const [ingestBusy, setIngestBusy] = useState(false);
+  const [ingest, setIngest] = useState<IngestResponse | null>(null);
   const [intakeMsg, setIntakeMsg] = useState("Prof. Patel can't teach Mondays — committee duty. She'd rather not teach at 8:00.");
   const [intakeBusy, setIntakeBusy] = useState(false);
   const [copilot, setCopilot] = useState<CopilotResponse | null>(null);
@@ -96,7 +139,7 @@ export function WizardView({ onToast }: WizardViewProps) {
   const [emergencyBusy, setEmergencyBusy] = useState(false);
   const [emergency, setEmergency] = useState<EmergencyResponse | null>(null);
 
-  const stepOrder: StepId[] = ["intake", "build", "review", "emergency"];
+  const stepOrder: StepId[] = ["import", "intake", "build", "review", "emergency"];
   const currentIndex = stepOrder.indexOf(step);
 
   const post = async (path: string, body: unknown) =>
@@ -105,6 +148,18 @@ export function WizardView({ onToast }: WizardViewProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })).json();
+
+  const handleImport = async () => {
+    setIngestBusy(true);
+    try {
+      const r: IngestResponse = await post("/api/ingest", { text: importText });
+      setIngest(r);
+      const p = r.parsed;
+      onToast(`Auto-cleaned: ${p.courses.length} courses, ${p.instructors.length} instructors, ${p.cohorts.length} cohorts, ${p.rooms.length} rooms`, "success");
+    } finally {
+      setIngestBusy(false);
+    }
+  };
 
   const handleIntake = async () => {
     setIntakeBusy(true);
@@ -170,6 +225,58 @@ export function WizardView({ onToast }: WizardViewProps) {
             Backend not reachable — the wizard needs the Python service. Start it with{" "}
             <code className="bg-white px-1 rounded">docker compose up</code> or{" "}
             <code className="bg-white px-1 rounded">./start.sh</code>.
+          </div>
+        )}
+
+        {step === "import" && (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            <Section title="Point the tool at your data" icon={<Database className="w-5 h-5 text-primary" />} tone="primary">
+              <p className="text-sm text-muted-foreground mb-3">
+                Paste your course catalog, degree maps, cohorts, faculty, and facilities — in whatever messy
+                shape they arrive. Muse Spark autocleans it into the structured model; the normalizer assembles
+                the scenario; CP-SAT schedules; the audit trail monitors.
+              </p>
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                rows={16}
+                spellCheck={false}
+                className="w-full border border-input rounded-lg p-2 text-xs font-mono bg-background"
+              />
+              <Button variant="primary" size="md" onClick={handleImport} disabled={ingestBusy} className="mt-3 flex items-center gap-2">
+                {ingestBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Auto-clean & Prepare
+              </Button>
+            </Section>
+
+            {ingest && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className={cn("px-2 py-0.5 rounded font-bold uppercase", ingest.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
+                    {ingest.parser_mode}
+                  </span>
+                  {ingest.parsed.summary || "Data prepared."}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    ["Courses", ingest.parsed.courses.length],
+                    ["Instructors", ingest.parsed.instructors.length],
+                    ["Cohorts", ingest.parsed.cohorts.length],
+                    ["Rooms", ingest.parsed.rooms.length],
+                  ].map(([label, n]) => (
+                    <div key={String(label)} className="bg-card border border-border rounded-lg p-3 text-center">
+                      <div className="text-xl font-extrabold text-primary">{n}</div>
+                      <div className="text-[11px] text-muted-foreground">{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ingest.parsed.courses.map((c) => (
+                    <span key={c.code} className="px-2 py-0.5 bg-muted rounded text-[11px] font-mono">{c.code}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

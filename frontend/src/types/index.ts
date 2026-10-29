@@ -193,6 +193,65 @@ export interface EmergencyResponse {
   parser_mode: "muse-spark" | "mock";
 }
 
+// --- Data ingestion (point the tool at free-form institutional data) ---
+
+export interface ExtractedCourse {
+  code: string;
+  title: string;
+  pattern: string;
+  room_type: string;
+  seats: number;
+  equipment: string[];
+}
+
+export interface ExtractedInstructor {
+  name: string;
+  qualified_courses: string[];
+  max_sections: number;
+  max_preps: number;
+  availability: string;
+}
+
+export interface ExtractedRoom {
+  name: string;
+  building: string;
+  capacity: number;
+  room_type: string;
+  equipment: string[];
+}
+
+export interface ExtractedCohort {
+  name: string;
+  program: string;
+  admission_year: number;
+  graduation_year: number;
+  current_term: number;
+  size: number;
+}
+
+export interface ExtractedRequirement {
+  program: string;
+  term: number;
+  course: string;
+  required: boolean;
+}
+
+export interface InstitutionData {
+  summary: string;
+  buildings: string[];
+  courses: ExtractedCourse[];
+  instructors: ExtractedInstructor[];
+  rooms: ExtractedRoom[];
+  cohorts: ExtractedCohort[];
+  degree_map: ExtractedRequirement[];
+}
+
+export interface IngestResponse {
+  scenario: Scenario;
+  parsed: InstitutionData;
+  parser_mode: "muse-spark" | "mock";
+}
+
 // --- Intelligence layer (sparse matrices + spectral radar + AI tightening) ---
 
 export interface SparseMatrixPayload {

@@ -1,0 +1,65 @@
+"""Data-ingestion contract: the flat schema Muse Spark fills from free-form
+institutional data (course catalog, degree maps, cohorts, faculty, rooms).
+
+Flat and recursion-free by design (Meta Model API structured output is more
+reliable without recursion). A deterministic normalizer
+(`app.ingestion.normalize.build_scenario`) turns this into the solver's
+`Scenario` — Muse autocleans, the normalizer assembles, CP-SAT schedules.
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel
+
+
+class ExtractedCourse(BaseModel):
+    code: str
+    title: str = ""
+    pattern: str = "MWF"        # MWF | TTh | block
+    room_type: str = "lecture"  # lecture | lab | seminar
+    seats: int = 30
+    equipment: list[str] = []
+
+
+class ExtractedInstructor(BaseModel):
+    name: str
+    qualified_courses: list[str] = []  # course codes they can teach
+    max_sections: int = 2
+    max_preps: int = 2
+    availability: str = ""             # free-form ("unavailable Mondays", ...)
+
+
+class ExtractedRoom(BaseModel):
+    name: str
+    building: str = ""
+    capacity: int = 30
+    room_type: str = "lecture"
+    equipment: list[str] = []
+
+
+class ExtractedCohort(BaseModel):
+    name: str = ""
+    program: str = ""
+    admission_year: int = 2026
+    graduation_year: int = 2030
+    current_term: int = 1
+    size: int = 30
+
+
+class ExtractedRequirement(BaseModel):
+    program: str
+    term: int
+    course: str     # course code
+    required: bool = True
+
+
+class InstitutionData(BaseModel):
+    """Everything Muse extracted from the free-form dump, plus a summary."""
+
+    summary: str = ""
+    buildings: list[str] = []
+    courses: list[ExtractedCourse] = []
+    instructors: list[ExtractedInstructor] = []
+    rooms: list[ExtractedRoom] = []
+    cohorts: list[ExtractedCohort] = []
+    degree_map: list[ExtractedRequirement] = []

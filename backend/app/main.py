@@ -18,8 +18,11 @@ from pydantic import BaseModel
 
 from app import config
 from app.db import init_db
+from app.ingestion import ingest
+from app.ingestion.parser import IngestionParser
 from app.intelligence import analyze, build_matrices, run_tightener
 from app.intelligence.matrices import compute_margins
+from app.models.ingestion import InstitutionData
 from app.models.intelligence import (
     MarginsReport,
     MatricesReport,
@@ -49,6 +52,17 @@ def load_seed_scenario() -> Scenario:
         return Scenario.model_validate(json.load(f))
 
 
+# The "current" scenario: seeded from the file, replaceable by /ingest (the
+# "point the tool at your data" step). In-memory for the demo; the audit trail
+# is the durable record of what happened.
+_current_scenario: Optional[Scenario] = None
+
+
+def get_current_scenario() -> Scenario:
+    global _current_scenario
+    return _current_scenario or load_seed_scenario()
+
+
 class MessageRequest(BaseModel):
     message: str
     scenario: Optional[Scenario] = None
@@ -57,6 +71,16 @@ class MessageRequest(BaseModel):
 class SolveRequest(BaseModel):
     scenario: Scenario
     operations: Optional[list] = None
+
+
+class IngestRequest(BaseModel):
+    text: str
+
+
+class IngestResponse(BaseModel):
+    scenario: Scenario
+    parsed: InstitutionData
+    parser_mode: str
 
 
 @app.get("/health")
@@ -72,12 +96,39 @@ def history() -> dict:
 
 @app.get("/scenario", response_model=Scenario)
 def get_scenario() -> Scenario:
-    return load_seed_scenario()
+    return get_current_scenario()
+
+
+@app.post("/ingest", response_model=IngestResponse)
+def ingest_data(req: IngestRequest) -> IngestResponse:
+    """Point the tool at free-form institutional data (catalog, degree maps,
+    cohorts, faculty, campus, facilities). Muse Spark autocleans it into the
+    structured scenario, which becomes current for every later call."""
+    global _current_scenario
+    parser = IngestionParser()
+    data = parser.parse(req.text)
+    scenario = ingest(req.text)[0]
+    _current_scenario = scenario
+    audit.record_submission(req.text[:500], data.summary, parser.mode)
+    audit.record_event("ingest",
+                       f"Ingested {len(data.courses)} courses, {len(data.instructors)} instructors, "
+                       f"{len(data.cohorts)} cohorts, {len(data.rooms)} rooms",
+                       {"courses": len(data.courses), "instructors": len(data.instructors),
+                        "cohorts": len(data.cohorts), "rooms": len(data.rooms)})
+    return IngestResponse(scenario=scenario, parsed=data, parser_mode=parser.mode)
+
+
+@app.post("/scenario/reset", response_model=Scenario)
+def reset_scenario() -> Scenario:
+    """Discard the ingested scenario and return to the seed."""
+    global _current_scenario
+    _current_scenario = None
+    return get_current_scenario()
 
 
 @app.post("/parse", response_model=ParsedRequest)
 def parse(req: MessageRequest) -> ParsedRequest:
-    scenario = req.scenario or load_seed_scenario()
+    scenario = req.scenario or get_current_scenario()
     return ConstraintParser().parse(req.message, scenario)
 
 
@@ -91,13 +142,13 @@ def solve_scenario(req: SolveRequest) -> SolveResult:
 
 @app.post("/copilot", response_model=CopilotResponse)
 def copilot(req: MessageRequest) -> CopilotResponse:
-    scenario = req.scenario or load_seed_scenario()
+    scenario = req.scenario or get_current_scenario()
     return run_copilot(scenario, req.message)
 
 
 @app.post("/emergency", response_model=EmergencyResponse)
 def emergency(req: MessageRequest) -> EmergencyResponse:
-    scenario = req.scenario or load_seed_scenario()
+    scenario = req.scenario or get_current_scenario()
     return run_emergency(scenario, req.message)
 
 
@@ -111,19 +162,19 @@ class TightenRequest(BaseModel):
 @app.get("/intelligence/matrices", response_model=MatricesReport)
 def intelligence_matrices() -> MatricesReport:
     """Every entity relationship as a scipy sparse matrix (COO on the wire)."""
-    return build_matrices(load_seed_scenario()).to_report()
+    return build_matrices(get_current_scenario()).to_report()
 
 
 @app.get("/intelligence/spectral", response_model=SpectralReport)
 def intelligence_spectral() -> SpectralReport:
     """Spectral radar: conflict-graph spectrum, deadlock warnings, warm-start hints."""
-    return analyze(load_seed_scenario())
+    return analyze(get_current_scenario())
 
 
 @app.get("/intelligence/margins", response_model=MarginsReport)
 def intelligence_margins() -> MarginsReport:
     """C39 four-course guarantee, audited against a fresh CP-SAT solve."""
-    scenario = load_seed_scenario()
+    scenario = get_current_scenario()
     result = solve(scenario)
     return compute_margins(scenario, result.timetable, config.MIN_COURSES_PER_COHORT)
 
@@ -131,7 +182,7 @@ def intelligence_margins() -> MarginsReport:
 @app.post("/intelligence/tighten", response_model=TightenResponse)
 def intelligence_tighten(req: TightenRequest) -> TightenResponse:
     """Muse proposes typed repair moves; CP-SAT verifies every one."""
-    scenario = req.scenario or load_seed_scenario()
+    scenario = req.scenario or get_current_scenario()
     ops, _ = validate_operations(
         [Operation.model_validate(o) for o in (req.operations or [])], scenario)
     return run_tightener(scenario, ops)
