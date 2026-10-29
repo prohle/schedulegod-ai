@@ -6,12 +6,16 @@ audits, intelligence).
 
 ## The two interfaces
 
-- **Guided** (default) — step-by-step wizard: Intake → Build → Review → Emergency.
+- **Guided** (default) — the real end-to-end flow: type a constraint → Muse Spark
+  parses it → CP-SAT solves → C39/spectral review → emergency coverage proposals.
+  Requires the Python backend.
 - **Expert** — the full view set in the left sidebar, including **Intelligence**
   (spectral radar, C39 four-course guarantee, real CP-SAT solve, and
   Muse-proposed / CP-SAT-verified tightening moves).
 
 Switch modes with the **Guided / Expert** toggle at the bottom of the sidebar.
+The expert views still work standalone against the in-browser demo data; the
+Guided wizard and Intelligence view need the backend.
 
 ## Run it
 
@@ -29,9 +33,10 @@ cd frontend && npm install && npm run dev
 Open http://localhost:3000. The backend URL defaults to
 `http://localhost:8000`; override it with `BACKEND_URL=http://host:port`.
 
-If the backend isn't reachable, the **Intelligence** view shows a clear
-"Backend not reachable" state with a retry button; the Guided wizard and the
-other views still work standalone against the in-browser demo data.
+If the backend isn't reachable, the **Guided wizard** and **Intelligence** view
+show a clear "Backend not reachable" state; the expert views (master timetable,
+faculty, DAG, cohort demand, student audits) still work standalone against the
+in-browser demo data.
 
 ## Scripts
 

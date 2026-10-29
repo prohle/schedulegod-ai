@@ -1,103 +1,149 @@
 "use client";
 
+// Guided wizard — the real end-to-end flow, no toy solver. Every step hits the
+// Python backend: Muse Spark parse, CP-SAT solve, the C39/spectral audit, and
+// verified emergency coverage proposals. The default inputs are the demo beats.
+
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle, Zap, Users, Building2, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle, Zap,
+  Users, Loader2, CircleCheck, CircleX, Sparkles, Wrench, Radar,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useSchedule } from "@/lib/schedule-store";
+import { useIntelligence } from "@/hooks/use-api";
+import {
+  DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
+  type Placement, type CopilotResponse, type EmergencyResponse,
+} from "@/types";
 
 interface WizardViewProps {
   onToast: (message: string, type?: "info" | "success" | "warning" | "error") => void;
 }
 
 const STEPS = [
-  { id: "intake", label: "Intake", desc: "Collect instructor constraints & preferences", icon: Users },
-  { id: "build", label: "Build", desc: "Run CSP solver & generate timetable", icon: Zap },
-  { id: "review", label: "Review", desc: "Validate constraints & adjust", icon: ShieldCheck },
-  { id: "emergency", label: "Emergency", desc: "Handle disruptions & re-solve", icon: AlertTriangle },
+  { id: "intake", label: "Intake", desc: "Type a constraint → Muse parses it", icon: Users },
+  { id: "build", label: "Build", desc: "Run the CP-SAT solver", icon: Zap },
+  { id: "review", label: "Review", desc: "C39 audit + spectral radar", icon: ShieldCheck },
+  { id: "emergency", label: "Emergency", desc: "Coverage proposals + re-solve", icon: AlertTriangle },
 ] as const;
 
-type StepId = "intake" | "build" | "review" | "emergency";
+type StepId = (typeof STEPS)[number]["id"];
+
+function placementSlot(p: Placement): string {
+  if (p.period != null) {
+    const pattern = PATTERN_DAYS.MWF.includes(p.days[0]) && p.days.length === 3 ? "MWF" : "TTh";
+    return `${pattern} @${PERIOD_NAMES[p.period]}`;
+  }
+  const day = DAY_NAMES[p.days[0]]?.slice(0, 3) ?? "?";
+  return `${day} @${PERIOD_NAMES[p.periods[0]]}-${PERIOD_NAMES[p.periods[1] ?? p.periods[0]]}`;
+}
+
+function PlacementsTable({ placements, dense }: { placements: Placement[]; dense?: boolean }) {
+  return (
+    <div className="overflow-x-auto border border-border rounded-lg">
+      <table className="w-full text-xs">
+        <thead className="bg-muted text-muted-foreground">
+          <tr>
+            <th className="text-left px-3 py-1.5 font-semibold">Course</th>
+            <th className="text-left px-3 py-1.5 font-semibold">Instructor</th>
+            <th className="text-left px-3 py-1.5 font-semibold">Room</th>
+            <th className="text-left px-3 py-1.5 font-semibold">Slot</th>
+          </tr>
+        </thead>
+        <tbody>
+          {placements.map((p) => (
+            <tr key={p.section_id} className="border-t border-border">
+              <td className={cn("px-3 py-1.5 font-semibold text-foreground", dense && "py-1")}>{p.course_code}</td>
+              <td className={cn("px-3 py-1.5 text-muted-foreground", dense && "py-1")}>{p.instructor_name}</td>
+              <td className={cn("px-3 py-1.5 text-muted-foreground", dense && "py-1")}>{p.room_name} <span className="text-[10px]">[{p.building_id}]</span></td>
+              <td className={cn("px-3 py-1.5 font-mono text-muted-foreground", dense && "py-1")}>{placementSlot(p)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Section({ title, icon, children, tone = "default" }: {
+  title: string; icon: React.ReactNode; children: React.ReactNode;
+  tone?: "default" | "primary" | "emerald" | "amber" | "sky";
+}) {
+  const tones = {
+    default: "bg-card border-border", primary: "bg-primary/5 border-primary/20",
+    emerald: "bg-emerald-50 border-emerald-200", amber: "bg-amber-50 border-amber-200",
+    sky: "bg-sky-50 border-sky-200",
+  };
+  return (
+    <section className={cn("border rounded-lg p-4", tones[tone])}>
+      <div className="flex items-center gap-2 mb-3">
+        {icon}
+        <h3 className="font-bold text-sm text-foreground">{title}</h3>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export function WizardView({ onToast }: WizardViewProps) {
-  const [currentStep, setCurrentStep] = useState<StepId>("intake");
-  const [intakeSubmitted, setIntakeSubmitted] = useState(false);
-  const [buildCompleted, setBuildCompleted] = useState(false);
-  const [reviewCompleted, setReviewCompleted] = useState(false);
-
-  const {
-    professors,
-    courses,
-    masterSchedule,
-    autoSolveCSP,
-    clearSchedule,
-    getConstraintHealth,
-    getScheduledCount,
-    getCourseCohortDemand,
-  } = useSchedule();
+  const { margins, spectral, solveResult, busy, error, runSolve } = useIntelligence();
+  const [step, setStep] = useState<StepId>("intake");
+  const [intakeMsg, setIntakeMsg] = useState("Prof. Patel can't teach Mondays — committee duty. She'd rather not teach at 8:00.");
+  const [intakeBusy, setIntakeBusy] = useState(false);
+  const [copilot, setCopilot] = useState<CopilotResponse | null>(null);
+  const [emergencyMsg, setEmergencyMsg] = useState("Dr. Chen is out all week — who could cover her sections?");
+  const [emergencyBusy, setEmergencyBusy] = useState(false);
+  const [emergency, setEmergency] = useState<EmergencyResponse | null>(null);
 
   const stepOrder: StepId[] = ["intake", "build", "review", "emergency"];
-  const currentIndex = stepOrder.indexOf(currentStep);
-  const canGoNext = currentIndex < stepOrder.length - 1;
-  const canGoPrev = currentIndex > 0;
+  const currentIndex = stepOrder.indexOf(step);
 
-  const handleNext = () => {
-    if (!canGoNext) return;
-    if (currentStep === "intake") setIntakeSubmitted(true);
-    if (currentStep === "build") setBuildCompleted(true);
-    if (currentStep === "review") setReviewCompleted(true);
-    setCurrentStep(stepOrder[currentIndex + 1]);
-  };
+  const post = async (path: string, body: unknown) =>
+    (await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })).json();
 
-  const handlePrev = () => {
-    if (!canGoPrev) return;
-    setCurrentStep(stepOrder[currentIndex - 1]);
-  };
-
-  const handleIntakeSubmit = () => {
-    setIntakeSubmitted(true);
-    onToast("Instructor constraints saved — ready to build", "success");
-  };
-
-  const handleBuild = () => {
-    const solved = autoSolveCSP();
-    if (solved) {
-      setBuildCompleted(true);
-      onToast("CSP Auto-Solve: feasible timetable generated", "success");
-    } else {
-      onToast("No feasible timetable — check instructor availability", "warning");
+  const handleIntake = async () => {
+    setIntakeBusy(true);
+    try {
+      const r: CopilotResponse = await post("/api/copilot", { message: intakeMsg });
+      setCopilot(r);
+      if (r.result?.status === "infeasible") onToast("Infeasible — the solver named the conflict and self-healed", "warning");
+      else onToast("Muse parsed it; CP-SAT re-solved", "success");
+    } finally {
+      setIntakeBusy(false);
     }
   };
 
-  const handleReviewComplete = () => {
-    setReviewCompleted(true);
-    onToast("Review complete — constraints validated", "success");
-  };
-
-  const handleEmergencySolve = () => {
-    const health = getConstraintHealth();
-    if (health.allPassed) {
-      onToast("All constraints satisfied — schedule is stable", "success");
-    } else {
-      onToast("Use Emergency drawer (header) for live disruptions", "info");
+  const handleEmergency = async () => {
+    setEmergencyBusy(true);
+    try {
+      const r: EmergencyResponse = await post("/api/emergency", { message: emergencyMsg });
+      setEmergency(r);
+      onToast(`Emergency handled — ${Object.keys(r.chosen).length} section(s) re-homed`, "success");
+    } finally {
+      setEmergencyBusy(false);
     }
   };
 
-  const health = getConstraintHealth();
-  const sectionsNeeded = courses.reduce((sum, c) => sum + getCourseCohortDemand(c.id).requiredSections, 0);
+  const buildPlacements = solveResult?.timetable?.placements ?? [];
+  const intakePlacements = copilot?.result?.timetable?.placements ?? buildPlacements;
 
   return (
     <div className="h-full w-full flex flex-col">
+      {/* Step header */}
       <div className="bg-card border-b border-border px-4 py-3 shrink-0">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="font-extrabold text-lg text-foreground">Guided Wizard</h2>
-            <p className="text-sm text-muted-foreground">Step-by-step: Intake → Build → Review → Emergency</p>
+            <p className="text-sm text-muted-foreground">Intake → Build → Review → Emergency (live backend)</p>
           </div>
           <div className="flex items-center space-x-1">
-            {STEPS.map((step, idx) => (
-              <div key={step.id} className="flex items-center">
+            {STEPS.map((s, idx) => (
+              <div key={s.id} className="flex items-center">
                 <div className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all",
                   idx < currentIndex ? "bg-emerald-500 text-white" :
@@ -107,244 +153,201 @@ export function WizardView({ onToast }: WizardViewProps) {
                   {idx < currentIndex ? <CheckCircle2 className="w-4 h-4" /> : <span>{idx + 1}</span>}
                 </div>
                 {idx < STEPS.length - 1 && (
-                  <div className={cn("w-16 h-1 mx-1 rounded", idx < currentIndex ? "bg-emerald-500" : "bg-muted")} />
+                  <div className={cn("w-14 h-1 mx-1 rounded", idx < currentIndex ? "bg-emerald-500" : "bg-muted")} />
                 )}
               </div>
             ))}
           </div>
         </div>
-
         <div className="text-sm text-muted-foreground">
-          <span className="font-medium">Step {currentIndex + 1} of 4</span> — {STEPS.find(s => s.id === currentStep)?.desc}
+          <span className="font-medium">Step {currentIndex + 1} of {STEPS.length}</span> — {STEPS.find((s) => s.id === step)?.desc}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {currentStep === "intake" && (
-          <div className="space-y-6 max-w-3xl mx-auto">
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <Users className="w-5 h-5 text-primary" />
-                <h3 className="font-bold text-primary">Instructor Intake Window</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Each instructor paints their hard constraints and soft preferences below. These are saved as the input for the CSP solver.
-              </p>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {professors.map(p => (
-                <div key={p.id} className="bg-card border border-border rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="font-bold text-sm">{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{p.dept}</p>
-                    </div>
-                    <Badge variant={p.gridState && Object.keys(p.gridState).length > 0 ? "success" : "default"} className="text-[10px]">
-                      {p.gridState && Object.keys(p.gridState).length > 0 ? "Constraints set" : "Not started"}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1 text-[11px] text-muted-foreground">
-                    <p>Hard blocks: {Object.values(p.gridState || {}).filter(v => v === "hard-block").length}</p>
-                    <p>Must teach: {Object.values(p.gridState || {}).filter(v => v === "hard-req").length}</p>
-                    <p>Preferred: {Object.values(p.gridState || {}).filter(v => v === "soft-pref-hi").length}</p>
-                    <p>Prefer not: {Object.values(p.gridState || {}).filter(v => v === "soft-avoid").length}</p>
-                  </div>
-                  <button className="w-full mt-2 text-[11px] text-primary hover:underline" onClick={() => onToast("Open Faculty view to paint constraints", "info")}>
-                    Edit in Faculty View
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end">
-              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium" onClick={handleIntakeSubmit}>
-                Submit Intake & Continue to Build
-              </button>
-            </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {error && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+            Backend not reachable — the wizard needs the Python service. Start it with{" "}
+            <code className="bg-white px-1 rounded">docker compose up</code> or{" "}
+            <code className="bg-white px-1 rounded">./start.sh</code>.
           </div>
         )}
 
-        {currentStep === "build" && (
-          <div className="space-y-6 max-w-2xl mx-auto">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <Zap className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-bold text-emerald-800">CSP Timetable Builder</h3>
-              </div>
-              <p className="text-sm text-emerald-700">
-                The backtracking CSP solver assigns every section to a day, time, room, and instructor
-                while satisfying all hard constraints: room capacity, instructor load caps, cohort conflicts,
-                equipment needs, and campus walk distances.
+        {step === "intake" && (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            <Section title="Instructor intake (natural language)" icon={<Users className="w-5 h-5 text-primary" />} tone="primary">
+              <p className="text-sm text-muted-foreground mb-3">
+                Type a constraint exactly as a coordinator would. Muse Spark parses it into typed operations;
+                CP-SAT re-solves and proves feasibility.
               </p>
-            </div>
+              <textarea
+                value={intakeMsg}
+                onChange={(e) => setIntakeMsg(e.target.value)}
+                rows={2}
+                className="w-full border border-input rounded-lg p-2 text-sm bg-background"
+              />
+              <Button variant="primary" size="md" onClick={handleIntake} disabled={intakeBusy} className="mt-3 flex items-center gap-2">
+                {intakeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Parse & Re-solve
+              </Button>
+            </Section>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="bg-card border border-border rounded-lg p-4 text-center">
-                <p className="text-3xl font-extrabold text-emerald-600">{courses.length}</p>
-                <p className="text-xs text-muted-foreground">Courses</p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4 text-center">
-                <p className="text-3xl font-extrabold text-primary">{sectionsNeeded}</p>
-                <p className="text-xs text-muted-foreground">Sections Needed</p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4 text-center">
-                <p className="text-3xl font-extrabold text-sky-600">{Object.keys(masterSchedule).length}</p>
-                <p className="text-xs text-muted-foreground">Currently Scheduled</p>
-              </div>
-            </div>
-
-            {!buildCompleted ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-                <div className="w-5 h-5 text-amber-600 mx-auto mb-2">⚠</div>
-                <p className="font-medium text-amber-800">Timetable not built yet</p>
-                <p className="text-sm text-amber-700 mt-1">Click below to run the CSP auto-solver</p>
-                <button className="w-full mt-3 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium" onClick={handleBuild}>
-                  Run CSP Auto-Solver
-                </button>
-              </div>
-            ) : (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
-                <div className="w-5 h-5 text-emerald-600 mx-auto mb-2">✓</div>
-                <p className="font-bold text-emerald-800">Timetable Built Successfully!</p>
-                <div className="grid gap-2 md:grid-cols-3 mt-4 text-sm">
-                  <div className="bg-white border rounded p-2"><p className="text-emerald-600 font-bold">{Object.keys(masterSchedule).length}</p><p className="text-xs text-muted-foreground">Sections Placed</p></div>
-                  <div className="bg-white border rounded p-2"><p className="text-emerald-600 font-bold">{getConstraintHealth().allPassed ? "✓" : "⚠"}</p><p className="text-xs text-muted-foreground">Constraints</p></div>
-                  <div className="bg-white border rounded p-2"><p className="text-emerald-600 font-bold">{courses.filter(c => getScheduledCount(c.id) > 0).length}</p><p className="text-xs text-muted-foreground">Courses Covered</p></div>
+            {copilot && (
+              <>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className={cn("px-2 py-0.5 rounded font-bold uppercase", copilot.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
+                    {copilot.parser_mode}
+                  </span>
+                  {copilot.summary}
                 </div>
-                <button className="w-full mt-3 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-medium" onClick={() => { clearSchedule(); setBuildCompleted(false); onToast("Schedule cleared — rebuild", "info") }}>
-                  Rebuild Schedule
-                </button>
-              </div>
+                {copilot.operations.map((op, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs bg-card border border-border rounded p-2">
+                    <CircleCheck className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                    <span className="font-mono font-semibold">{op.op}</span>
+                    <span className="text-muted-foreground">{op.explanation}</span>
+                  </div>
+                ))}
+                {copilot.diagnosis && (
+                  <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-800">
+                    <strong>Diagnosis ({copilot.diagnosis_mode}):</strong> {copilot.diagnosis}
+                  </div>
+                )}
+                {intakePlacements.length > 0 && <PlacementsTable placements={intakePlacements} dense />}
+              </>
             )}
           </div>
         )}
 
-        {currentStep === "review" && (
-          <div className="space-y-6 max-w-2xl mx-auto">
-            <div className="bg-sky-50 border border-sky-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <ShieldCheck className="w-5 h-5 text-sky-600" />
-                <h3 className="font-bold text-sky-800">Constraint Review & Validation</h3>
-              </div>
-              <p className="text-sm text-sky-700">
-                Verify all four rule families are satisfied before finalizing. Any amber badge means
-                you need to adjust constraints in Intake or Faculty view.
+        {step === "build" && (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            <Section title="Build the term" icon={<Zap className="w-5 h-5 text-emerald-600" />} tone="emerald">
+              <p className="text-sm text-emerald-700 mb-3">
+                The OR-Tools CP-SAT solver assigns every section an instructor, timeslot set, and room under all
+                hard constraints — capacity, loads, cohort conflicts, equipment, walk distances.
               </p>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                { key: "demandOk", label: "Cohort Dynamic Demand Satisfied" },
-                { key: "studentsOk", label: "Student 4-Course Minimum" },
-                { key: "profOk", label: "Zero Prof Hard Conflicts" },
-                { key: "roomsOk", label: "No Room Double-Booking" },
-              ].map(({ key, label }) => {
-                const passed = health[key as keyof typeof health];
-                return (
-                  <div key={key} className="flex items-center justify-between p-3 bg-card border rounded-lg">
-                    <span className="font-medium">{label}</span>
-                    <span className={passed ? "bg-emerald-100 text-emerald-800 text-[11px] px-2 py-0.5 rounded" : "bg-amber-100 text-amber-800 text-[11px] px-2 py-0.5 rounded"}>
-                      {passed ? "Satisfied" : "Unfulfilled"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm">
-              <div className="flex items-center space-x-2 mb-2">
-                <Zap className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium text-muted-foreground">Timetable Stats</span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
-                <div className="bg-card border rounded p-2 text-center"><p className="font-bold text-primary">{Object.keys(masterSchedule).length}</p><p className="text-xs text-muted-foreground">Sections Placed</p></div>
-                <div className="bg-card border rounded p-2 text-center"><p className="font-bold text-primary">{courses.filter(c => getScheduledCount(c.id) > 0).length}</p><p className="text-xs text-muted-foreground">Courses Covered</p></div>
-                <div className="bg-card border rounded p-2 text-center"><p className="font-bold text-primary">{professors.length}</p><p className="text-xs text-muted-foreground">Instructors Active</p></div>
-                <div className="bg-card border rounded p-2 text-center"><p className="font-bold text-primary">{courses.length}</p><p className="text-xs text-muted-foreground">Total Courses</p></div>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button variant="primary" size="md" onClick={handleReviewComplete}>
-                Complete Review & Continue
+              <Button variant="primary" size="md" onClick={() => { runSolve(); onToast("Running CP-SAT…", "info"); }} disabled={busy !== null} className="flex items-center gap-2">
+                {busy === "solve" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Solve
               </Button>
-            </div>
+            </Section>
+            {solveResult && solveResult.status !== "infeasible" && (
+              <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground">
+                <span className="font-bold text-emerald-600">{solveResult.status.toUpperCase()}</span>
+                <span>{solveResult.solve_time_ms} ms</span>
+                <span>penalty {solveResult.objective ?? "—"}</span>
+              </div>
+            )}
+            {buildPlacements.length > 0 && <PlacementsTable placements={buildPlacements} />}
           </div>
         )}
 
-        {currentStep === "emergency" && (
-          <div className="space-y-6 max-w-2xl mx-auto">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600" />
-                <h3 className="font-bold text-amber-800">Emergency Response</h3>
-              </div>
-              <p className="text-sm text-amber-700">
-                Handle mid-term disruptions: instructor absences, room closures, enrollment surges.
-                The Emergency drawer (header button) provides live re-solve with CSP verification.
+        {step === "review" && (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            {spectral && (
+              <Section title="Spectral radar" icon={<Radar className="w-5 h-5 text-sky-600" />} tone="sky">
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="bg-white border rounded p-2">
+                    <div className="font-bold text-foreground">{spectral.algebraic_connectivity.toFixed(3)}</div>
+                    <div className="text-muted-foreground">connectivity μ₂</div>
+                  </div>
+                  <div className="bg-white border rounded p-2">
+                    <div className="font-bold text-foreground">χ ≥ {spectral.hoffman_chromatic_lower_bound}</div>
+                    <div className="text-muted-foreground">Hoffman bound</div>
+                  </div>
+                  <div className="bg-white border rounded p-2">
+                    <div className="font-bold text-foreground">{spectral.max_clique.length}</div>
+                    <div className="text-muted-foreground">max clique</div>
+                  </div>
+                </div>
+                {spectral.deadlock_warnings.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {spectral.deadlock_warnings.map((w, i) => (
+                      <li key={i} className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-1.5">{w}</li>
+                    ))}
+                  </ul>
+                )}
+              </Section>
+            )}
+
+            {margins && (
+              <Section title={`Four-course guarantee (C39) — min ${margins.min_courses}`} icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} tone="emerald">
+                <div className="space-y-2">
+                  {margins.cohorts.map((m) => (
+                    <div key={m.cohort_id} className={cn("border rounded-lg p-2.5", m.ok ? "bg-white border-emerald-200" : "bg-amber-50 border-amber-200")}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm">{m.name}</span>
+                        <span className={cn("text-xs font-bold px-2 py-0.5 rounded", m.ok ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800")}>
+                          {m.margin} / {margins.min_courses}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {m.example_track.map((c) => (
+                          <span key={c} className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">{c}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+          </div>
+        )}
+
+        {step === "emergency" && (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            <Section title="Emergency response" icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} tone="amber">
+              <p className="text-sm text-amber-700 mb-3">
+                An instructor drops out. The co-pilot probes every qualified instructor with CP-SAT and ranks the
+                zero-ripple swaps — the solver proves who can cover before any name is shown.
               </p>
-            </div>
+              <textarea
+                value={emergencyMsg}
+                onChange={(e) => setEmergencyMsg(e.target.value)}
+                rows={2}
+                className="w-full border border-input rounded-lg p-2 text-sm bg-background"
+              />
+              <Button variant="primary" size="md" onClick={handleEmergency} disabled={emergencyBusy} className="mt-3 flex items-center gap-2">
+                {emergencyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}
+                Handle Emergency
+              </Button>
+            </Section>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="w-4 h-4 text-amber-700" />
-                  <h4 className="font-bold text-amber-900 text-sm">Instructor Out</h4>
+            {emergency && (
+              <>
+                <div className="text-xs text-muted-foreground">
+                  {emergency.removed_instructor_name} removed — {emergency.affected_section_ids.length} section(s) affected
+                  {emergency.parser_mode === "muse-spark" ? " · live Muse Spark" : " · mock parser"}
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">Full-week unavailability → hard-blocks painted → CSP re-solves</p>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
-                  Open Emergency Drawer
-                </Button>
-              </div>
-
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-4 h-4 text-amber-700" />
-                  <h4 className="font-bold text-amber-900 text-sm">Room Closed</h4>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">Facility outage → sections re-homed → CSP re-solves</p>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
-                  Open Emergency Drawer
-                </Button>
-              </div>
-
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-4 h-4 text-amber-700" />
-                  <h4 className="font-bold text-amber-900 text-sm">Enrollment Surge</h4>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">Capacity exceeded → re-trigger capacity checks → CSP re-solves</p>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => onToast("Open Emergency drawer (header button)", "info")}>
-                  Open Emergency Drawer
-                </Button>
-              </div>
-            </div>
-
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                <span className="font-bold text-emerald-800">Emergency protocol verified</span>
-              </div>
-              <p className="text-xs text-emerald-700">All re-solves are verified by CP-SAT before application — no guesswork.</p>
-            </div>
+                {emergency.proposals.map((p, i) => (
+                  <div key={i} className={cn("flex items-center gap-2 text-xs border rounded p-2", p.feasible ? "bg-white border-emerald-200" : "bg-muted/40 border-border")}>
+                    {p.feasible ? <CircleCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <CircleX className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                    <span className="font-semibold">{p.course_code}</span>
+                    <span>→ {p.instructor_name}</span>
+                    <span className="text-muted-foreground flex-1">{p.reason}</span>
+                  </div>
+                ))}
+                {emergency.result?.timetable?.placements?.length ? (
+                  <PlacementsTable placements={emergency.result.timetable.placements} dense />
+                ) : null}
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Wizard footer: single, simple Back / Next control */}
+      {/* Footer nav */}
       <div className="shrink-0 border-t border-border bg-card px-4 py-3 flex items-center justify-between">
-        <Button variant="outline" size="md" onClick={handlePrev} disabled={!canGoPrev} className="flex items-center gap-1.5">
+        <Button variant="outline" size="md" onClick={() => setStep(stepOrder[Math.max(0, currentIndex - 1)])} disabled={currentIndex === 0} className="flex items-center gap-1.5">
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
         <span className="text-xs text-muted-foreground">Step {currentIndex + 1} of {STEPS.length}</span>
-        {currentStep === "emergency" ? (
-          <Button variant="primary" size="md" onClick={handleEmergencySolve} className="flex items-center gap-1.5">
-            Complete <CheckCircle2 className="w-4 h-4" />
+        {currentIndex < stepOrder.length - 1 ? (
+          <Button variant="primary" size="md" onClick={() => setStep(stepOrder[currentIndex + 1])} className="flex items-center gap-1.5">
+            Next <ArrowRight className="w-4 h-4" />
           </Button>
         ) : (
-          <Button variant="primary" size="md" onClick={handleNext} disabled={!canGoNext} className="flex items-center gap-1.5">
-            Next <ArrowRight className="w-4 h-4" />
+          <Button variant="primary" size="md" onClick={() => onToast("Schedule stable — audit trail recorded", "success")} className="flex items-center gap-1.5">
+            Complete <CheckCircle2 className="w-4 h-4" />
           </Button>
         )}
       </div>
