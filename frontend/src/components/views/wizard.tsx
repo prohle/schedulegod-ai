@@ -18,7 +18,7 @@ import { useIntelligence, useScenario } from "@/hooks/use-api";
 import {
   DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
   type Placement, type CopilotResponse, type EmergencyResponse, type IngestResponse,
-  type InstitutionData,
+  type InstitutionData, type AgentStep,
 } from "@/types";
 
 interface WizardViewProps {
@@ -149,6 +149,32 @@ function Section({ title, icon, children, tone = "default" }: {
   );
 }
 
+function AgentTrace({ steps }: { steps?: AgentStep[] }) {
+  if (!steps || steps.length === 0) return null;
+  return (
+    <Section title="Agent trace — parse → verify → apply" icon={<ListChecks className="w-5 h-5 text-sky-600" />} tone="sky">
+      <ol className="space-y-1.5">
+        {steps.map((s, i) => (
+          <li key={i} className="flex items-start gap-2 text-xs">
+            {s.status === "blocked"
+              ? <CircleX className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+              : <CircleCheck className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />}
+            <span className="font-mono font-semibold shrink-0">{s.step}</span>
+            <span className={cn("px-1.5 py-0.5 rounded font-bold uppercase text-[9px] shrink-0",
+              s.actor.startsWith("Muse") ? "bg-sky-100 text-sky-800" : "bg-muted")}>
+              {s.actor}
+            </span>
+            <span className="text-muted-foreground">{s.detail}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="text-[11px] text-sky-800 mt-2">
+        The model proposes at every step; CP-SAT proves each move before it can stand. No step is a guess.
+      </p>
+    </Section>
+  );
+}
+
 export function WizardView({ onToast }: WizardViewProps) {
   const { margins, spectral, solveResult, busy, error, runSolve, reload } = useIntelligence();
   const { scenario: currentScenario } = useScenario();
@@ -167,6 +193,7 @@ export function WizardView({ onToast }: WizardViewProps) {
   const [emergencyBusy, setEmergencyBusy] = useState(false);
   const [emergency, setEmergency] = useState<EmergencyResponse | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [scaleBusy, setScaleBusy] = useState(false);
   const [recording, setRecording] = useState(false);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -272,8 +299,26 @@ export function WizardView({ onToast }: WizardViewProps) {
     setStep(stepOrder[currentIndex + 1]);
   };
 
+  const loadScale = async (kind: "department" | "reset") => {
+    setScaleBusy(true);
+    try {
+      const sc = await post(`/api/scenario/${kind}`, {});
+      await reload();
+      runSolve();
+      onToast(
+        kind === "department"
+          ? `Department scale loaded — ${sc.instructors?.length ?? "?"} instructors, ${sc.sections?.length ?? "?"} sections, ${sc.cohorts?.length ?? "?"} cohorts. Solving…`
+          : "Back to the story seed — solving…",
+        "success",
+      );
+    } finally {
+      setScaleBusy(false);
+    }
+  };
+
   const handleIntake = async () => {
     setIntakeBusy(true);
+    setCopilot(null); // never leave a previous request's proof under a new parse
     try {
       const r: CopilotResponse = await post("/api/copilot", {
         message: intakeMsg,
@@ -317,6 +362,7 @@ export function WizardView({ onToast }: WizardViewProps) {
 
   const handleEmergency = async () => {
     setEmergencyBusy(true);
+    setEmergency(null);
     try {
       await commitEmergency(await post("/api/emergency", { message: emergencyMsg }));
     } finally {
@@ -326,6 +372,7 @@ export function WizardView({ onToast }: WizardViewProps) {
 
   const sendVoice = async (file: Blob, name: string) => {
     setVoiceBusy(true);
+    setEmergency(null);
     try {
       const form = new FormData();
       form.append("file", file, name);
@@ -607,6 +654,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                     <strong>Diagnosis ({copilot.diagnosis_mode}):</strong> {copilot.diagnosis}
                   </div>
                 )}
+                <AgentTrace steps={copilot.agent_trace} />
                 {copilot.options.length > 0 && (
                   <Section title="Solver-verified resolutions" icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} tone="emerald">
                     <p className="text-xs text-emerald-800 mb-2">
@@ -655,6 +703,22 @@ export function WizardView({ onToast }: WizardViewProps) {
                 {busy === "solve" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 Solve
               </Button>
+              <div className="mt-4 border-t border-emerald-200 pt-3">
+                <p className="text-xs text-emerald-800 mb-2">
+                  <strong>Scale proof:</strong> the demo story is one CS department slice. Load the full
+                  department cluster — 26 instructors, 25 sections, 16 rooms, 3 programs, 12 cohorts —
+                  and the same engine solves it optimally, live.
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={() => loadScale("department")} disabled={scaleBusy} className="flex items-center gap-1.5">
+                    {scaleBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
+                    Load department scale
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => loadScale("reset")} disabled={scaleBusy}>
+                    Back to story seed
+                  </Button>
+                </div>
+              </div>
             </Section>
             {solveResult && solveResult.status !== "infeasible" && (
               <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground">
@@ -773,6 +837,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                     <strong>Muse Voice Transcribe heard:</strong> “{emergency.transcript}”
                   </div>
                 )}
+                <AgentTrace steps={emergency.agent_trace} />
                 {emergency.proposals.map((p, i) => (
                   <div key={i} className={cn("flex items-center gap-2 text-xs border rounded p-2", p.feasible ? "bg-white border-emerald-200" : "bg-muted/40 border-border")}>
                     {p.feasible ? <CircleCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <CircleX className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}

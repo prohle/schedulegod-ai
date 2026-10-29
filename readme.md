@@ -44,6 +44,8 @@ TIGHTEN    when the solver deadlocks or the four-course guarantee fails:
 
 When a request set is infeasible, the solver doesn't just fail — every incoming constraint is guarded by a CP-SAT *assumption literal*, so the model returns the **minimal conflicting subset** of the request. Then the two-layer self-heal fires: **Muse Spark translates the proof** (plain-English diagnosis + ranked resolutions, each dropping one conflicting request), and **CP-SAT re-solves every proposed resolution** before it can be shown — the agent presents only *proven* options, and auto-applies the least disruptive one.
 
+**Every co-pilot run returns an agent trace** — the autonomous loop made visible, step by step with the actor named: `parse (Muse Spark) → validate → solve (CP-SAT) → conflict-core → diagnose (Muse Spark) → verify each resolution (CP-SAT) → auto-apply the least-disruptive proven fix → audit`. The Emergency flow traces the same way (`transcribe → parse → impact → probe every candidate → choose → re-solve → audit`). The wizard renders the trace live; it is also in the API response (`agent_trace`). No step is a model guess: each one either proposes (Muse) or proves (CP-SAT).
+
 **Spectral warm-start runs on every solve**: the section-conflict graph (cohort hard edges + instructor soft edges) yields Laplacian eigenvalues and the Fiedler vector, whose spectral coloring becomes CP-SAT `AddHint` hints. The same graph powers a **deadlock radar** — algebraic connectivity μ₂, Hoffman chromatic lower bound, exact max clique — that names a structural deadlock (a same-pattern clique exceeding the 4-period MWF/TTh band) *before* the solver wastes a solve, and feeds the tightener.
 
 **Four-course guarantee (C39)** audits every placed timetable: can each cohort assemble ≥4 distinct, mutually non-overlapping courses toward graduation? Shortfalls trigger the tightener's `open_elective` moves, which the solver verifies.
@@ -59,6 +61,19 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 | "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. Muse Spark's diagnosis names the binding rule and ranks resolutions ("drop the CS 201 pin — Okafor has capacity to take it"); **every option is re-solved by CP-SAT with its own penalty delta**, the least disruptive one applies. |
 | "CS 350 enrollment jumped to 45 after registration ended." | Active enrollment re-triggers every capacity check; the board re-solves and CS 350 lands in the 120-seat hall with zero cohort conflicts. |
 | *(C39 shortfall fires)* | "CS 2023 cohort can only fit 2 of 4 non-conflicting courses." → the tightener proposes opening already-offered electives; CP-SAT verifies the margin gains against the current board and **rejects** moves that make the enlarged scenario infeasible. Only verified moves are shown. |
+
+## Proof at department scale
+
+The demo story above is one department slice (6 instructors, 8 sections) so every beat fits in three minutes. The same engine — same code path, one click in the Build step (**Load department scale**, or `POST /scenario/department`) — solves a full department cluster: **26 instructors, 25 sections, 16 rooms, 4 buildings, 3 degree programs, 12 cohorts**, built deterministically from the seed (`backend/app/data/department.py`). Measured with `backend/scripts/benchmark.py` (single-worker deterministic CP-SAT, dev laptop):
+
+| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | Solve | C39 guarantee | Room util. | Emergency (Chen out) |
+|---|---:|---:|---:|---:|---:|---|---|---:|---|
+| Story seed (demo) | 6 | 8 | 7 | 4 | 1 | optimal, ~70 ms | 2/4 (tightener demo world) | 39% | 2 affected, 3/3 probes feasible |
+| Department scale | 26 | 25 | 16 | 12 | 3 | **optimal, ~150 ms** | **12/12 cohorts ≥ 4 courses** | 52% | 2 affected, 3/3 probes feasible, re-solve optimal |
+
+At department scale every cohort still gets its four-course guarantee, every course has ≥2 qualified instructors, and the Chen emergency still re-homes exactly CS 301 + CS 310 with zero ripple. Locked in by `backend/tests/test_department.py`. Reproduce: `cd backend && .venv/bin/python scripts/benchmark.py`.
+
+**Coordinator-time impact:** the manual baseline this replaces is roughly a coordinator-week per term (~30–40 hours of email, spreadsheets, and rework, plus hours per mid-term disruption). ScheduleGod AI's measured loop is: one Muse parse (~8–25 s live), one CP-SAT solve (~0.15 s at department scale), and — per disruption — a probe-verified coverage decision in seconds. The honest claim is not "AI schedules for you"; it is that a week of constraint-wrangling compresses into an auditable review of solver-proven options.
 
 ## Meta AI tooling at runtime
 
@@ -82,6 +97,8 @@ docker compose up --build   # live Muse Spark
 **Sample outputs / provenance:** `backend/muse-verification.json` is a live captured run of all four structured roles against the seed (ingestion + parse + diagnosis + tighten), all `muse-spark-1.3-contributor`, with real structured outputs and latencies (8–25 s per call). The parse battery includes a speaker context for identity-dependent messages; the voice role is exercised by `POST /emergency/audio`.
 
 *All four structured roles run on the contributor model because the data is synthetic; a real institution would use standard mode (`muse-spark-1.3`) so no staff data ever trains Meta's models. Voice uses `muse-voice-transcribe-1.0`. Dev-time coding tools are unrestricted by the hackathon and touch nothing at runtime.*
+
+**Open-weights path:** the client is endpoint-agnostic (`MUSE_BASE_URL` + `MUSE_MODEL`), so the same roles can run on self-hosted **Muse Spark Open** — e.g. Baseten `meta-models/muse-spark-open-1026`, Modal, or a local vLLM server — wherever structured output is served. Point the env vars at it and prove the swap with `backend/scripts/verify_muse.py` before claiming it; the committed verification above is against the Meta Model API.
 
 ## Intelligence layer (scipy sparse + spectral + AI)
 
@@ -109,10 +126,20 @@ docker compose up --build   # live Muse Spark
 - **Frontend:** Next.js
 - **Intelligence:** `scipy.sparse` CSR matrices, `numpy`/`scipy` spectral graph (Laplacian, Fiedler, Hoffman bound, exact max clique)
 - **Inference:** Meta Model API (OpenAI-compatible, `beta.chat.completions.parse` structured output) — deterministic mock parser included so dev/tests burn zero credits
-- **Persistence:** SQLAlchemy over **Postgres 16** (Docker) or **SQLite** (no-Docker fallback) — constraint provenance + the self-healing audit trail (`/history`)
+- **Persistence:** SQLAlchemy over **Postgres 18** (Docker) or **SQLite** (no-Docker fallback) — constraint provenance + the self-healing audit trail (`/history`)
 - **Deploy:** `docker compose up` (db + backend + frontend) or `./start.sh` for a no-Docker local run; public demo via Modal (backend) + Vercel (UI)
 
 ## Run it
+
+**Judges — try it in 2 minutes, no account, no API key:**
+
+```bash
+git clone https://github.com/prohle/schedulegod-ai && cd schedulegod-ai
+docker compose up --build
+# open http://localhost:3000 — Import → Intake → Build → Review → Emergency
+```
+
+Without a key the model roles degrade to a deterministic mock parser, so every beat (parse → solve → self-heal → emergency coverage → department scale) is clickable offline at zero cost. Add `MODEL_API_KEY` (see below) and the same clicks run live Muse Spark / Muse Voice Transcribe with on-screen model + latency badges. Submission details, track, and bonus-prize flags: [docs/submission.md](./docs/submission.md).
 
 **Hosted demo:** the backend is Modal-ready ([docs/deploy_modal.md](./docs/deploy_modal.md)) and the UI deploys to Vercel; set `BACKEND_URL` to the Modal URL. The local one-command path is below.
 
@@ -166,6 +193,8 @@ the commit history is the build log. The main pieces:
 | Agent | Muse Spark parse → validate → solve → diagnose → **CP-SAT-verified** resolutions → apply | `backend/app/parsing/`, `backend/app/agent/`, `backend/app/services/` |
 | Intelligence | Sparse matrices, Laplacian/Fiedler/Hoffman/max-clique radar, C39 audit, AI tightener | `backend/app/intelligence/` |
 | Ingestion | Free-form institutional data → Muse extraction → deterministic normalizer → Scenario | `backend/app/ingestion/` |
+| Scale | Department-cluster scenario (26 instructors / 25 sections / 12 cohorts) generated deterministically from the seed, one-click load, measured benchmark | `backend/app/data/department.py`, `backend/scripts/benchmark.py` |
+| Agent trace | Every co-pilot/emergency response carries the step-by-step loop (actor per step); wizard renders it live | `agent_trace` in `backend/app/services/copilot.py`, `emergency.py` |
 | UI | Guided wizard, visual timetable grid + before/after diff, Intelligence view, audit trail | `frontend/src/` |
 | Ops | Docker Compose (Postgres + API + UI), one-command local runner, provenance ledger | `docker-compose.yml`, `start.sh`, `backend/app/db.py` |
 

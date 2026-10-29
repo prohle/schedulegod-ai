@@ -170,6 +170,13 @@ export interface ResolutionOption {
   result: SolveResult;
 }
 
+export interface AgentStep {
+  step: string;
+  actor: string;
+  detail: string;
+  status: "ok" | "blocked" | "info";
+}
+
 export interface CopilotResponse {
   summary: string;
   operations: Operation[];
@@ -183,6 +190,7 @@ export interface CopilotResponse {
   parser_mode: "muse-spark" | "mock";
   model?: string;
   parser_latency_ms?: number;
+  agent_trace?: AgentStep[];
 }
 
 export interface ConflictReport {
@@ -214,6 +222,7 @@ export interface EmergencyResponse {
   model?: string;
   parser_latency_ms?: number;
   transcript?: string;
+  agent_trace?: AgentStep[];
 }
 
 // --- Audit trail (constraint provenance + change log) ---

@@ -85,6 +85,21 @@ class ResolutionOption(BaseModel):
     result: SolveResult
 
 
+class AgentStep(BaseModel):
+    """One step of the autonomous co-pilot loop, in execution order.
+
+    The agent acts in stages — parse, validate, solve, diagnose, verify,
+    apply, audit — and this trace makes that loop visible to the coordinator
+    (and to judges): who acted, what they did, and whether the solver
+    approved it. `actor` is the component that ran the step, never a guess.
+    """
+
+    step: str        # parse | validate | solve | conflict-core | diagnose | verify | apply | probe | choose | re-solve | audit
+    actor: str       # e.g. "Muse Spark", "CP-SAT", "Validator", "Audit trail"
+    detail: str
+    status: Literal["ok", "blocked", "info"] = "ok"
+
+
 class EmergencyResponse(BaseModel):
     removed_instructor_id: str
     removed_instructor_name: str
@@ -97,6 +112,7 @@ class EmergencyResponse(BaseModel):
     model: Optional[str] = None
     parser_latency_ms: Optional[int] = None
     transcript: Optional[str] = None
+    agent_trace: list[AgentStep] = []
 
 
 class CopilotResponse(BaseModel):
@@ -112,3 +128,4 @@ class CopilotResponse(BaseModel):
     parser_mode: Literal["muse-spark", "mock"]
     model: Optional[str] = None
     parser_latency_ms: Optional[int] = None
+    agent_trace: list[AgentStep] = []

@@ -34,7 +34,7 @@ from app.models.intelligence import (
     UtilizationReport,
     WhatIfReport,
 )
-from app.models.results import CopilotResponse, EmergencyResponse, SolveResult
+from app.models.results import AgentStep, CopilotResponse, EmergencyResponse, SolveResult
 from app.models.scenario import Operation, ParsedRequest, Scenario
 from app.parsing.parser import ConstraintParser, validate_operations
 from app.services import audit
@@ -192,6 +192,25 @@ def reset_scenario() -> Scenario:
     return get_current_scenario()
 
 
+@app.post("/scenario/department", response_model=Scenario)
+def department_scenario() -> Scenario:
+    """Load the department-scale scenario (26 instructors, 25 sections,
+    3 programs, 12 cohorts) built deterministically from the seed.
+
+    Same engine, real-department scale — the one-click scale proof judges
+    can run live. `POST /scenario/reset` returns to the story seed.
+    """
+    global _current_scenario
+    from app.data.department import build_department_scenario
+    _current_scenario = build_department_scenario(load_seed_scenario())
+    audit.record_event(
+        "scenario", "Loaded department-scale scenario "
+        f"({len(_current_scenario.instructors)} instructors, "
+        f"{len(_current_scenario.sections)} sections, "
+        f"{len(_current_scenario.cohorts)} cohorts)", {})
+    return _current_scenario
+
+
 @app.post("/apply", response_model=Scenario)
 def apply_request(req: ApplyOpsRequest) -> Scenario:
     """Commit a verified co-pilot/emergency proposal to the current term.
@@ -288,6 +307,9 @@ async def emergency_audio(file: UploadFile = File(...)) -> EmergencyResponse:
     transcript = transcribe_wav(audio, file.filename or "voice-note.wav")
     response = run_emergency(get_current_scenario(), transcript)
     response.transcript = transcript
+    response.agent_trace.insert(0, AgentStep(
+        step="transcribe", actor="Muse Voice Transcribe · muse-voice-transcribe-1.0",
+        detail=f"Transcribed the voice note: \"{transcript}\""))
     return response
 
 

@@ -28,6 +28,7 @@ class DiagnosisParser:
 
     def __init__(self) -> None:
         self.mode: str = "mock" if not config.MUSE_API_KEY else "muse-spark"
+        self.model: str | None = config.MUSE_MODEL if config.MUSE_API_KEY else None
         self._client = None
         if config.MUSE_API_KEY:
             from openai import OpenAI
