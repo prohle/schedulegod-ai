@@ -59,10 +59,10 @@ export interface Section {
 export type MasterSchedule = Record<string, Section>;
 
 export const DEPT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  CS: { bg: "bg-sky-100 dark:bg-sky-900/40", text: "text-sky-950 dark:text-sky-100", border: "border-l-sky-600" },
-  Business: { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-950 dark:text-amber-100", border: "border-l-amber-600" },
-  Biology: { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-950 dark:text-emerald-100", border: "border-l-emerald-600" },
-  Humanities: { bg: "bg-purple-100 dark:bg-purple-900/40", text: "text-purple-950 dark:text-purple-100", border: "border-l-purple-600" },
+  CS: { bg: "bg-sky-100", text: "text-sky-950", border: "border-l-sky-600" },
+  Business: { bg: "bg-amber-100", text: "text-amber-950", border: "border-l-amber-600" },
+  Biology: { bg: "bg-emerald-100", text: "text-emerald-950", border: "border-l-emerald-600" },
+  Humanities: { bg: "bg-purple-100", text: "text-purple-950", border: "border-l-purple-600" },
 };
 
 export const ROOM_DISTANCES: Record<string, Record<string, number>> = {
@@ -227,16 +227,16 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
 
     let requiredSections = 0;
     let statusLabel = "Low Demand";
-    let badgeClass = "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600";
+    let badgeClass = "bg-slate-100 text-slate-700 border-slate-300";
 
     if (demandingStudents.length >= 3) {
       requiredSections = 3;
       statusLabel = "High Cohort Demand (Min 3 Sections)";
-      badgeClass = "bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700";
+      badgeClass = "bg-amber-100 text-amber-900 border-amber-300";
     } else if (demandingStudents.length > 0) {
       requiredSections = 1;
       statusLabel = "Moderate Demand (Min 1 Section)";
-      badgeClass = "bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200 border-sky-300 dark:border-sky-700";
+      badgeClass = "bg-sky-100 text-sky-800 border-sky-300";
     }
 
     return {

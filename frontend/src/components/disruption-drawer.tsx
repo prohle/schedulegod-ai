@@ -66,7 +66,7 @@ export function DisruptionDrawer({ isOpen, onClose, onToast }: DisruptionDrawerP
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
+            <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>

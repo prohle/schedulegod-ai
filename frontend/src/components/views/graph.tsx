@@ -211,7 +211,7 @@ export function GraphView({ onToast }: GraphViewProps) {
                 return (
                   <div key={c.id} className={cn(
                     "flex items-center justify-between bg-card border rounded p-2 text-[11px]",
-                    isDone ? "border-emerald-300 dark:border-emerald-700" : "border-border"
+                    isDone ? "border-emerald-300" : "border-border"
                   )}>
                     <span className="font-bold text-foreground">{c.id} — {c.name}</span>
                     {isDone
@@ -223,12 +223,12 @@ export function GraphView({ onToast }: GraphViewProps) {
             </div>
           </div>
 
-          <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-start space-x-2 text-xs">
               <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <div className="font-bold text-amber-800 dark:text-amber-200">Degree Delay Risk</div>
-                <div className="text-amber-700 dark:text-amber-300 mt-1">
+                <div className="font-bold text-amber-800">Degree Delay Risk</div>
+                <div className="text-amber-700 mt-1">
                   If a mandatory section conflicts or is unplaced, the downstream DAG freezes: graduation slips one term per unmet course.
                 </div>
               </div>

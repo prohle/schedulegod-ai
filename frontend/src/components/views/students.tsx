@@ -52,19 +52,19 @@ export function StudentsView({ onToast }: StudentsViewProps) {
 
           <div className="space-y-3 text-xs">
             <div>
-              <h4 className="font-bold text-emerald-700 dark:text-emerald-400 text-[11px] uppercase tracking-wider mb-1">Completed Courses ({student.completed.length})</h4>
+              <h4 className="font-bold text-emerald-700 text-[11px] uppercase tracking-wider mb-1">Completed Courses ({student.completed.length})</h4>
               <div className="flex flex-wrap gap-1">
                 {student.completed.map(c => (
-                  <span key={c} className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 font-bold text-[10px]">{c}</span>
+                  <span key={c} className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10px]">{c}</span>
                 ))}
               </div>
             </div>
 
             <div>
-              <h4 className="font-bold text-amber-700 dark:text-amber-400 text-[11px] uppercase tracking-wider mb-1">Remaining Degree Requirements ({student.requiredRemaining.length})</h4>
+              <h4 className="font-bold text-amber-700 text-[11px] uppercase tracking-wider mb-1">Remaining Degree Requirements ({student.requiredRemaining.length})</h4>
               <div className="flex flex-wrap gap-1">
                 {student.requiredRemaining.map(c => (
-                  <span key={c} className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 font-bold text-[10px]">{c}</span>
+                  <span key={c} className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px]">{c}</span>
                 ))}
               </div>
             </div>
@@ -74,7 +74,7 @@ export function StudentsView({ onToast }: StudentsViewProps) {
               <p className="text-[10px] text-muted-foreground mb-2">Rule: Every student MUST be capable of taking AT LEAST 4 required courses without time overlaps.</p>
               <div className={cn(
                 "p-2 rounded border font-bold text-xs flex items-center justify-between",
-                meetsMinimum ? "border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200" : "border-red-300 dark:border-red-700 text-red-800 dark:text-red-200"
+                meetsMinimum ? "border-emerald-300 text-emerald-800" : "border-red-300 text-red-800"
               )}>
                 <span>Target Minimum (4 Courses):</span>
                 <span>{enrolled.length} / 4 Courses Enrolled</span>
@@ -112,9 +112,9 @@ export function StudentsView({ onToast }: StudentsViewProps) {
                       const match = enrolled.find(e => e.day === day && e.slot === slot);
                       if (match) {
                         return (
-                          <div key={`${day}-${slot}`} className="border-r border-border/80 last:border-r-0 p-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-100 flex flex-col items-center justify-center text-[9px] font-bold border-l-2 border-l-emerald-600">
+                          <div key={`${day}-${slot}`} className="border-r border-border/80 last:border-r-0 p-0.5 bg-emerald-100 text-emerald-900 flex flex-col items-center justify-center text-[9px] font-bold border-l-2 border-l-emerald-600">
                             <span>{match.courseId}</span>
-                            <span className="text-[7px] text-emerald-700 dark:text-emerald-300">{match.room.split(" ")[0]}</span>
+                            <span className="text-[7px] text-emerald-700">{match.room.split(" ")[0]}</span>
                           </div>
                         );
                       }

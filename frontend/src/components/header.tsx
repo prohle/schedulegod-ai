@@ -33,7 +33,7 @@ export function Header({ activeTab, onTabChange, onAutoSolve, onExportCSV, onExp
         <div>
           <h1 className="font-extrabold text-sm text-foreground tracking-tight flex items-center gap-2">
             Academic Scheduler & Cohort Demand Engine
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-700 border border-sky-200">
               Dynamic CSP v3.5
             </span>
           </h1>
@@ -69,7 +69,7 @@ export function Header({ activeTab, onTabChange, onAutoSolve, onExportCSV, onExp
           <Download className="w-3.5 h-3.5" />
           <span>Export</span>
         </Button>
-        <Button variant="outline" size="sm" onClick={onEmergencyClick} className="flex items-center space-x-1 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30">
+        <Button variant="outline" size="sm" onClick={onEmergencyClick} className="flex items-center space-x-1 border-amber-300 text-amber-700 hover:bg-amber-50:bg-amber-900/30">
           <AlertTriangle className="w-3.5 h-3.5" />
           <span>Emergency</span>
         </Button>

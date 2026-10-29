@@ -55,7 +55,7 @@ export function CoursesView({ onToast }: CoursesViewProps) {
             const scheduledCount = getScheduledCount(c.id);
             const meetsDemand = scheduledCount >= demand.requiredSections;
             return (
-              <div key={c.id} className={cn("bg-card border p-3 rounded-lg flex flex-col justify-between shadow-sm relative overflow-hidden", meetsDemand ? "border-border" : "border-amber-400 dark:border-amber-600")}>
+              <div key={c.id} className={cn("bg-card border p-3 rounded-lg flex flex-col justify-between shadow-sm relative overflow-hidden", meetsDemand ? "border-border" : "border-amber-400")}>
                 {!meetsDemand && <AlertTriangle className="absolute top-2 right-2 w-4 h-4 text-amber-500" />}
                 <div>
                   <div className="flex justify-between items-start mb-1">

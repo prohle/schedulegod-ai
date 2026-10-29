@@ -72,10 +72,10 @@ export function FacultyView({ onToast }: FacultyViewProps) {
               <Button key={tool.id} variant="ghost" size="sm" onClick={() => setActiveFacTool(tool.id)}
                 className={cn("flex items-center space-x-1 px-2 py-0.5 text-[11px]",
                   activeFacTool === tool.id ? "border-primary ring-2 ring-primary/40 font-semibold bg-primary/10 text-primary"
-                  : tool.id === "hard-block" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                  : tool.id === "hard-req" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300"
-                  : tool.id === "soft-pref-hi" ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
-                  : tool.id === "soft-avoid" ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
+                  : tool.id === "hard-block" ? "bg-red-100 text-red-700"
+                  : tool.id === "hard-req" ? "bg-emerald-100 text-emerald-800"
+                  : tool.id === "soft-pref-hi" ? "bg-green-100 text-green-800"
+                  : tool.id === "soft-avoid" ? "bg-amber-100 text-amber-800"
                   : "bg-secondary text-secondary-foreground")}>
                 {tool.icon}
                 <span>{tool.label}</span>
@@ -220,9 +220,9 @@ function AggregatedHeatmap() {
               let availCount = 0;
               professors.forEach(p => { if (p.gridState[slotKey] !== "hard-block") availCount++; });
               const ratio = availCount / professors.length;
-              let bg = "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200";
+              let bg = "bg-emerald-100 text-emerald-800";
               if (availCount === 0) bg = "hatch-pattern text-red-800";
-              else if (ratio < 0.5) bg = "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200";
+              else if (ratio < 0.5) bg = "bg-amber-100 text-amber-800";
               return (
                 <div key={slotKey} className={cn("border-r border-border/50 last:border-r-0 flex items-center justify-center text-[9px] font-bold", bg)}>
                   {availCount}/{professors.length}

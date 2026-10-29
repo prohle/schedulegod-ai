@@ -26,3 +26,7 @@ MUSE_REASONING_EFFORT = os.getenv("MUSE_REASONING_EFFORT", "low")
 SEED_SCENARIO_PATH = os.path.join(os.path.dirname(__file__), "data", "seed_scenario.json")
 
 SOLVER_TIME_LIMIT_S = float(os.getenv("SOLVER_TIME_LIMIT_S", "10"))
+
+# C39: full-time offering guarantee — every cohort must be able to assemble
+# at least this many distinct, non-overlapping courses toward graduation.
+MIN_COURSES_PER_COHORT = int(os.getenv("MIN_COURSES_PER_COHORT", "4"))

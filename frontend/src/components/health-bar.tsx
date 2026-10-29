@@ -29,8 +29,8 @@ export function HealthBar() {
             className={cn(
               "flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] font-semibold border",
               b.passed
-                ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 animate-pulse"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-amber-50 text-amber-700 border-amber-300 animate-pulse"
             )}
           >
             {b.passed ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
