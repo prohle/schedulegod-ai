@@ -4,15 +4,17 @@
 // Python backend: Muse Spark parse, CP-SAT solve, the C39/spectral audit, and
 // verified emergency coverage proposals. The default inputs are the demo beats.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle, Zap,
   Users, Loader2, CircleCheck, CircleX, Sparkles, Wrench, Radar, Database,
-  UploadCloud, FileText, X, ListChecks,
+  UploadCloud, FileText, X, ListChecks, Mic, Square, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useIntelligence } from "@/hooks/use-api";
+import { TimetableGrid, changedSections } from "@/components/timetable-grid";
+import { blobToWav } from "@/lib/audio";
+import { useIntelligence, useScenario } from "@/hooks/use-api";
 import {
   DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
   type Placement, type CopilotResponse, type EmergencyResponse, type IngestResponse,
@@ -57,7 +59,7 @@ CS 401 Capstone — MWF, seminar, 25 seats, video-conf
 Faculty:
 Dr. Chen teaches CS 301, CS 310
 Prof. Patel teaches CS 101, MATH 201
-Dr. Diaz teaches CS 101, MATH 201, CS 201
+Dr. Diaz teaches CS 101, MATH 201, CS 201 — unavailable Fridays; prefers mornings
 Dr. Okafor teaches CS 201, CS 301, CS 350 (max 3 sections)
 Prof. Lee teaches CS 210, CS 401
 Dr. Nguyen teaches CS 310, CS 401, CS 301, CS 350
@@ -81,7 +83,13 @@ Science 102 — 40 seats, lecture
 Science Lab 1 — 30 seats, lab, computers
 Engineering 201 — 45 seats, lecture, projector
 Engineering Lab 2 — 28 seats, lab, computers
-Library Seminar — 30 seats, seminar, video-conf`;
+Library Seminar — 30 seats, seminar, video-conf
+
+Campus map:
+Science, Engineering, Library
+Science to Engineering: 8 min
+Science to Library: 6 min
+Engineering to Library: 9 min`;
 
 function placementSlot(p: Placement): string {
   if (p.period != null) {
@@ -142,7 +150,8 @@ function Section({ title, icon, children, tone = "default" }: {
 }
 
 export function WizardView({ onToast }: WizardViewProps) {
-  const { margins, spectral, solveResult, busy, error, runSolve } = useIntelligence();
+  const { margins, spectral, solveResult, busy, error, runSolve, reload } = useIntelligence();
+  const { scenario: currentScenario } = useScenario();
   const [step, setStep] = useState<StepId>("import");
   const [importText, setImportText] = useState(SAMPLE_DUMP);
   const [files, setFiles] = useState<File[]>([]);
@@ -151,11 +160,16 @@ export function WizardView({ onToast }: WizardViewProps) {
   const [ingest, setIngest] = useState<IngestResponse | null>(null);
   const [edited, setEdited] = useState<InstitutionData | null>(null);
   const [intakeMsg, setIntakeMsg] = useState("Prof. Patel can't teach Mondays — committee duty. She'd rather not teach at 8:00.");
+  const [speakerId, setSpeakerId] = useState("");
   const [intakeBusy, setIntakeBusy] = useState(false);
   const [copilot, setCopilot] = useState<CopilotResponse | null>(null);
   const [emergencyMsg, setEmergencyMsg] = useState("Dr. Chen is out all week — who could cover her sections?");
   const [emergencyBusy, setEmergencyBusy] = useState(false);
   const [emergency, setEmergency] = useState<EmergencyResponse | null>(null);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const stepOrder: StepId[] = ["import", "intake", "build", "review", "emergency"];
   const currentIndex = stepOrder.indexOf(step);
@@ -248,6 +262,9 @@ export function WizardView({ onToast }: WizardViewProps) {
       try {
         const r: IngestResponse = await post("/api/ingest/apply", { data: edited });
         setIngest(r);
+        // The intelligence panel must reflect the world we just imported,
+        // not the seed it loaded when the wizard mounted.
+        await reload();
       } finally {
         setIngestBusy(false);
       }
@@ -258,28 +275,115 @@ export function WizardView({ onToast }: WizardViewProps) {
   const handleIntake = async () => {
     setIntakeBusy(true);
     try {
-      const r: CopilotResponse = await post("/api/copilot", { message: intakeMsg });
+      const r: CopilotResponse = await post("/api/copilot", {
+        message: intakeMsg,
+        speaker_id: speakerId || undefined,
+      });
       setCopilot(r);
-      if (r.result?.status === "infeasible") onToast("Infeasible — the solver named the conflict and self-healed", "warning");
-      else onToast("Muse parsed it; CP-SAT re-solved", "success");
+      if (r.result?.status === "infeasible") {
+        onToast("Infeasible — the solver named the conflict and self-healed", "warning");
+      } else if (r.applied_operations?.length) {
+        // Commit the verified request so Build/Review/Emergency build on it
+        // instead of silently reverting to the pre-request world.
+        await post("/api/apply", { operations: r.applied_operations });
+        await reload();
+        onToast("Applied to the term — later steps build on it", "success");
+      } else {
+        onToast("Muse parsed it; CP-SAT re-solved", "success");
+      }
     } finally {
       setIntakeBusy(false);
+    }
+  };
+
+  const commitEmergency = async (r: EmergencyResponse) => {
+    setEmergency(r);
+    const rehomed = Object.keys(r.chosen).length;
+    const feasible = r.result?.status !== "infeasible";
+    if (r.removed_instructor_id && feasible
+        && (rehomed > 0 || r.affected_section_ids.length === 0)) {
+      // Commit the removal and every verified coverage pick, so a later
+      // solve cannot quietly put the absent instructor back on the board.
+      await post("/api/apply", {
+        pins: r.chosen,
+        remove_instructor_id: r.removed_instructor_id,
+      });
+      await reload();
+      onToast(`Emergency applied — ${rehomed} section(s) re-homed`, "success");
+    } else {
+      onToast(`Emergency analysed — ${rehomed} section(s) re-homed`, "warning");
     }
   };
 
   const handleEmergency = async () => {
     setEmergencyBusy(true);
     try {
-      const r: EmergencyResponse = await post("/api/emergency", { message: emergencyMsg });
-      setEmergency(r);
-      onToast(`Emergency handled — ${Object.keys(r.chosen).length} section(s) re-homed`, "success");
+      await commitEmergency(await post("/api/emergency", { message: emergencyMsg }));
     } finally {
       setEmergencyBusy(false);
     }
   };
 
+  const sendVoice = async (file: Blob, name: string) => {
+    setVoiceBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file, name);
+      const res = await fetch("/api/emergency/audio", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        onToast(data.detail || "Voice transcription failed", "error");
+        return;
+      }
+      await commitEmergency(data as EmergencyResponse);
+    } finally {
+      setVoiceBusy(false);
+    }
+  };
+
+  const startVoice = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        try {
+          await sendVoice(await blobToWav(blob), "voice-note.wav");
+        } catch {
+          onToast("Could not convert the recording — upload a WAV instead", "error");
+        }
+      };
+      mediaRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch {
+      onToast("Microphone unavailable — upload a WAV instead", "warning");
+    }
+  };
+
+  const stopVoice = () => {
+    mediaRef.current?.stop();
+    setRecording(false);
+  };
+
+  const onVoiceFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) await sendVoice(file, file.name);
+    event.target.value = "";
+  };
+
   const buildPlacements = solveResult?.timetable?.placements ?? [];
   const intakePlacements = copilot?.result?.timetable?.placements ?? buildPlacements;
+  const emergencyPlacements = emergency?.result?.timetable?.placements ?? [];
+  const emergencyBaseline = buildPlacements.length ? buildPlacements : intakePlacements;
+  const emergencyChanged = emergencyBaseline.length && emergencyPlacements.length
+    ? changedSections(emergencyBaseline, emergencyPlacements)
+    : undefined;
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -381,6 +485,8 @@ export function WizardView({ onToast }: WizardViewProps) {
                     <span className={cn("px-2 py-0.5 rounded font-bold uppercase", ingest.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
                       {ingest.parser_mode}
                     </span>
+                    {ingest.model && <span className="font-mono">{ingest.model}</span>}
+                    {ingest.parser_latency_ms != null && <span>{Math.round(ingest.parser_latency_ms / 100) / 10}s</span>}
                     {(() => {
                       const checks = localCompleteness(edited) ?? [];
                       const missing = checks.filter((c) => !c.provided).map((c) => c.label);
@@ -450,6 +556,23 @@ export function WizardView({ onToast }: WizardViewProps) {
                 Type a constraint exactly as a coordinator would. Muse Spark parses it into typed operations;
                 CP-SAT re-solves and proves feasibility.
               </p>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <label className="text-xs font-semibold text-muted-foreground" htmlFor="speaker">Speaker</label>
+                <select
+                  id="speaker"
+                  value={speakerId}
+                  onChange={(e) => setSpeakerId(e.target.value)}
+                  className="border border-input rounded-lg px-2 py-1 text-xs bg-background"
+                >
+                  <option value="">(chair / not specified)</option>
+                  {(ingest?.scenario.instructors ?? currentScenario?.instructors ?? []).map((i) => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-muted-foreground">
+                  Needed for “I can’t…” / “keep me…” requests.
+                </span>
+              </div>
               <textarea
                 value={intakeMsg}
                 onChange={(e) => setIntakeMsg(e.target.value)}
@@ -468,6 +591,8 @@ export function WizardView({ onToast }: WizardViewProps) {
                   <span className={cn("px-2 py-0.5 rounded font-bold uppercase", copilot.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
                     {copilot.parser_mode}
                   </span>
+                  {copilot.model && <span className="font-mono">{copilot.model}</span>}
+                  {copilot.parser_latency_ms != null && <span>{Math.round(copilot.parser_latency_ms / 100) / 10}s</span>}
                   {copilot.summary}
                 </div>
                 {copilot.operations.map((op, i) => (
@@ -482,7 +607,38 @@ export function WizardView({ onToast }: WizardViewProps) {
                     <strong>Diagnosis ({copilot.diagnosis_mode}):</strong> {copilot.diagnosis}
                   </div>
                 )}
-                {intakePlacements.length > 0 && <PlacementsTable placements={intakePlacements} dense />}
+                {copilot.options.length > 0 && (
+                  <Section title="Solver-verified resolutions" icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} tone="emerald">
+                    <p className="text-xs text-emerald-800 mb-2">
+                      Muse proposed each fix; CP-SAT re-solved it. Only proven options are shown — the least disruptive one was applied to the term.
+                    </p>
+                    <div className="space-y-1.5">
+                      {copilot.options.map((o, i) => (
+                        <div key={i} className="bg-white border border-emerald-200 rounded p-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <CircleCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="font-semibold">Drop</span>
+                            <span className="text-muted-foreground">{o.dropped_explanation}</span>
+                            <span className="ml-auto font-mono text-emerald-700">
+                              {o.result.status} · penalty {o.result.objective ?? "—"}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground mt-0.5 pl-5">{o.tradeoff}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+                {intakePlacements.length > 0 && (
+                  <>
+                    <TimetableGrid
+                      placements={intakePlacements}
+                      changed={buildPlacements.length ? changedSections(buildPlacements, intakePlacements) : undefined}
+                      compact
+                    />
+                    <PlacementsTable placements={intakePlacements} dense />
+                  </>
+                )}
               </>
             )}
           </div>
@@ -507,6 +663,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                 <span>penalty {solveResult.objective ?? "—"}</span>
               </div>
             )}
+            {buildPlacements.length > 0 && <TimetableGrid placements={buildPlacements} />}
             {buildPlacements.length > 0 && <PlacementsTable placements={buildPlacements} />}
           </div>
         )}
@@ -576,7 +733,28 @@ export function WizardView({ onToast }: WizardViewProps) {
                 rows={2}
                 className="w-full border border-input rounded-lg p-2 text-sm bg-background"
               />
-              <Button variant="primary" size="md" onClick={handleEmergency} disabled={emergencyBusy} className="mt-3 flex items-center gap-2">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button
+                  variant={recording ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={recording ? stopVoice : startVoice}
+                  disabled={voiceBusy || emergencyBusy}
+                  className="flex items-center gap-1.5"
+                >
+                  {recording ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                  {recording ? "Stop & transcribe" : "Record voice note"}
+                </Button>
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-input bg-background hover:bg-accent cursor-pointer">
+                  <Upload className="w-3.5 h-3.5" /> or upload WAV
+                  <input type="file" accept=".wav,audio/wav" className="hidden" onChange={onVoiceFile} disabled={voiceBusy || emergencyBusy} />
+                </label>
+                {voiceBusy && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Muse Voice Transcribe…
+                  </span>
+                )}
+              </div>
+              <Button variant="primary" size="md" onClick={handleEmergency} disabled={emergencyBusy || voiceBusy} className="mt-3 flex items-center gap-2">
                 {emergencyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}
                 Handle Emergency
               </Button>
@@ -585,9 +763,16 @@ export function WizardView({ onToast }: WizardViewProps) {
             {emergency && (
               <>
                 <div className="text-xs text-muted-foreground">
-                  {emergency.removed_instructor_name} removed — {emergency.affected_section_ids.length} section(s) affected
-                  {emergency.parser_mode === "muse-spark" ? " · live Muse Spark" : " · mock parser"}
+                  {emergency.removed_instructor_name ? `${emergency.removed_instructor_name} removed` : "No instructor identified"} — {emergency.affected_section_ids.length} section(s) affected
+                  {emergency.parser_mode === "muse-spark"
+                    ? ` · live Muse Spark${emergency.model ? ` (${emergency.model})` : ""}${emergency.parser_latency_ms != null ? ` · ${Math.round(emergency.parser_latency_ms / 100) / 10}s` : ""}`
+                    : " · mock parser"}
                 </div>
+                {emergency.transcript && (
+                  <div className="text-xs bg-sky-50 border border-sky-200 text-sky-900 rounded p-2">
+                    <strong>Muse Voice Transcribe heard:</strong> “{emergency.transcript}”
+                  </div>
+                )}
                 {emergency.proposals.map((p, i) => (
                   <div key={i} className={cn("flex items-center gap-2 text-xs border rounded p-2", p.feasible ? "bg-white border-emerald-200" : "bg-muted/40 border-border")}>
                     {p.feasible ? <CircleCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <CircleX className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
@@ -596,9 +781,21 @@ export function WizardView({ onToast }: WizardViewProps) {
                     <span className="text-muted-foreground flex-1">{p.reason}</span>
                   </div>
                 ))}
-                {emergency.result?.timetable?.placements?.length ? (
-                  <PlacementsTable placements={emergency.result.timetable.placements} dense />
-                ) : null}
+                {emergencyPlacements.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 2xl:grid-cols-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-muted-foreground mb-1">Before</div>
+                        <TimetableGrid placements={emergencyBaseline} compact />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-amber-700 mb-1">After — verified coverage</div>
+                        <TimetableGrid placements={emergencyPlacements} changed={emergencyChanged} compact />
+                      </div>
+                    </div>
+                    <PlacementsTable placements={emergencyPlacements} dense />
+                  </div>
+                )}
               </>
             )}
           </div>

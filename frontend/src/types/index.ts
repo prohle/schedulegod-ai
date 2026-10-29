@@ -104,6 +104,8 @@ export interface Scenario {
   room_blackouts: RoomBlackout[];
   walk_limit_min: number;
   active_enrollment: Record<string, number>;
+  instructor_pins?: Record<string, string>;
+  room_pins?: Record<string, string>;
 }
 
 export interface Placement {
@@ -134,14 +136,25 @@ export interface SolveResult {
   timetable?: Timetable;
   objective?: number;
   objective_name?: string;
+  conflicts?: ConflictReport;
   solve_time_ms: number;
 }
 
 export interface Operation {
-  op: "add_instructor_unavailability" | "add_instructor_preference" | "add_room_unavailability" | "remove_instructor" | "set_section_instructor" | "update_enrollment";
+  op:
+    | "add_instructor_unavailability"
+    | "add_instructor_preference"
+    | "add_room_unavailability"
+    | "remove_instructor"
+    | "set_section_instructor"
+    | "set_section_room"
+    | "set_prep_cap"
+    | "set_load_cap"
+    | "update_enrollment";
   instructor_id?: string;
   section_id?: string;
   room_id?: string;
+  course_id?: string;
   day?: number;
   period?: number;
   kind?: "prefer" | "avoid";
@@ -168,6 +181,8 @@ export interface CopilotResponse {
   options: ResolutionOption[];
   result?: SolveResult;
   parser_mode: "muse-spark" | "mock";
+  model?: string;
+  parser_latency_ms?: number;
 }
 
 export interface ConflictReport {
@@ -196,6 +211,32 @@ export interface EmergencyResponse {
   healing_notes: string[];
   result?: SolveResult;
   parser_mode: "muse-spark" | "mock";
+  model?: string;
+  parser_latency_ms?: number;
+  transcript?: string;
+}
+
+// --- Audit trail (constraint provenance + change log) ---
+
+export interface AuditSubmission {
+  id: number;
+  message: string;
+  summary?: string;
+  parser_mode: string;
+  created_at: string;
+}
+
+export interface AuditEvent {
+  id: number;
+  kind: string;
+  description: string;
+  payload?: string;
+  created_at: string;
+}
+
+export interface HistoryReport {
+  submissions: AuditSubmission[];
+  events: AuditEvent[];
 }
 
 // --- Data ingestion (point the tool at free-form institutional data) ---
@@ -241,6 +282,12 @@ export interface ExtractedRequirement {
   required: boolean;
 }
 
+export interface ExtractedDistance {
+  from_building: string;
+  to_building: string;
+  minutes: number;
+}
+
 export interface InstitutionData {
   summary: string;
   buildings: string[];
@@ -249,6 +296,7 @@ export interface InstitutionData {
   rooms: ExtractedRoom[];
   cohorts: ExtractedCohort[];
   degree_map: ExtractedRequirement[];
+  distances: ExtractedDistance[];
 }
 
 export interface DataCheck {
@@ -269,6 +317,8 @@ export interface IngestResponse {
   parsed: InstitutionData;
   parser_mode: "muse-spark" | "mock";
   completeness: CompletenessReport;
+  model?: string;
+  parser_latency_ms?: number;
 }
 
 // --- Intelligence layer (sparse matrices + spectral radar + AI tightening) ---
@@ -415,8 +465,8 @@ export interface WhatIfReport {
   verdict: string;
 }
 
-export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-export const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+export const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 export const PERIOD_NAMES = ["8:00", "9:30", "11:00", "12:30"];
 export const PATTERN_DAYS: Record<string, number[]> = { MWF: [0, 2, 4], TTh: [1, 3] };
 export const BLOCK_DAYS = [1, 2, 3];

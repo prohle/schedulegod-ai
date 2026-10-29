@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type {
   Scenario, SolveResult, CopilotResponse, Operation,
   MatricesReport, SpectralReport, MarginsReport, TightenResponse, UtilizationReport,
+  HistoryReport,
 } from "@/types";
 
 const API_BASE = "";
@@ -194,4 +195,27 @@ export function useIntelligence() {
     matrices, spectral, margins, utilization, solveResult, tighten,
     setSolveResult, loading, busy, error, runSolve, runTighten, reload: load,
   };
+}
+
+export function useAudit() {
+  const [history, setHistory] = useState<HistoryReport | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/history`);
+      setHistory(await res.json());
+    } catch {
+      setHistory({ submissions: [], events: [] });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { history, loading, reload };
 }

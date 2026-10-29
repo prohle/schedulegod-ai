@@ -8,11 +8,12 @@
 import { Fragment, useState, type ReactNode } from "react";
 import {
   Radar, ShieldCheck, Sparkles, GitFork, Activity, Wrench,
-  CircleCheck, CircleX, Loader2, Database, Network, RefreshCw, Gauge, Building2,
+  CircleCheck, CircleX, Loader2, Database, Network, RefreshCw, Gauge, Building2, ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useIntelligence } from "@/hooks/use-api";
+import { TimetableGrid } from "@/components/timetable-grid";
+import { useAudit, useIntelligence } from "@/hooks/use-api";
 import {
   DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
   type Placement, type SparseMatrixPayload, type SolveResult, type WhatIfReport,
@@ -62,7 +63,8 @@ const MATRIX_ROWS: [string, keyof ReturnType<typeof Object>][] = [];
 
 export function IntelligenceView({ onToast }: IntelligenceViewProps) {
   const { matrices, spectral, margins, utilization, solveResult, setSolveResult, tighten, loading, busy, error, runSolve, runTighten, reload } = useIntelligence();
-  const [tab, setTab] = useState<"radar" | "margins" | "matrices" | "utilization" | "solve" | "tighten" | "planning">("radar");
+  const { history, loading: auditLoading, reload: reloadAudit } = useAudit();
+  const [tab, setTab] = useState<"radar" | "margins" | "matrices" | "utilization" | "solve" | "tighten" | "planning" | "audit">("radar");
   const [options, setOptions] = useState<SolveResult[] | null>(null);
   const [locked, setLocked] = useState<Record<string, boolean>>({});
   const [busyOptions, setBusyOptions] = useState(false);
@@ -135,6 +137,7 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
     { id: "solve" as const, label: "CP-SAT Solve", icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: "tighten" as const, label: "AI Tightening", icon: <Wrench className="w-3.5 h-3.5" /> },
     { id: "planning" as const, label: "Planning", icon: <Building2 className="w-3.5 h-3.5" /> },
+    { id: "audit" as const, label: "Audit Trail", icon: <ScrollText className="w-3.5 h-3.5" /> },
   ];
 
   const matrixRows: [string, SparseMatrixPayload][] = matrices ? [
@@ -435,6 +438,9 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
                   )}
                 </div>
                 <Card title="Placements" icon={<Sparkles className="w-4 h-4 text-primary" />}>
+                  <div className="mb-3">
+                    <TimetableGrid placements={solveResult.timetable?.placements ?? []} compact />
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead className="bg-muted text-muted-foreground">
@@ -570,6 +576,53 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
                 </div>
               </Card>
             )}
+          </div>
+        )}
+
+        {tab === "audit" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm text-muted-foreground">
+                Every intake submission and change event, newest first — the provenance ledger behind the timetable.
+              </p>
+              <Button variant="outline" size="sm" onClick={reloadAudit} disabled={auditLoading} className="flex items-center gap-1.5 shrink-0">
+                {auditLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                Refresh
+              </Button>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Card title={`Submissions (${history?.submissions.length ?? 0})`} icon={<ScrollText className="w-4 h-4 text-primary" />}>
+                <div className="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar">
+                  {history?.submissions.map((s) => (
+                    <div key={s.id} className="border border-border rounded p-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("px-1.5 py-0.5 rounded font-bold uppercase text-[9px]", s.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
+                          {s.parser_mode}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground ml-auto">{new Date(s.created_at).toLocaleString()}</span>
+                      </div>
+                      <div className="mt-1 font-medium text-foreground">{s.message}</div>
+                      {s.summary && <div className="text-muted-foreground mt-0.5">{s.summary}</div>}
+                    </div>
+                  ))}
+                  {!history?.submissions.length && <p className="text-xs text-muted-foreground">No submissions yet.</p>}
+                </div>
+              </Card>
+              <Card title={`Change events (${history?.events.length ?? 0})`} icon={<Activity className="w-4 h-4 text-emerald-600" />}>
+                <div className="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar">
+                  {history?.events.map((e) => (
+                    <div key={e.id} className="border border-border rounded p-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="px-1.5 py-0.5 rounded bg-muted font-bold uppercase text-[9px]">{e.kind}</span>
+                        <span className="text-[10px] text-muted-foreground ml-auto">{new Date(e.created_at).toLocaleString()}</span>
+                      </div>
+                      <div className="mt-1 text-foreground">{e.description}</div>
+                    </div>
+                  ))}
+                  {!history?.events.length && <p className="text-xs text-muted-foreground">No events yet.</p>}
+                </div>
+              </Card>
+            </div>
           </div>
         )}
       </div>
