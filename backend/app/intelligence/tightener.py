@@ -151,7 +151,8 @@ def _mode() -> str:
     return "muse-spark" if config.MUSE_API_KEY else "mock"
 
 
-def _muse_plan(scenario: Scenario, evidence: list[str], ops: list[Operation]) -> TighteningPlan | None:
+def _muse_plan(scenario: Scenario, evidence: list[str], ops: list[Operation],
+               margins: MarginsReport, base: SolveResult) -> TighteningPlan | None:
     client = None
     if config.MUSE_API_KEY:
         from openai import OpenAI
@@ -165,9 +166,10 @@ def _muse_plan(scenario: Scenario, evidence: list[str], ops: list[Operation]) ->
             model=config.MUSE_MODEL,
             messages=[
                 {"role": "system", "content": _TIGHTENER_SYSTEM_PROMPT},
-                {"role": "user", "content": _build_case_prompt(scenario, evidence, ops)},
+                {"role": "user", "content": _build_case_prompt(scenario, evidence, ops, margins, base)},
             ],
             response_format=TighteningPlan,
+            reasoning_effort=config.MUSE_REASONING_EFFORT,
         )
         parsed: Optional[TighteningPlan] = response.choices[0].message.parsed
         if parsed is None:
@@ -339,7 +341,7 @@ def run_tightener(scenario: Scenario, ops: Optional[list[Operation]] = None) -> 
         assessment = ("No tightening needed: the timetable solves and every cohort "
                       "clears the four-course guarantee.")
     else:
-        plan = _muse_plan(scenario, evidence, ops)
+        plan = _muse_plan(scenario, evidence, ops, margins, base)
         if plan is not None:
             plan = _validate_plan(plan, scenario, ops, core)
             mode = "muse-spark"
@@ -400,7 +402,8 @@ capacity, qualification) over dropping a person's request; one sentence of
 rationale per move plus a 2-3 sentence overall assessment."""
 
 
-def _build_case_prompt(scenario: Scenario, evidence: list[str], ops: list[Operation]) -> str:
+def _build_case_prompt(scenario: Scenario, evidence: list[str], ops: list[Operation],
+                       margins: MarginsReport, base: SolveResult) -> str:
     instructors = "; ".join(
         f"{i.name} [{i.id}] cap {i.max_sections}, qualified {','.join(i.qualified_courses)}"
         for i in scenario.instructors)
@@ -410,11 +413,34 @@ def _build_case_prompt(scenario: Scenario, evidence: list[str], ops: list[Operat
         f"{c.name} [{c.id}] term {c.current_term} of {c.graduation_year - c.admission_year}x2, "
         f"size {c.size}" for c in scenario.cohorts)
     ops_listing = "\n".join(f"[{i}] {op.op} — {op.explanation}" for i, op in enumerate(ops)) or "(none)"
+
+    # C39 audit: name the exact open_elective candidate ids (offered, outside
+    # each shortfall cohort's plan, non-conflicting with its current track) so
+    # Muse proposes moves that will actually verify instead of no-ops.
+    from app.intelligence.matrices import placement_intervals
+    audit_lines: list[str] = []
+    if base.timetable is not None and margins.cohorts:
+        slots: dict[str, list[set]] = {}
+        for pl in base.timetable.placements:
+            slots.setdefault(pl.course_id, []).append(placement_intervals(pl))
+        placed = set(slots)
+        for m in sorted((x for x in margins.cohorts if not x.ok), key=lambda x: x.margin):
+            candidates = sorted(
+                c for c in placed - set(m.pool_courses)
+                if all(_courses_non_overlap(slots, c, tc) for tc in m.example_track))
+            audit_lines.append(
+                f"- {m.name} [{m.cohort_id}]: margin {m.margin}/{margins.min_courses}; "
+                f"track {m.example_track}; open_elective candidates {candidates or 'none'}")
+    audit = "\n".join(audit_lines) if audit_lines else "(no four-course shortfall)"
+
     return f"""Evidence from the intelligence layer:
 {chr(10).join('- ' + e for e in evidence)}
 
 Requests under consideration:
 {ops_listing}
+
+Four-course audit (C39) — for open_elective moves, use only these candidate ids:
+{audit}
 
 Instructors: {instructors}
 Courses: {courses}

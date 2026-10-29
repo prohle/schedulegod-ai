@@ -1,0 +1,148 @@
+{
+  "parse": [
+    {
+      "msg": "I can't teach Mondays \u2014 committee duty. Prefer mornings.",
+      "ok": true,
+      "s": 18.3,
+      "summary": "Unresolved instructor request for Monday unavailability and morning preference \u2013 no known instructor id so no operations emitted.",
+      "ops": []
+    },
+    {
+      "msg": "Dr. Chen is out all next week.",
+      "ok": true,
+      "s": 13.8,
+      "summary": "Dr. Chen is out all next week and removed from scheduling.",
+      "ops": [
+        "remove_instructor"
+      ]
+    },
+    {
+      "msg": "Diaz is taking over CS 101, MATH 201 and CS 201 personally.",
+      "ok": true,
+      "s": 12.7,
+      "summary": "Assign Dr. Diaz to CS 101, MATH 201, and CS 201.",
+      "ops": [
+        "set_section_instructor",
+        "set_section_instructor",
+        "set_section_instructor"
+      ]
+    },
+    {
+      "msg": "CS 350 enrollment jumped to 45 after registration ended.",
+      "ok": true,
+      "s": 9.9,
+      "summary": "Update CS 350 enrollment to 45 after registration.",
+      "ops": [
+        "update_enrollment"
+      ]
+    },
+    {
+      "msg": "Prof. Patel would rather not teach before 10.",
+      "ok": true,
+      "s": 11.7,
+      "summary": "Added preference for Prof. Patel to avoid teaching before 10am.",
+      "ops": [
+        "add_instructor_preference"
+      ]
+    },
+    {
+      "msg": "East lab is closed for renovation all October.",
+      "ok": true,
+      "s": 49.0,
+      "summary": "Engineering Lab 2 closed for renovation, unavailable for all timeslots.",
+      "ops": [
+        "add_room_unavailability"
+      ]
+    },
+    {
+      "msg": "Move the intro lecture to the big hall, the small one is packed.",
+      "ok": true,
+      "s": 12.8,
+      "summary": "Intro lecture (CS 101) move to big hall requested but no room-assignment operation exists, so no changes made.",
+      "ops": []
+    },
+    {
+      "msg": "Dr. Lee is covering for Dr. Okafor in CS 220.",
+      "ok": true,
+      "s": 7.8,
+      "summary": "Unrecognized course CS 220 does not match any known section, so no changes applied.",
+      "ops": []
+    },
+    {
+      "msg": "Keep me under 3 preps, and no Fridays.",
+      "ok": true,
+      "s": 12.1,
+      "summary": "No actionable constraints: unknown speaker so Friday unavailability cannot be assigned, and prep limit has no matching operation.",
+      "ops": []
+    },
+    {
+      "msg": "I'd love CS 310 \u2014 committee Wed 2-4.",
+      "ok": true,
+      "s": 10.9,
+      "summary": "No operations emitted: speaker identity unknown so CS 310 preference and Wednesday unavailability cannot be attributed.",
+      "ops": []
+    },
+    {
+      "msg": "The CS 2025 cohort tested out of MATH 201.",
+      "ok": true,
+      "s": 18.2,
+      "summary": "MATH 201 enrollment dropped to zero after cohort tested out.",
+      "ops": [
+        "update_enrollment"
+      ]
+    },
+    {
+      "msg": "CS 210 needs another section.",
+      "ok": true,
+      "s": 8.8,
+      "summary": "Request for an additional CS 210 section has no matching operation, so no changes applied.",
+      "ops": []
+    }
+  ],
+  "diagnosis": [
+    {
+      "msg": "Diaz is taking over CS 101, MATH 201 and CS 201 personally.",
+      "ok": true,
+      "s": 25.5,
+      "mode": "muse-spark",
+      "status": "optimal",
+      "diagnosis": "Dr. Diaz was asked to personally teach CS 101, MATH 201, and CS 201 \u2014 three sections in total. Dr. Diaz has a maximum load of 2 sections, so all three assignmen"
+    },
+    {
+      "msg": "Dr. Chen is taking CS 301, CS 310 and CS 350 personally.",
+      "ok": true,
+      "s": 31.9,
+      "mode": "muse-spark",
+      "status": "optimal",
+      "diagnosis": "Dr. Chen was pinned to personally take three sections \u2014 CS 301, CS 310, and CS 350 \u2014 at the same time. The binding rule is Dr. Chen's load cap of max 2 sections"
+    },
+    {
+      "msg": "CS 350 enrollment jumped to 200 after registration ended.",
+      "ok": true,
+      "s": 19.3,
+      "mode": "muse-spark",
+      "status": "optimal",
+      "diagnosis": "The request to update CS 350 enrollment to 200 makes the timetable infeasible on its own. It clashes with the room capacity rule, since no available room that m"
+    }
+  ],
+  "tighten": [
+    {
+      "i": 0,
+      "ok": false,
+      "s": 94.3,
+      "mode": "mock",
+      "trigger": "margin_shortfall",
+      "moves": 3,
+      "verified": 2
+    },
+    {
+      "i": 1,
+      "ok": false,
+      "s": 94.0,
+      "mode": "mock",
+      "trigger": "margin_shortfall",
+      "moves": 3,
+      "verified": 2
+    }
+  ]
+}

@@ -55,6 +55,7 @@ class DiagnosisParser:
                     {"role": "user", "content": _build_case_prompt(scenario, message, ops, core)},
                 ],
                 response_format=DiagnosisResult,
+                reasoning_effort=config.MUSE_REASONING_EFFORT,
             )
             parsed: Optional[DiagnosisResult] = response.choices[0].message.parsed
             if parsed is None:

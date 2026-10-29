@@ -24,8 +24,10 @@ MUSE_REASONING_EFFORT = os.getenv("MUSE_REASONING_EFFORT", "low")
 
 # Hard timeout on every Meta API call. A hung/slow response must fail fast so
 # the deterministic fallback (mock parser / template diagnosis / template
-# tightening) takes over instead of stalling the co-pilot loop.
-MUSE_TIMEOUT_S = float(os.getenv("MUSE_TIMEOUT_S", "30"))
+# tightening) takes over instead of stalling the co-pilot loop. muse-spark is
+# a reasoning model — the tightening prompt can take 40-90s, so this is
+# generous rather than tight.
+MUSE_TIMEOUT_S = float(os.getenv("MUSE_TIMEOUT_S", "120"))
 
 # --- Data --------------------------------------------------------------------
 SEED_SCENARIO_PATH = os.path.join(os.path.dirname(__file__), "data", "seed_scenario.json")
