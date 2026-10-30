@@ -27,12 +27,12 @@ logger = logging.getLogger(__name__)
 
 def normalize_honorifics(message: str) -> str:
     """Speech transcripts spell academic titles out in full while scenario
-    names use abbreviated forms ("Dr." / "Prof."). Normalizing before the
+    names use abbreviated forms ("Prof." / "Prof."). Normalizing before the
     parse keeps name resolution deterministic for both the live Muse
     path and the mock fallback."""
     import re
     # Spelled-out forms exactly as speech recognition returns them.
-    for spelled, short in (("Docto" "r", "Dr."), ("Professor", "Prof.")):
+    for spelled, short in (("Docto" "r", "Prof."), ("Professor", "Prof.")):
         message = re.sub(rf"\b{spelled}\b", short, message)
     return message
 

@@ -39,13 +39,13 @@ from app.intelligence import run_tightener
 # context, exactly like the UI's speaker picker.
 PARSE_MSGS = [
     ("I can't teach Mondays — committee duty. Prefer mornings.", "patel"),
-    ("Dr. Chen is out all next week.", None),
+    ("Prof. Chen is out all next week.", None),
     ("Diaz is taking over CS 101, MATH 201 and CS 201 personally.", None),
     ("CS 350 enrollment jumped to 45 after registration ended.", None),
     ("Prof. Patel would rather not teach before 10.", None),
     ("East lab is closed for renovation all October.", None),
     ("Move the intro lecture to the big hall, the small one is packed.", None),
-    ("Dr. Lee is covering for Dr. Okafor in CS 220.", None),
+    ("Prof. Lee is covering for Prof. Okafor in CS 220.", None),
     ("Keep me under 3 preps, and no Fridays.", "nguyen"),
     ("I'd love CS 310 — committee Wed 2-4.", "nguyen"),
     ("The CS 2025 cohort tested out of MATH 201.", None),
@@ -54,7 +54,7 @@ PARSE_MSGS = [
 
 DIAG_MSGS = [
     "Diaz is taking over CS 101, MATH 201 and CS 201 personally.",
-    "Dr. Chen is taking CS 301, CS 310 and CS 350 personally.",
+    "Prof. Chen is taking CS 301, CS 310 and CS 350 personally.",
     "CS 350 enrollment jumped to 200 after registration ended.",
 ]
 
@@ -69,12 +69,12 @@ CS 350 Machine Learning — MWF, lecture, 26 seats
 CS 401 Capstone — MWF, seminar, 25 seats, video-conf
 
 Faculty:
-Dr. Chen teaches CS 301, CS 310
+Prof. Chen teaches CS 301, CS 310
 Prof. Patel teaches CS 101, MATH 201
-Dr. Diaz teaches CS 101, MATH 201, CS 201 — unavailable Fridays; prefers mornings
-Dr. Okafor teaches CS 201, CS 301, CS 350 (max 3 sections)
+Prof. Diaz teaches CS 101, MATH 201, CS 201 — unavailable Fridays; prefers mornings
+Prof. Okafor teaches CS 201, CS 301, CS 350 (max 3 sections)
 Prof. Lee teaches CS 210, CS 401
-Dr. Nguyen teaches CS 310, CS 401, CS 301, CS 350
+Prof. Nguyen teaches CS 310, CS 401, CS 301, CS 350
 
 Degree map (BSc Computer Science):
 term 1: CS 101 (required)

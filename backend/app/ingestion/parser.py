@@ -164,7 +164,7 @@ def mock_ingest(text: str) -> InstitutionData:
         if m and section == "instructor":
             name, rest = m.groups()
             availability = ""
-            # "Dr. Lee teaches CS 210, CS 401 — unavailable Fridays"
+            # "Prof. Lee teaches CS 210, CS 401 — unavailable Fridays"
             parts = re.split(r"\s*[—–]\s*|\s+-\s+", rest, maxsplit=1)
             courses = parts[0]
             if len(parts) > 1:

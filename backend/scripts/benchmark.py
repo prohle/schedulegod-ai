@@ -39,7 +39,7 @@ def bench(name: str, sc) -> dict:
         agreement = round(100.0 * sum(1 for k in a if a[k] == b.get(k)) / max(1, len(a)), 1)
     margins = compute_margins(sc, result.timetable, 4)
     util = compute_utilization(sc, result.timetable)
-    emergency = run_emergency(sc, "Dr. Chen is out all week — who could cover her sections?")
+    emergency = run_emergency(sc, "Prof. Chen is out all week — who could cover her sections?")
     return {
         "name": name,
         "instructors": len(sc.instructors),

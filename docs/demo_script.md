@@ -24,10 +24,10 @@
 4. **University scale + publish** — Load university scale (38 instructors,
    41 sections, 20 cohorts, 5 programs) → coordinator publishes the
    verified timetable.
-5. **Role-based change** — sign in as Dr. Chen: only her sections visible →
+5. **Role-based change** — sign in as Prof. Chen: only her sections visible →
    "I can't teach Fridays" change request → coordinator approves →
    co-pilot re-solves, schedule re-publishes, her grid updates.
-6. **Mid-term emergency** — "Dr. Chen is out all week" → feasibility probes
+6. **Mid-term emergency** — "Prof. Chen is out all week" → feasibility probes
    over every qualified instructor → ranked zero-ripple coverage →
    before/after grids, agent trace visible.
 7. **Capacity planning** — Intelligence → Planning → "20% growth" what-if

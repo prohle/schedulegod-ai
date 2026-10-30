@@ -32,7 +32,7 @@ def _mentioned_instructors(message: str, scenario: Scenario):
     lower = message.lower()
     return [i for i in scenario.instructors
             if re.search(rf"\b{re.escape(i.id)}\b", lower)
-            or re.search(rf"\b{re.escape(i.name.lower().replace('dr. ', '').replace('prof. ', ''))}\b", lower)]
+            or re.search(rf"\b{re.escape(i.name.lower().split('. ', 1)[-1])}\b", lower)]
 
 
 def _mentioned_courses(message: str, scenario: Scenario):
@@ -76,7 +76,7 @@ def mock_parse(message: str, scenario: Scenario,
 
     inst = instructors[0] if instructors else None
 
-    # Emergency: "Dr. Chen is out all week"
+    # Emergency: "Prof. Chen is out all week"
     if inst and re.search(r"\b(?:out|away|gone|on leave)\b", lower):
         ops.append(Operation(op="remove_instructor", instructor_id=inst.id,
                              explanation=f"{inst.name} is out entirely this term."))

@@ -121,7 +121,7 @@
   "instructors": [
     {
       "id": "chen",
-      "name": "Dr. Chen",
+      "name": "Prof. Chen",
       "qualified_courses": [
         "cs301",
         "cs310"
@@ -148,7 +148,7 @@
     },
     {
       "id": "diaz",
-      "name": "Dr. Diaz",
+      "name": "Prof. Diaz",
       "qualified_courses": [
         "cs101",
         "math201",
@@ -159,7 +159,7 @@
     },
     {
       "id": "okafor",
-      "name": "Dr. Okafor",
+      "name": "Prof. Okafor",
       "qualified_courses": [
         "cs201",
         "cs301",
@@ -186,7 +186,7 @@
     },
     {
       "id": "nguyen",
-      "name": "Dr. Nguyen",
+      "name": "Prof. Nguyen",
       "qualified_courses": [
         "cs310",
         "cs401",

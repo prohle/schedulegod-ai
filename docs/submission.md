@@ -29,7 +29,7 @@ that week: paste or drop the institution's messy data and Muse Spark
 autocleans it into a typed model; type one sentence ("Prof. Patel can't teach
 Mondays — committee duty") and Muse parses it into validated constraints
 while CP-SAT re-solves and proves the ripple; when reality breaks mid-term, a
-one typed message ("Dr. Chen is out all week") triggers CP-SAT probes of every
+one typed message ("Prof. Chen is out all week") triggers CP-SAT probes of every
 qualified instructor and only zero-ripple-verified coverage is shown. When a
 request is infeasible, CP-SAT names the minimal conflicting subset, Muse
 translates the proof into ranked resolutions, and CP-SAT re-solves every one

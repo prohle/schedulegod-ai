@@ -18,7 +18,7 @@ def test_faculty_availability_becomes_typed_constraints():
         courses=[ExtractedCourse(code="CS 101", title="Intro", seats=50)],
         instructors=[
             ExtractedInstructor(
-                name="Dr. Chen",
+                name="Prof. Chen",
                 qualified_courses=["CS 101"],
                 availability="unavailable Mondays; prefers mornings",
             )
@@ -29,7 +29,7 @@ def test_faculty_availability_becomes_typed_constraints():
             program="BSc CS", term=1, course="CS 101", required=True)],
     )
     scenario = build_scenario(data)
-    chen = scenario.instructor("dr-chen")
+    chen = scenario.instructor("prof-chen")
 
     # "unavailable Mondays" -> all four Monday slots are hard-blocked.
     assert {(s.day, s.period) for s in chen.hard_unavailable} == {
@@ -52,7 +52,7 @@ def test_campus_distances_override_the_default_walk_matrix():
 def test_degree_map_links_cohorts_to_programs():
     data = InstitutionData(
         courses=[ExtractedCourse(code="CS 101"), ExtractedCourse(code="CS 201")],
-        instructors=[ExtractedInstructor(name="Dr. Chen", qualified_courses=["CS 101", "CS 201"])],
+        instructors=[ExtractedInstructor(name="Prof. Chen", qualified_courses=["CS 101", "CS 201"])],
         cohorts=[ExtractedCohort(
             name="CS 2026", program="BSc CS", current_term=1, size=30)],
         degree_map=[

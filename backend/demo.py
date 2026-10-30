@@ -22,7 +22,7 @@ INTAKE_MSG = (
     "Professor Patel can't teach Mondays — committee duty. "
     "She'd rather not teach at 8:00."
 )
-EMERGENCY_MSG = "Dr. Chen is out all week — who could cover her sections?"
+EMERGENCY_MSG = "Prof. Chen is out all week — who could cover her sections?"
 OVERLOAD_MSG = "Diaz is taking over CS 101, MATH 201 and CS 201 personally."
 ENROLLMENT_MSG = "CS 350 enrollment jumped to 45 after registration ended."
 

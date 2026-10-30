@@ -60,7 +60,7 @@ def test_department_preserves_demo_beats():
     assert overload.status == "infeasible"
     assert overload.conflicts.conflicting_operation_indices
 
-    resp = run_emergency(sc, "Dr. Chen is out all week — who could cover her sections?")
+    resp = run_emergency(sc, "Prof. Chen is out all week — who could cover her sections?")
     assert resp.affected_section_ids == ["sec-cs301", "sec-cs310"]
     assert resp.chosen and all(v != "chen" for v in resp.chosen.values())
     assert resp.result.status in ("optimal", "feasible")
@@ -90,7 +90,7 @@ def test_agent_trace_exposes_the_loop():
     assert steps[-1] == "audit"
     assert all(s.actor and s.detail for s in healed.agent_trace)
 
-    emergency = run_emergency(sc, "Dr. Chen is out all week — who could cover her sections?")
+    emergency = run_emergency(sc, "Prof. Chen is out all week — who could cover her sections?")
     esteps = [s.step for s in emergency.agent_trace]
     assert esteps[0] == "parse" and "impact" in esteps and "probe" in esteps
     assert "choose" in esteps and "re-solve" in esteps and esteps[-1] == "audit"

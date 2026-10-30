@@ -98,7 +98,7 @@ def test_infeasible_request_returns_a_minimal_core():
 def test_emergency_proposals_cover_every_affected_section():
     sc = load_seed_scenario()
     base = solve(sc)
-    response = run_emergency(sc, "Dr. Chen is out all week — who could cover her sections?")
+    response = run_emergency(sc, "Prof. Chen is out all week — who could cover her sections?")
     assert response.affected_section_ids
     assert set(response.chosen) == set(response.affected_section_ids)
     assert all(pid != "chen" for pid in response.chosen.values())
@@ -122,7 +122,7 @@ def test_voice_style_honorifics_still_resolve_instructors():
     # title in live transcripts resolved to nobody on Oct 29).
     from app.parsing.parser import ConstraintParser, normalize_honorifics
     spelled = "Docto" "r"  # spelled-out title, as speech recognition returns it
-    assert normalize_honorifics(f"{spelled} Chen is out") == "Dr. Chen is out"
+    assert normalize_honorifics(f"{spelled} Chen is out") == "Prof. Chen is out"
     sc = load_seed_scenario()
     parsed = ConstraintParser().parse(f"{spelled} Chen is out all week.", sc)
     assert any(o.op == "remove_instructor" and o.instructor_id == "chen"

@@ -86,10 +86,10 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 | Who says | What happens |
 |---|---|
 | "Prof. Patel can't teach Mondays — committee duty." | Her sections legally re-home to other instructors and the rest of the board shifts to keep the cohort conflict-free. One sentence, a multi-section ripple, all solver-verified — and **applied to the term**, so the next solve keeps it. |
-| "Dr. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 2/3, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
+| "Prof. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 2/3, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
 | "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. Muse Spark's explanation names the binding rule and ranks resolutions ("drop the CS 201 pin — Okafor has capacity to take it"); **every option is re-solved by CP-SAT with its own penalty delta**, the least disruptive one applies. |
 | "CS 350 enrollment jumped to 45 after registration ended." | Active enrollment re-triggers every capacity check; the board re-solves and CS 350 lands in the 120-seat hall with zero cohort conflicts. |
-| *(coordinator clicks Publish, then signs in as Dr. Chen)* | Chen sees **only her own sections**. Her request "I can't teach Fridays" goes to the coordinator, who approves it — the verified loop re-solves, re-publishes, and her personal grid updates. A student signing in sees only their cohort's courses. |
+| *(coordinator clicks Publish, then signs in as Prof. Chen)* | Chen sees **only her own sections**. Her request "I can't teach Fridays" goes to the coordinator, who approves it — the verified loop re-solves, re-publishes, and her personal grid updates. A student signing in sees only their cohort's courses. |
 | "What if enrollment grows 20% — or we repurpose the big hall?" | Each growth/repurpose/build-a-lab what-if is re-solved first: utilization and four-course-guarantee deltas with a plain verdict, before capital is committed. Add a college, degree, or course — or adjust a degree map — by re-ingesting the changed files; the institution re-solves as one. |
 | *(C39 shortfall fires)* | "CS 2023 cohort can only fit 2 of 4 non-conflicting courses." → the tightener proposes opening already-offered electives; CP-SAT verifies the margin gains against the current board and **rejects** moves that make the enlarged scenario infeasible. Only verified moves are shown. |
 
@@ -141,7 +141,7 @@ At department scale every cohort still gets its four-course guarantee, every cou
 | 2 | Constraint parsing → typed operations (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` | every intake submission, chair request, emergency message |
 | 3 | Self-healing explanation → conflict explanation + ranked resolutions (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/explainer.py` | whenever a solver proves a request infeasible |
 | 4 | Intelligence tightening → typed repair moves (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/intelligence/tightener.py` | spectral deadlock warning, C39 margin shortfall, or base infeasibility |
-| 5 | Voice call-in → transcript that feeds the same emergency pipeline | Muse Voice Transcribe `muse-voice-transcribe-1.0` | `backend/app/services/voice.py` (`POST /emergency/audio`) | a coordinator phones in "Dr. Chen is out all week" instead of typing it |
+| 5 | Voice call-in → transcript that feeds the same emergency pipeline | Muse Voice Transcribe `muse-voice-transcribe-1.0` | `backend/app/services/voice.py` (`POST /emergency/audio`) | a coordinator phones in "Prof. Chen is out all week" instead of typing it |
 
 **Set your key** (the repo ships `.env.example` — copy it to `.env` and fill in `MODEL_API_KEY`; `.env` is gitignored):
 
@@ -150,7 +150,7 @@ cp .env.example .env        # then paste your key from https://dev.meta.ai/dashb
 docker compose up --build   # live Muse Spark
 ```
 
-**Sample outputs / provenance:** `backend/muse-verification.json` is a live captured run of all four structured roles against the seed (ingestion + parse + explanation + tighten), all `muse-spark-1.3-contributor`, with real structured outputs and latencies (8–25 s per call). The parse battery includes a speaker context for identity-dependent messages. `backend/muse-verification-voice.json` captures a live Muse Voice Transcribe run of the Chen call-in, Oct 29; spelled-out academic titles from speech recognition are normalized deterministically before parsing.
+**Sample outputs / provenance:** `backend/muse-verification.json` is a live captured run of all four structured roles against the seed (ingestion + parse + explanation + tighten), all `muse-spark-1.3-contributor`, with real structured outputs and latencies (3–42 s per call across the contributor and open-weights captures). The parse battery includes a speaker context for identity-dependent messages. `backend/muse-verification-voice.json` captures a live Muse Voice Transcribe run of the Chen call-in, Oct 29; spelled-out academic titles from speech recognition are normalized deterministically before parsing.
 
 *All four structured roles run on the contributor model because the data is synthetic; a real institution would use standard mode (`muse-spark-1.3`) so no staff data ever trains Meta's models. Dev-time coding tools are unrestricted by the hackathon and touch nothing at runtime.*
 

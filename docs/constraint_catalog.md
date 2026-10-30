@@ -127,16 +127,16 @@ What a chair/secretary actually says mid-term, and what each maps to:
 | Human says | Operation |
 |---|---|
 | **(intake window)** "I can't do Mondays, committee Wed 2-4, I'd love CS310, keep me ≤2 preps" | same vocabulary below — parsed from instructor submissions, not just chair directives |
-| "Dr. Chen can't teach Tuesdays anymore — committee duty" | `add_instructor_unavailability` (hard) |
-| "Dr. Rao would rather not teach before 10" | `add_instructor_preference` (soft) |
+| "Prof. Chen can't teach Tuesdays anymore — committee duty" | `add_instructor_unavailability` (hard) |
+| "Prof. Rao would rather not teach before 10" | `add_instructor_preference` (soft) |
 | "The CS 2025 cohort tested out of MATH201; they need CS310 this term" | roadmap edit (`update_cohort_plan`, v2) |
 | "East lab is closed for renovation all October" | `add_room_unavailability` |
 | "Enrollment surged — CS210 needs another section" | tightener move `add_section` (CP-SAT-verified; not a direct request op in v1) |
-| "Dr. Lee is covering for Dr. Okafor in CS220" | `set_section_instructor` |
+| "Prof. Lee is covering for Prof. Okafor in CS220" | `set_section_instructor` |
 | "Move the intro lecture to the big hall, the small one is packed" | `set_section_room` |
 | "Keep me under 3 preps" / "cap me at two sections" | `set_prep_cap` / `set_load_cap` |
 | "CS 350 enrollment jumped to 45 after registration ended" | `update_enrollment` (re-triggers C24 capacity) |
-| **(emergency)** "Dr. Chen is out all next week — who can cover her sections?" | `propose_candidates` — a **query**, not an edit: ranked coverage proposals |
+| **(emergency)** "Prof. Chen is out all next week — who can cover her sections?" | `propose_candidates` — a **query**, not an edit: ranked coverage proposals |
 
 Every operation is guarded by a CP-SAT assumption literal — infeasible
 requests produce the minimal conflicting subset, the self-healing hook.
@@ -161,7 +161,7 @@ requests produce the minimal conflicting subset, the self-healing hook.
 
 ### Phase 3 — Operate (emergency resource changes)
 - An emergency arrives (text or voice — Muse Voice Transcribe):
-  "Dr. Chen is out all next week."
+  "Prof. Chen is out all next week."
 - **Impact analysis:** which sections/meetings lose their instructor.
 - **Coverage proposal — "who could potentially be available":**
   1. Candidates = qualified for the course (C13) ∩ not hard-blocked in the

@@ -10,7 +10,7 @@ import { saveSession, type AuthUser } from "@/lib/auth";
 
 const DEMO = [
   { label: "Coordinator", email: "coordinator@schedulegod.demo", hint: "Runs the term: build, publish, approve changes" },
-  { label: "Dr. Chen (instructor)", email: "chen@schedulegod.demo", hint: "Sees only her sections; requests changes" },
+  { label: "Prof. Chen (instructor)", email: "chen@schedulegod.demo", hint: "Sees only her sections; requests changes" },
   { label: "CS 2025 (student)", email: "cs2025@schedulegod.demo", hint: "Sees only the cohort's courses" },
 ];
 

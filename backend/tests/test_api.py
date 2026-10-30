@@ -26,7 +26,7 @@ def test_apply_then_solve_keeps_patel_off_monday(client):
 
 def test_emergency_apply_removes_instructor_for_good(client):
     emergency = client.post("/emergency", json={
-        "message": "Dr. Chen is out all week — who could cover her sections?"}).json()
+        "message": "Prof. Chen is out all week — who could cover her sections?"}).json()
     assert emergency["chosen"]
 
     applied = client.post("/apply", json={

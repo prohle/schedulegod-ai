@@ -69,8 +69,8 @@ def _pdf(text: str) -> bytes:
 
 
 def test_extracts_docx_xlsx_pdf_csv_and_zip():
-    docx = extract_text("faculty-memo.docx", _docx(["Dr. Chen teaches CS 301, CS 310"]))
-    assert "Dr. Chen teaches CS 301, CS 310" in docx
+    docx = extract_text("faculty-memo.docx", _docx(["Prof. Chen teaches CS 301, CS 310"]))
+    assert "Prof. Chen teaches CS 301, CS 310" in docx
 
     xlsx = extract_text("rooms.xlsx", _xlsx([["Room", "Capacity"], ["Science 101", "36"]]))
     assert "Room | Capacity" in xlsx and "Science 101 | 36" in xlsx

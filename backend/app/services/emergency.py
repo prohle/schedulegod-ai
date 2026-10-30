@@ -1,6 +1,6 @@
 """Emergency resource changes: impact analysis + verified coverage proposals.
 
-Flow: parse the emergency ("Dr. Chen is out all week") -> solve the base
+Flow: parse the emergency ("Prof. Chen is out all week") -> solve the base
 timetable -> identify affected sections -> `propose_candidates` (CP-SAT
 probe per candidate: qualified ∩ load headroom ∩ zero-ripple feasibility)
 -> auto-pick the best candidate per section -> re-solve -> report.

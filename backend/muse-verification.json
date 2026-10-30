@@ -1,157 +1,160 @@
 {
+  "model": "muse-spark-1.3-contributor",
+  "base_url": "https://api.meta.ai/v1",
   "parse": [
     {
       "msg": "I can't teach Mondays \u2014 committee duty. Prefer mornings.",
       "ok": true,
-      "s": 24.6,
-      "summary": "Prof. Patel unavailable Mondays and prefers morning periods.",
+      "s": 22.1,
+      "summary": "Patel unavailable Mondays and prefers morning periods.",
       "ops": [
         "add_instructor_unavailability",
         "add_instructor_preference",
         "add_instructor_preference"
       ],
-      "speaker_id": "patel",
-      "mode": "muse-spark",
-      "model": "muse-spark-1.3-contributor"
+      "speaker_id": "patel"
     },
     {
-      "msg": "Dr. Chen is out all next week.",
+      "msg": "Prof. Chen is out all next week.",
       "ok": true,
-      "s": 12.4,
-      "summary": "Dr. Chen removed entirely for out all next week.",
+      "s": 9.3,
+      "summary": "Prof. Chen is removed from scheduling for next week.",
       "ops": [
         "remove_instructor"
-      ]
+      ],
+      "speaker_id": null
     },
     {
       "msg": "Diaz is taking over CS 101, MATH 201 and CS 201 personally.",
       "ok": true,
-      "s": 13.9,
-      "summary": "Assign Dr. Diaz to CS 101, MATH 201, and CS 201 sections.",
+      "s": 10.8,
+      "summary": "Assign Diaz to CS 101, MATH 201, and CS 201 sections.",
       "ops": [
         "set_section_instructor",
         "set_section_instructor",
         "set_section_instructor"
-      ]
+      ],
+      "speaker_id": null
     },
     {
       "msg": "CS 350 enrollment jumped to 45 after registration ended.",
       "ok": true,
-      "s": 7.9,
-      "summary": "CS 350 enrollment updated to 45 after registration.",
+      "s": 12.6,
+      "summary": "Updated CS 350 enrollment to 45.",
       "ops": [
         "update_enrollment"
-      ]
+      ],
+      "speaker_id": null
     },
     {
       "msg": "Prof. Patel would rather not teach before 10.",
       "ok": true,
-      "s": 22.0,
-      "summary": "Prof. Patel prefers to avoid teaching before 10am.",
+      "s": 16.8,
+      "summary": "Prof. Patel prefers not to teach before 10am.",
       "ops": [
         "add_instructor_preference",
         "add_instructor_preference"
-      ]
+      ],
+      "speaker_id": null
     },
     {
       "msg": "East lab is closed for renovation all October.",
       "ok": true,
-      "s": 11.9,
-      "summary": "Mark East lab (e-lab2) unavailable for all times due to October renovation.",
+      "s": 12.2,
+      "summary": "Mark Engineering Lab 2 as unavailable for all times during October renovation.",
       "ops": [
         "add_room_unavailability"
-      ]
+      ],
+      "speaker_id": null
     },
     {
       "msg": "Move the intro lecture to the big hall, the small one is packed.",
       "ok": true,
-      "s": 14.5,
-      "summary": "Move intro lecture (CS 101) to the big hall Science Hall 120.",
+      "s": 9.8,
+      "summary": "Move the CS 101 intro lecture to Science Hall 120.",
       "ops": [
         "set_section_room"
-      ]
+      ],
+      "speaker_id": null
     },
     {
-      "msg": "Dr. Lee is covering for Dr. Okafor in CS 220.",
+      "msg": "Prof. Lee is covering for Prof. Okafor in CS 220.",
       "ok": true,
-      "s": 8.2,
-      "summary": "No changes - CS 220 does not match any known course or section, so no operation was created.",
-      "ops": []
+      "s": 11.5,
+      "summary": "No changes applied: CS 220 does not match any known course or section.",
+      "ops": [],
+      "speaker_id": null
     },
     {
       "msg": "Keep me under 3 preps, and no Fridays.",
       "ok": true,
-      "s": 15.4,
-      "summary": "Set Nguyen prep cap to 3 and Friday unavailability.",
+      "s": 10.5,
+      "summary": "Cap Prof. Nguyen at 3 preps and block all Fridays.",
       "ops": [
         "set_prep_cap",
         "add_instructor_unavailability"
       ],
-      "speaker_id": "nguyen",
-      "mode": "muse-spark",
-      "model": "muse-spark-1.3-contributor"
+      "speaker_id": "nguyen"
     },
     {
       "msg": "I'd love CS 310 \u2014 committee Wed 2-4.",
       "ok": true,
-      "s": 22.7,
-      "summary": "Dr. Nguyen prefers CS 310 and is unavailable Wednesday for committee.",
+      "s": 42.0,
+      "summary": "Prof. Nguyen prefers CS 310 and is unavailable Wednesdays for committee.",
       "ops": [
         "add_instructor_preference",
         "add_instructor_unavailability"
       ],
-      "speaker_id": "nguyen",
-      "mode": "muse-spark",
-      "model": "muse-spark-1.3-contributor"
+      "speaker_id": "nguyen"
     },
     {
       "msg": "The CS 2025 cohort tested out of MATH 201.",
       "ok": true,
-      "s": 14.9,
-      "summary": "MATH 201 enrollment set to zero after CS 2025 cohort tested out.",
-      "ops": [
-        "update_enrollment"
-      ]
+      "s": 17.2,
+      "summary": "No actionable scheduling change; CS 2025 cohort note does not map to a concrete section enrollment or constraint.",
+      "ops": [],
+      "speaker_id": null
     },
     {
       "msg": "CS 210 needs another section.",
       "ok": true,
-      "s": 5.7,
-      "summary": "Request for an additional CS 210 section has no matching operation and is ignored.",
-      "ops": []
+      "s": 7.4,
+      "summary": "No schedulable change \u2013 request for an additional CS 210 section has no supported operation.",
+      "ops": [],
+      "speaker_id": null
     }
   ],
   "explanation": [
     {
       "msg": "Diaz is taking over CS 101, MATH 201 and CS 201 personally.",
       "ok": true,
-      "s": 20.5,
+      "s": 13.7,
       "mode": "muse-spark",
       "status": "optimal",
-      "explanation": "Dr. Diaz was pinned to three sections at once \u2014 CS 101, MATH 201, and CS 201. Diaz's load cap is max 2 sections, so all three pins cannot be honored together. T"
+      "explanation": "Prof. Diaz cannot personally take over CS 101, MATH 201, and CS 201 at the same time. Prof. Diaz is qualified for all three but has a load cap of max 2 sections"
     },
     {
-      "msg": "Dr. Chen is taking CS 301, CS 310 and CS 350 personally.",
+      "msg": "Prof. Chen is taking CS 301, CS 310 and CS 350 personally.",
       "ok": true,
-      "s": 24.7,
+      "s": 21.5,
       "mode": "muse-spark",
       "status": "optimal",
-      "explanation": "Dr. Chen was pinned to CS 301, CS 310, and CS 350 at the same time, but Dr. Chen has a max load of 2 sections, so all three cannot hold together. The binding ru"
+      "explanation": "Pinning Prof. Chen to CS 301, CS 310, and CS 350 at once needs 3 sections from Chen, but Chen's load cap is max 2 sections. In addition, Chen is only qualified "
     },
     {
       "msg": "CS 350 enrollment jumped to 200 after registration ended.",
       "ok": true,
-      "s": 18.4,
+      "s": 12.9,
       "mode": "muse-spark",
       "status": "optimal",
-      "explanation": "The request to raise CS 350 enrollment to 200 students is infeasible by itself. No available room with the required type and equipment can seat 200 while respec"
+      "explanation": "Raising CS 350 to 200 students leaves no feasible room assignment. The updated enrollment in request [0] exceeds the capacity of any available room that meets i"
     }
   ],
   "tighten": [
     {
       "i": 0,
       "ok": true,
-      "s": 14.8,
+      "s": 13.2,
       "mode": "muse-spark",
       "trigger": "margin_shortfall",
       "moves": 3,
@@ -160,27 +163,26 @@
     {
       "i": 1,
       "ok": true,
-      "s": 16.9,
+      "s": 17.6,
       "mode": "muse-spark",
       "trigger": "margin_shortfall",
       "moves": 3,
-      "verified": 2
+      "verified": 3
     }
   ],
   "ingestion": [
     {
       "ok": true,
-      "s": 21.1,
+      "s": 13.8,
       "mode": "muse-spark",
       "model": "muse-spark-1.3-contributor",
-      "latency_ms": 20147,
+      "latency_ms": 12790,
       "courses": 8,
       "instructors": 6,
       "cohorts": 4,
       "rooms": 6,
       "degree_map": 8,
-      "buildings": 3,
-      "distances": 3
+      "buildings": 3
     }
   ]
 }

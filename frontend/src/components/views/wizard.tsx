@@ -56,12 +56,12 @@ CS 350 Machine Learning — MWF, lecture, 26 seats
 CS 401 Capstone — MWF, seminar, 25 seats, video-conf
 
 Faculty:
-Dr. Chen teaches CS 301, CS 310
+Prof. Chen teaches CS 301, CS 310
 Prof. Patel teaches CS 101, MATH 201
-Dr. Diaz teaches CS 101, MATH 201, CS 201 — unavailable Fridays; prefers mornings
-Dr. Okafor teaches CS 201, CS 301, CS 350 (max 3 sections)
+Prof. Diaz teaches CS 101, MATH 201, CS 201 — unavailable Fridays; prefers mornings
+Prof. Okafor teaches CS 201, CS 301, CS 350 (max 3 sections)
 Prof. Lee teaches CS 210, CS 401
-Dr. Nguyen teaches CS 310, CS 401, CS 301, CS 350
+Prof. Nguyen teaches CS 310, CS 401, CS 301, CS 350
 
 Degree map (BSc Computer Science):
 term 1: CS 101 (required)
@@ -203,7 +203,7 @@ export function WizardView({ onToast }: WizardViewProps) {
   const [speakerId, setSpeakerId] = useState("");
   const [intakeBusy, setIntakeBusy] = useState(false);
   const [copilot, setCopilot] = useState<CopilotResponse | null>(null);
-  const [emergencyMsg, setEmergencyMsg] = useState("Dr. Chen is out all week — who could cover her sections?");
+  const [emergencyMsg, setEmergencyMsg] = useState("Prof. Chen is out all week — who could cover her sections?");
   const [emergencyBusy, setEmergencyBusy] = useState(false);
   const [emergency, setEmergency] = useState<EmergencyResponse | null>(null);
   const [scaleBusy, setScaleBusy] = useState(false);

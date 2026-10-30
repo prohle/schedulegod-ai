@@ -49,7 +49,7 @@ def test_change_request_round_trip_through_verified_apply(client):
     coordinator = _login(client, "coordinator@schedulegod.demo")
     chen = _login(client, "chen@schedulegod.demo")
     created = client.post("/me/change-requests", headers=chen, json={
-        "message": "Dr. Chen can't teach Fridays."})
+        "message": "Prof. Chen can't teach Fridays."})
     assert created.status_code == 200, created.text
     request_id = created.json()["id"]
 
@@ -77,7 +77,7 @@ def test_register_new_instructor_and_login(client):
     email = f"newprof-{uuid.uuid4().hex[:8]}@example.edu"  # dev DB persists
     response = client.post("/auth/register", json={
         "email": email, "password": "demo1234",
-        "role": "instructor", "display_name": "Dr. Diaz",
+        "role": "instructor", "display_name": "Prof. Diaz",
         "instructor_id": "diaz"})
     assert response.status_code == 200, response.text
     headers = _login(client, email)
