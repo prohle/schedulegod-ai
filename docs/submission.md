@@ -84,7 +84,7 @@ judges can click every beat offline.
 |---|---|
 | Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at department scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps), 3 programs / 12 cohorts |
 | Use of Meta AI tooling (25%) | 4 runtime Muse Spark roles (ingest, parse, explain, tighten) + Muse Voice Transcribe endpoint, live badges (model + latency) on screen, `muse-verification.json` + `muse-verification-open.json`, agent trace names Muse at every proposing step |
-| Technical depth & execution (20%) | CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, 31 passing tests, CI |
+| Technical depth & execution (20%) | CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, 32 passing tests, CI |
 | Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple emergency, solver-verified resolutions, department-scale solve in the Build step |
 
 ## What was built during the hackathon (Oct 27 – Nov 4)
@@ -96,7 +96,7 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 
 - [ ] All work committed and pushed; repo public and cloneable
 - [ ] `docker compose up --build` from a clean clone boots healthy (db Postgres 18 → backend → frontend)
-- [ ] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 31 tests)
+- [ ] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 32 tests from repo root)
 - [ ] Frontend production build passes (`cd frontend && npm run build`)
 - [ ] Video ≤ 3:00, recorded with `MODEL_API_KEY` set — every badge says `muse-spark`, never `MOCK` (see `docs/demo_shotlist.md`)
 - [ ] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/XLSX/TXT/MD) → Patel intake applied to the term → Build solve → **university-scale solve + dual-engine compare** → emergency with before/after → Diaz self-heal with verified resolutions + agent trace → audit trail

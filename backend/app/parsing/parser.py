@@ -25,6 +25,17 @@ from app.parsing.prompts import build_system_prompt
 logger = logging.getLogger(__name__)
 
 
+def normalize_honorifics(message: str) -> str:
+    """Speech transcripts and typed messages spell titles out ("Doctor Chen",
+    "Professor Patel") while the scenario names use "Dr." / "Prof.".
+    Normalizing before the parse keeps name resolution deterministic for
+    both the live Muse path and the mock fallback."""
+    import re
+    message = re.sub(r"\bDoctor\b", "Dr.", message)
+    message = re.sub(r"\bProfessor\b", "Prof.", message)
+    return message
+
+
 class ConstraintParser:
     def __init__(self) -> None:
         self.mode: str = "mock" if not config.MUSE_API_KEY else "muse-spark"
@@ -40,6 +51,7 @@ class ConstraintParser:
     def parse(self, message: str, scenario: Scenario,
               speaker_id: str | None = None) -> ParsedRequest:
         import time
+        message = normalize_honorifics(message)
         t0 = time.perf_counter()
         if self._client is None:
             parsed = mock_parse(message, scenario, speaker_id)

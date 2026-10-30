@@ -2,7 +2,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](./backend)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg)](./frontend)
-[![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen.svg)](#run-it)
+[![Tests](https://img.shields.io/badge/tests-32%20passing-brightgreen.svg)](#run-it)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](./docker-compose.yml)
 
 # ScheduleGod AI — Agentic Constraint Solver & Timetable Infrastructure
@@ -124,6 +124,7 @@ At department scale every cohort still gets its four-course guarantee, every cou
 | 2 | Constraint parsing → typed operations (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` | every intake submission, chair request, emergency message |
 | 3 | Self-healing explanation → conflict explanation + ranked resolutions (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/explainer.py` | whenever a solver proves a request infeasible |
 | 4 | Intelligence tightening → typed repair moves (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/intelligence/tightener.py` | spectral deadlock warning, C39 margin shortfall, or base infeasibility |
+| 5 | Voice call-in → transcript that feeds the same emergency pipeline | Muse Voice Transcribe `muse-voice-transcribe-1.0` | `backend/app/services/voice.py` (`POST /emergency/audio`) | a coordinator phones in "Dr. Chen is out all week" instead of typing it |
 
 **Set your key** (the repo ships `.env.example` — copy it to `.env` and fill in `MODEL_API_KEY`; `.env` is gitignored):
 
@@ -132,7 +133,7 @@ cp .env.example .env        # then paste your key from https://dev.meta.ai/dashb
 docker compose up --build   # live Muse Spark
 ```
 
-**Sample outputs / provenance:** `backend/muse-verification.json` is a live captured run of all four structured roles against the seed (ingestion + parse + explanation + tighten), all `muse-spark-1.3-contributor`, with real structured outputs and latencies (8–25 s per call). The parse battery includes a speaker context for identity-dependent messages.
+**Sample outputs / provenance:** `backend/muse-verification.json` is a live captured run of all four structured roles against the seed (ingestion + parse + explanation + tighten), all `muse-spark-1.3-contributor`, with real structured outputs and latencies (8–25 s per call). The parse battery includes a speaker context for identity-dependent messages. `backend/muse-verification-voice.json` captures a live Muse Voice Transcribe run (exact transcript of the Chen call-in, Oct 29); spelled-out titles from speech ("Doctor Chen") are normalized deterministically before parsing.
 
 *All four structured roles run on the contributor model because the data is synthetic; a real institution would use standard mode (`muse-spark-1.3`) so no staff data ever trains Meta's models. Dev-time coding tools are unrestricted by the hackathon and touch nothing at runtime.*
 

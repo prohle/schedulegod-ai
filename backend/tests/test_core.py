@@ -116,6 +116,18 @@ def test_emergency_proposals_cover_every_affected_section():
     assert shape(base, affected) == shape(response.result, affected)
 
 
+def test_voice_style_honorifics_still_resolve_instructors():
+    # Muse Voice Transcribe spells titles out; the emergency flow must
+    # still find the instructor (regression: live "Doctor Chen" resolved
+    # to nobody on Oct 29).
+    from app.parsing.parser import ConstraintParser, normalize_honorifics
+    assert normalize_honorifics("Doctor Chen is out") == "Dr. Chen is out"
+    sc = load_seed_scenario()
+    parsed = ConstraintParser().parse("Doctor Chen is out all week.", sc)
+    assert any(o.op == "remove_instructor" and o.instructor_id == "chen"
+               for o in parsed.operations)
+
+
 def test_spectral_radar_sees_the_real_conflict_graph():
     sc = load_seed_scenario()
     report = analyze(sc)
