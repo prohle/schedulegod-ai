@@ -43,10 +43,13 @@ translates the proof into ranked resolutions, and CP-SAT re-solves every one
 before the least disruptive is auto-applied. At department scale (26
 instructors, 25 sections, 12 cohorts, 3 programs) the same engines solve
 optimally in tens of milliseconds with the four-course guarantee holding
-for all 12 cohorts. And the proof runs both ways: a student who says "I
-work Tue/Thu, I need CS 201, no 8 AMs" gets a personal plan selected from
-the placed timetable and re-verified before it is shown — or an honest
-explanation of why their must-take course cannot fit this term. The LLM
+for all 12 cohorts. And the proof runs both ways: a student is advised
+from their own study record and desired degree — mandatory vs optional
+from the institution's degree map, completed courses from the record
+they provide (or a cohort progress lookup when they don't), then "I work
+Tue/Thu, I need CS 201, no 8 AMs" — and gets a personal plan selected
+from the placed timetable and re-verified before it is shown, or an
+honest explanation of why their must-take course cannot fit this term. The LLM
 never touches the schedule — it proposes; the solver proves; every step
 is in the audit trail.
 
