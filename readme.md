@@ -2,7 +2,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](./backend)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg)](./frontend)
-[![Tests](https://img.shields.io/badge/tests-42%20passing-brightgreen.svg)](#run-it)
+[![Tests](https://img.shields.io/badge/tests-41%20passing-brightgreen.svg)](#run-it)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](./docker-compose.yml)
 
 # ScheduleGod AI — Agentic Constraint Solver & Timetable Infrastructure
@@ -22,13 +22,13 @@ A department's instructors — twenty-six in the loadable department-scale scena
 
 Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* track. This is the problem we know firsthand.
 
-> **▶ Live demo (no account, no API key needed): https://prohle--schedulegod-ai-ui-web.us-east.modal.run** — the full wizard UI (Import → Intake → Build → Emergency → Intelligence), proxied to the backend API at https://prohle--schedulegod-ai-api.us-east.modal.run (`/docs`, `/status`, `/engines`). Both are scale-to-zero on Modal, so the first request may take a few seconds. Judges can also run everything locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
+> **▶ Live demo (no account, no API key needed): https://prohle--schedulegod-ai-ui-web.us-east.modal.run** — the full Express flow (Import → Intake → Build → Review → Emergency) plus the Full advanced workspace, proxied to the backend API at https://prohle--schedulegod-ai-api.us-east.modal.run (`/docs`, `/status`, `/engines`). Both are scale-to-zero on Modal, so the first request may take a few seconds. Judges can also run everything locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
 >
 > **▶ Demo video (2:55, live Puppeteer screencast of the running app — not screenshots): https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4** — one-click coordinator login → any-format import autoclean → Patel intake → **dual-engine compare with Rank 1 / Rank 2 ranked from outputs** → university-scale publish → instructor change request approved and re-published → Chen emergency with solver-verified coverage + agent trace → growth what-if re-solve. Script and recording pipeline: [docs/demo_script.md](./docs/demo_script.md).
 
-![Build: visual timetable grid](docs/screenshot-build.png)
+![Express · Build: visual timetable grid](docs/screenshot-build.png)
 
-![Emergency: before/after with CP-SAT-verified coverage](docs/screenshot-emergency.png)
+![Express · Emergency: before/after with CP-SAT-verified coverage](docs/screenshot-emergency.png)
 
 ## How it works
 
@@ -73,7 +73,7 @@ GROW       plan with proof before spending: enrollment +20%, repurpose a
 
 When a request set is infeasible, the solver doesn't just fail — every incoming constraint is guarded by a CP-SAT *assumption literal*, so the model returns the **minimal conflicting subset** of the request. Then the two-layer self-heal fires: **Muse Spark translates the proof** (plain-English explanation + ranked resolutions, each dropping one conflicting request), and **CP-SAT re-solves every proposed resolution** before it can be shown — the agent presents only *proven* options, and auto-applies the least disruptive one.
 
-**Every co-pilot run returns an agent trace** — the autonomous loop made visible, step by step with the actor named: `parse (Muse Spark) → validate → solve (CP-SAT) → conflict-core → explain (Muse Spark) → verify each resolution (CP-SAT) → auto-apply the least-disruptive proven fix → audit`. The Emergency flow traces the same way (`parse → impact → probe every candidate → choose → re-solve → audit`). The wizard renders the trace live; it is also in the API response (`agent_trace`). No step is a model guess: each one either proposes (Muse) or proves (CP-SAT).
+**Every co-pilot run returns an agent trace** — the autonomous loop made visible, step by step with the actor named: `parse (Muse Spark) → validate → solve (CP-SAT) → conflict-core → explain (Muse Spark) → verify each resolution (CP-SAT) → auto-apply the least-disruptive proven fix → audit`. The Emergency flow traces the same way (`parse → impact → probe every candidate → choose → re-solve → audit`). Express renders the trace live; it is also in the API response (`agent_trace`). No step is a model guess: each one either proposes (Muse) or proves (CP-SAT).
 
 **Spectral warm-start runs on every solve**: the section-conflict graph (cohort hard edges + instructor soft edges) yields Laplacian eigenvalues and the Fiedler vector, whose spectral coloring becomes CP-SAT `AddHint` hints. The same graph powers a **deadlock radar** — algebraic connectivity μ₂, Hoffman chromatic lower bound, exact max clique — that names a structural deadlock (a same-pattern clique exceeding the 4-period MWF/TTh band) *before* the solver wastes a solve, and feeds the tightener.
 
@@ -95,7 +95,7 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 
 ## Proof at university scale
 
-The demo story above is one department slice (6 instructors, 8 sections) so every beat fits in three minutes. The same engine — same code path, one click in the Build step (**Load department scale** / **Load university scale**, or `POST /scenario/department` / `/scenario/university`) — solves a full department cluster (**26 instructors, 25 sections, 12 cohorts, 3 programs**) or the entire university (**38 instructors, 41 sections, 20 cohorts, 5 programs** sharing the same rooms, slots, and campus walk matrix), built deterministically from the seed (`backend/app/data/department.py`). Measured with `backend/scripts/benchmark.py` (single-worker deterministic CP-SAT, dev laptop):
+The demo story above is one department slice (6 instructors, 8 sections) so every beat fits in three minutes. The same engine — same code path, one click in the Build step (**Department** / **University** scale buttons, or `POST /scenario/department` / `/scenario/university`) — solves a full department cluster (**26 instructors, 25 sections, 12 cohorts, 3 programs**) or the entire university (**38 instructors, 41 sections, 20 cohorts, 5 programs** sharing the same rooms, slots, and campus walk matrix), built deterministically from the seed (`backend/app/data/department.py`). Measured with `backend/scripts/benchmark.py` (single-worker deterministic CP-SAT, dev laptop):
 
 | Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (native C++) | Ours (Python ref) | C39 guarantee | Room util. | Emergency (Chen out) |
 |---|---:|---:|---:|---:|---:|---|---|---|---|---:|---|
@@ -113,7 +113,7 @@ The demo story above is one department slice (6 instructors, 8 sections) so ever
 - **ScheduleGod native solver** (`ours`, `backend/native/schedulergod_solver.cpp` + `backend/app/solver/native_solver.py`): an AI-authored C++17 search core built for this problem — MRV over live domains, unit propagation, branch-and-bound with a live admissible bound plus a *pairwise-conflict bound* (contending sections whose cheapest options clash force a deviation cost), single/ejection hill-climbing, and deletion-minimization conflict cores with itself as oracle. Domains and penalties come from the identical preparation code CP-SAT uses, so the engines differ only in search. A Python reference implementation of the same algorithm (`backend/app/solver/home_solver.py`) is the readable specification and the fallback when the binary is unbuilt. No OR-Tools anywhere in either path.
 - **Greedy descent** (`greedy`): the first descent only — plug-and-play proof that a new engine is one registry entry (`backend/app/solver/engine.py`); it shows exactly what the optimization phases buy.
 
-**Head-to-head (measured, `scripts/benchmark.py`):** ours *proves the same optimum as CP-SAT at every scale, 3–8× faster* (university: optimal −40 in 31 ms vs 258 ms). The pure-Python reference reaches the same penalty but cannot prove optimality inside its 5 s budget at scale — that measured gap is exactly why the search core is native C++, and why the claim is scoped to this problem class (CP-SAT remains the better general solver; full analysis in [docs/solver_evidence.md](./docs/solver_evidence.md)). **Compare side by side** (Build step, or `POST /solve/compare`) diffs status, runtime, penalty delta, placement-agreement %, and both grids with differing sections ringed; the compare ranks engines from outputs only. Tests verify ours independently — hard constraints checked from placements alone, proven objective parity at all scales, the identical conflict core `[0,1,2]` on the Diaz overload, determinism (`backend/tests/test_native_solver.py`, `backend/tests/test_home_solver.py`).
+**Head-to-head (measured, `scripts/benchmark.py`):** ours *proves the same optimum as CP-SAT at every scale, 3–8× faster* (university: optimal −40 in 31 ms vs 258 ms). The pure-Python reference reaches the same penalty but cannot prove optimality inside its 5 s budget at scale — that measured gap is exactly why the search core is native C++, and why the claim is scoped to this problem class (CP-SAT remains the better general solver; full analysis in [docs/solver_evidence.md](./docs/solver_evidence.md)). **Compare engines** (Build step, or `POST /solve/compare`) diffs status, runtime, penalty delta, placement-agreement %, and both grids with differing sections ringed; the compare ranks engines from outputs only. Tests verify ours independently — hard constraints checked from placements alone, proven objective parity at all scales, the identical conflict core `[0,1,2]` on the Diaz overload, determinism (`backend/tests/test_native_solver.py`, `backend/tests/test_home_solver.py`).
 
 At department scale every cohort still gets its four-course guarantee, every course has ≥2 qualified instructors, and the Chen emergency still re-homes exactly CS 301 + CS 310 with zero ripple. Locked in by `backend/tests/test_department.py`. Reproduce: `cd backend && .venv/bin/python scripts/benchmark.py`.
 
@@ -170,7 +170,7 @@ docker compose up --build   # live Muse Spark
 
 **Audit trail** — every submission and change event, newest first, with the live `muse-spark` badge.
 
-![Audit trail](docs/screenshot-audit.png)
+![Full · Audit trail](docs/screenshot-audit.png)
 
 ## Stack
 
@@ -194,7 +194,7 @@ docker compose up --build
 
 Without a key the model roles degrade to a deterministic mock parser, so every beat (parse → solve → self-heal → emergency coverage → department scale) is clickable offline at zero cost. Add `MODEL_API_KEY` (see below) and the same clicks run live Muse Spark with on-screen model + latency badges. Submission details, track, and bonus-prize flags: [docs/submission.md](./docs/submission.md).
 
-**Multi-user, role-based:** the app opens on a login. One-click demo accounts (password `demo1234`, seeded from the scenario itself — no signup needed): `coordinator@schedulegod.demo` runs the term (wizard, publish, approves changes); `chen@schedulegod.demo` (any `<instructor-id>@…`) sees **only their own sections** in **My Schedule** and submits plain-language change requests; `cs2025@schedulegod.demo` (any `<cohort-id>@…`) sees **only their cohort's courses**. The coordinator publishes the solved timetable (`Publish current schedule`); instructors' grids update only when an approved change is re-proven by the solver and re-published — an infeasible request comes back rejected with the solver-backed explanation. You can also register your own account and link it to any instructor/cohort.
+**Multi-user, role-based:** the app opens on a login. One-click demo accounts (password `demo1234`, seeded from the scenario itself — no signup needed): `coordinator@schedulegod.demo` runs the term (Express, publish, approves changes); `chen@schedulegod.demo` (any `<instructor-id>@…`) sees **only their own sections** in **Schedule** and submits plain-language change requests; `cs2025@schedulegod.demo` (any `<cohort-id>@…`) sees **only their cohort's courses**. The coordinator publishes the solved timetable (**Publish**); instructors' grids update only when an approved change is re-proven by the solver and re-published — an infeasible request comes back rejected with the solver-backed explanation. You can also register your own account and link it to any instructor/cohort.
 
 **Hosted demo (live now):** UI at **https://prohle--schedulegod-ai-ui-web.us-east.modal.run** and backend at https://prohle--schedulegod-ai-api.us-east.modal.run (`/status`, `/docs`, `/engines`; both scale-to-zero on Modal, warm them with one request). Deploy your own from [docs/deploy_modal.md](./docs/deploy_modal.md). The local one-command path is below.
 
@@ -249,8 +249,8 @@ the commit history is the build log. The main pieces:
 | Intelligence | Sparse matrices, Laplacian/Fiedler/Hoffman/max-clique radar, C39 audit, AI tightener | `backend/app/intelligence/` |
 | Ingestion | Free-form institutional data → Muse extraction → deterministic normalizer → Scenario | `backend/app/ingestion/` |
 | Scale | Department-cluster scenario (26 instructors / 25 sections / 12 cohorts) generated deterministically from the seed, one-click load, measured benchmark | `backend/app/data/department.py`, `backend/scripts/benchmark.py` |
-| Agent trace | Every co-pilot/emergency response carries the step-by-step loop (actor per step); wizard renders it live | `agent_trace` in `backend/app/services/copilot.py`, `emergency.py` |
-| UI | Guided wizard, visual timetable grid + before/after diff, Intelligence view, audit trail | `frontend/src/` |
+| Agent trace | Every co-pilot/emergency response carries the step-by-step loop (actor per step); Express renders it live | `agent_trace` in `backend/app/services/copilot.py`, `emergency.py` |
+| UI | Express guided flow, visual timetable grid + before/after diff, Full advanced view, audit trail | `frontend/src/` |
 | Ops | Docker Compose (Postgres + API + UI), one-command local runner, provenance ledger | `docker-compose.yml`, `start.sh`, `backend/app/db.py` |
 
 ## Status
