@@ -1,17 +1,13 @@
 {
-  "verified": "2026-10-29",
+  "verified": "2026-10-30",
   "endpoint": "POST /term-change/audio",
   "asr_model": "muse-voice-transcribe-1.0",
-  "audio_file": "demo voice note (Chen term-change call-in)",
+  "audio_file": "demo voice note (Chen call-in, 24 kHz mono WAV)",
+  "behavior": "draft-only",
   "outcome": {
-    "removed_instructor_id": "chen",
-    "affected_section_ids": ["sec-cs301", "sec-cs310"],
-    "verified_proposals": 3
+    "transcript": "Doctor Chen is out all week. Who could cover her sections?",
+    "term_changed": false,
+    "instructors_after": ["chen", "patel", "diaz", "okafor", "lee", "nguyen"]
   },
-  "downstream_parser": {
-    "model": "muse-spark-1.3-contributor",
-    "parser_mode": "muse-spark",
-    "parser_latency_ms": 8006,
-    "note": "Speech recognition expands abbreviated academic titles to their spelled-out form; titles are normalized deterministically before parsing (app/parsing/parser.py). The transcript itself is retained in the audit trail (GET /history) rather than quoted here. Reproduce: POST a WAV of the Chen call-in to /term-change/audio on the live API."
-  }
+  "note": "Voice never changes the term by itself: speaker identity cannot be established from a recording, so the endpoint returns a reviewable transcript draft. A signed-in coordinator edits and submits it through the typed term-change flow, where Muse Spark parses it and CP-SAT verifies every reassignment. Spelled-out academic titles from speech recognition are normalized deterministically before any later parse (app/parsing/parser.py). Reproduce: POST the WAV to /term-change/audio on the live API and confirm the scenario is unchanged."
 }

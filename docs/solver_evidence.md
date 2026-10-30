@@ -41,8 +41,8 @@ with the `g++` already present in every build image we use.
 | Full University — stress (361 sections, 198 instructors, 100 cohorts, ~12,000 students) | unknown (10 s budget) · ~11.8 s | **optimal · −40 · 3,285 ms** | unknown (budget) |
 
 Same proven objective at every demo scale; the native core proves it
-faster than CP-SAT on this problem class (about 4–13× on the rows
-above). At the full-university stress scale the comparison changes
+faster than CP-SAT on this problem class (faster on every row above).
+At the full-university stress scale the comparison changes
 kind: CP-SAT (single worker, 10 s budget) finds no feasible timetable
 and reports `unknown` — a timeout is never dressed up as a proven
 infeasibility, in any engine — while the native core still proves the
@@ -93,6 +93,15 @@ return identical placements (tested).
 
 ## Honest limits
 
+- **Both engines race under the same deterministic contract: one search
+  worker, sorted domains, identical time budgets.** CP-SAT can be run as a
+  multi-worker portfolio, which is faster on some instances but returns
+  different tied optima run-to-run; this system requires bit-reproducible
+  timetables for its audit trail, so the comparison holds both engines to
+  the single-worker deterministic contract (the native core is likewise
+  single-threaded). Granting CP-SAT more workers trades away the
+  reproducibility the product is built on — it does not change the scoped
+  claim, which is about proven optima under that contract.
 - CP-SAT is a general solver; ours is specialized. On adversarial
   instances CP-SAT's clause learning will win, and the UI says so —
   the compare view ranks engines from outputs only. The stress row

@@ -1,0 +1,49 @@
+{
+ "verified": "2026-10-30",
+ "endpoint": "POST /student/plan",
+ "cohort": "cs2025",
+ "message": "I work Tuesdays and Thursdays at a campus job. I need CS 201 this term, please no 8 AM classes, and I would like 4 courses total.",
+ "parser_mode": "muse-spark",
+ "model": "muse-spark-1.3-contributor",
+ "parser_latency_ms": 12232,
+ "constraints": {
+  "summary": "Needs cs201, avoids Tue/Thu and 8 AMs, targets 4 courses.",
+  "must_course_ids": [
+   "cs201"
+  ],
+  "avoid_days": [
+   1,
+   3
+  ],
+  "avoid_periods": [
+   0
+  ],
+  "prefer_morning": false,
+  "prefer_afternoon": false,
+  "target_courses": 4
+ },
+ "courses": [
+  [
+   "CS 301",
+   [
+    0,
+    2,
+    4
+   ],
+   "9:30"
+  ],
+  [
+   "MATH 201",
+   [
+    0,
+    2,
+    4
+   ],
+   "12:30"
+  ]
+ ],
+ "target_met": false,
+ "notes": [
+  "CS 201 has no section outside your unavailable times \u2014 taking it this term would clash with what you told us. Talk to your coordinator about a swap."
+ ]
+}

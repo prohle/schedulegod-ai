@@ -79,11 +79,15 @@ our word for it. Scoped claims are stronger than broad ones.
 
 ## Voice
 
-- **Upload format is 24 kHz mono WAV** (`POST /term-change/audio`,
-  `audioEncoding: WAV`). Spelled-out titles from speech recognition
-  ("Doctor Chen") are normalized deterministically before parsing
-  (`backend/app/services/voice.py`); free-form dictation in other
-  formats is not accepted yet.
+- **Voice is a draft, never an instruction.** `POST /term-change/audio`
+  returns a transcript and nothing else: speaker identity cannot be
+  established from a recording (anyone can sound like Prof. Chen), so no
+  parse, solve, or change runs until a signed-in coordinator reviews the
+  text and submits it through the typed flow (`TranscriptDraft` in
+  `backend/app/main.py`, `backend/app/services/voice.py`).
+- **Upload format is 24 kHz mono WAV** (`audioEncoding: WAV`). Spelled-out
+  titles from speech recognition are normalized deterministically before
+  parsing; free-form dictation in other formats is not accepted yet.
 
 ## Platform
 

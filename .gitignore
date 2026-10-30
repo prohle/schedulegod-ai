@@ -28,4 +28,5 @@ build/
 *.log
 
 local*
+AGENTS.md
 backend/native/solver

@@ -1,0 +1,25 @@
+name: Keep demo warm (judging week)
+
+# Modal is scale-to-zero: a cold start during judging (Nov 5-8) or the
+# Nov 9 final would make the live demo look broken. Ping the API and UI
+# every 15 minutes across judging week so both stay warm. Manual runs
+# (workflow_dispatch) work any time.
+on:
+  schedule:
+    - cron: "*/15 * 5-9 11 *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: API status
+        run: |
+          code=$(curl -s -o /tmp/api.json -w "%{http_code}" -m 120 https://prohle--schedulegod-ai-api.us-east.modal.run/status)
+          cat /tmp/api.json
+          test "$code" = "200"
+      - name: UI
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 120 https://prohle--schedulegod-ai-ui-web.us-east.modal.run)
+          echo "UI HTTP $code"
+          test "$code" = "200"

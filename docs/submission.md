@@ -17,15 +17,16 @@ Copy-paste source for the CV platform form. Deadline: **Wed Nov 4, 9:00 PM ET**
 | X post (Most Viral) | _paste link after posting; engagement counts until Nov 8 EOD. Ready copy below — attach `final.mp4`_ |
 
 **X post (ready to publish, attach the video):**
-> Every term, one coordinator loses a week to the course timetable. ScheduleGod AI takes the messy files as they are — PDF, Word, Excel, plain text — and returns a *proven* timetable for the whole university. The AI proposes. The solver proves. Our own C++ solver then out-proves CP-SAT 8× faster on the same answer. Live demo + full build log in the replies. #BuildForYourWorld
+> Every term, one coordinator loses a week to the course timetable. ScheduleGod AI takes the messy files as they are — PDF, Word, Excel, plain text — and returns a *proven* timetable for the whole university. The AI proposes. The solver proves. Our own C++ solver proves the same answer faster on every measured instance — and finishes a 361-section university the industrial engine can't. Live demo + full build log in the replies. #BuildForYourWorld
 >
 > Reply 1: Live demo (one tap, no account): https://prohle--schedulegod-ai-ui-web.us-east.modal.run
 > Reply 2: Code + evidence: https://github.com/prohle/schedulegod-ai
 
 **One-liner:** An agentic co-pilot that turns natural-language scheduling
 constraints into a provably feasible university timetable — Muse Spark
-proposes typed constraints, OR-Tools CP-SAT proves every schedule, coverage
-swap, and repair before it can stand.
+proposes typed constraints, two solver engines (OR-Tools CP-SAT and an
+AI-authored native C++ rival) prove every schedule, coverage swap, repair,
+and student's personal plan before it can stand.
 
 **Short description (form):**
 Every term, a department coordinator burns a week reconciling instructor
@@ -40,10 +41,14 @@ qualified instructor and only zero-ripple-verified coverage is shown. When a
 request is infeasible, CP-SAT names the minimal conflicting subset, Muse
 translates the proof into ranked resolutions, and CP-SAT re-solves every one
 before the least disruptive is auto-applied. At department scale (26
-instructors, 25 sections, 12 cohorts, 3 programs) the same engine solves
-optimally in ~150 ms with the four-course guarantee holding for all 12
-cohorts. The LLM never touches the schedule — it proposes; the solver proves;
-every step is in the audit trail.
+instructors, 25 sections, 12 cohorts, 3 programs) the same engines solve
+optimally in tens of milliseconds with the four-course guarantee holding
+for all 12 cohorts. And the proof runs both ways: a student who says "I
+work Tue/Thu, I need CS 201, no 8 AMs" gets a personal plan selected from
+the placed timetable and re-verified before it is shown — or an honest
+explanation of why their must-take course cannot fit this term. The LLM
+never touches the schedule — it proposes; the solver proves; every step
+is in the audit trail.
 
 ## Pitch (canonical — use this text for the video narration and the form)
 
@@ -76,7 +81,7 @@ offerings and room sizes.
 Our NP-hard problem is then passed into three registered solver engines:
 Google's industrial CP-SAT, an AI-authored native C++ rival solver we built
 specifically for this problem class during the hackathon period which
-proves the same optima up to eight times faster, and a greedy baseline that
+proves the same optima faster on every measured instance, and a greedy baseline that
 shows what the optimization phases buy. The two proving engines race
 head-to-head on identical data.
 
@@ -103,7 +108,10 @@ literals to isolate the minimal conflict core. Muse Spark explains the
 deadlock in plain English, and every single proposed repair is re-proven by
 the solver before the agent is allowed to show it. The app is multi-user
 role-filtered, backed by Postgres, and cuts weeks of manual coordinating
-data to an auditable, sub-second review of solver-proven options.
+data to an auditable, sub-second review of solver-proven options. Students
+get the same guarantee from the other side: state your work days and the
+course you cannot miss, and the plan you are shown has already been proven
+to fit both — or you are told, before registration, exactly why it cannot.
 
 We took the universal pain of student scheduling, scaled it to
 university grade, and married Meta's open-weights intelligence with hard
@@ -118,10 +126,13 @@ engine source code on GitHub. Thank you.
 | Constraint parsing → typed operations | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` |
 | Self-heal explanation → ranked resolutions | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/explainer.py` |
 | Intelligence tightening → typed repair moves | Muse Spark `muse-spark-1.3-contributor` | `backend/app/intelligence/tightener.py` |
+| Student plan → typed life constraints | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/student.py` |
+| Voice note → reviewable text draft (never auto-applied) | Muse Voice Transcribe `muse-voice-transcribe-1.0` | `backend/app/services/voice.py` |
 
 Live captured proof: `backend/muse-verification.json` (all structured roles,
-real outputs + latencies). No-key fallback is a deterministic mock parser, so
-judges can click every beat offline.
+real outputs + latencies) and `backend/muse-verification-student.json`
+(student parse, verified end-to-end). No-key fallback is a deterministic
+mock parser, so judges can click every beat offline.
 
 ## Bonus prizes — what to flag
 
@@ -153,9 +164,9 @@ judges can click every beat offline.
 
 | Criterion (weight) | Evidence a judge can check in <5 min |
 |---|---|
-| Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at university scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps) at three measured scales — department (26 instructors), university (38), and a full-university stress instance (198 instructors · 361 sections · 100 cohorts · ~12,000 students) |
-| Use of Meta AI tooling (25%) | 4 runtime Muse Spark roles (ingest, parse, explain, tighten) + Muse Voice Transcribe endpoint, live badges (model + latency) on screen, `muse-verification.json` + `muse-verification-open.json`, agent trace names Muse at every proposing step |
-| Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum faster** at every demo scale and the only engine to complete the **full-university stress instance (198 instructors · 361 sections · 100 cohorts · ~12,000 students; CP-SAT reports `unknown` inside its budget there)** (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit (100/100 at stress scale), **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests, per-professor structured intake grid + term closures), 48 passing tests, CI |
+| Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at university scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps) at three measured scales — department (26 instructors), university (38), and a full-university stress instance (198 instructors · 361 sections · 100 cohorts · ~12,000 students); students get the same proof in reverse — a personal plan that fits their job and degree roadmap, or an honest warning before a must-take course slips a semester |
+| Use of Meta AI tooling (25%) | 5 runtime Muse Spark roles (ingest, parse, explain, tighten, student plan) + Muse Voice Transcribe as a draft-only input (identity comes from the signed-in session — voice alone never changes the term), live badges (model + latency) on screen, `muse-verification.json` + `muse-verification-open.json` + `muse-verification-student.json`, agent trace names Muse at every proposing step |
+| Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum faster** at every demo scale and the only engine to complete the **full-university stress instance (198 instructors · 361 sections · 100 cohorts · ~12,000 students; CP-SAT reports `unknown` inside its budget there)** (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit (100/100 at stress scale), **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests, per-professor structured intake grid + term closures), 53 passing tests, CI |
 | Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple term change, solver-verified resolutions, department-scale solve in the Build step |
 
 ## What was built during the hackathon (Oct 27 – Nov 4)
@@ -172,6 +183,10 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 - [x] Video ≤ 3:00 (2:51), recorded live Oct 30 on the current interface — frame-checked: every badge says `muse-spark`, never `MOCK`
 - [x] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/TXT/XLSX/MD) → Patel intake applied to the term → **dual-engine compare at department scale, Rank 1 / Rank 2 from outputs (native solver first)** → university scale (38/41/20, asserted on screen) + publish → Chen change request approved and re-published → term change with agent trace + ranked verified reassignment → Diaz impossible override (conflict core + verified repairs) → capacity what-ifs + end card
 - [x] Live demo deployed (Modal UI + API; full checklist in `docs/deploy_modal.md` verified live Oct 30: `/status`, reset, Patel copilot `muse-spark`, Chen term change probes, live voice transcription) — scenario left reset to seed
+- [x] Student schedule suggestion shipped (Oct 30): Spark student parse live-verified (`muse-verification-student.json`), exact selector + independent re-verification, My Schedule student panel; 53 backend tests pass
+- [x] Voice hardened to draft-only (Oct 30): `/term-change/audio` returns a transcript for a signed-in reviewer and never changes the term by itself — speaker identity cannot be established from audio
+- [x] Claim consistency pass (Oct 30): test badge = 53, engine-speed claims aligned to `docs/solver_evidence.md` (same proven optimum, faster on every measured row; deterministic single-worker contract stated explicitly)
+- [x] Judging-week keep-warm: `.github/workflows/keepwarm.yml` pings API + UI every 15 min Nov 5–9 so Modal scale-to-zero never cold-starts for a judge
 - [ ] Meta credits claimed (deadline Nov 4, 9:00 PM ET); spend limit set — **account action**
 - [ ] X post published with video + repo + gallery links; post link submitted (Most Viral cutoff Nov 8 EOD) — **account action** (copy ready above)
 - [ ] YouTube upload of `final.mp4`; link added to the video field above — **account action**
