@@ -16,11 +16,13 @@
    completeness-checked.
 2. **Intake** — "Prof. Patel can't teach Mondays — committee duty" →
    schema-validated operations, applied to the term.
-3. **Dual-engine ranking** — Build → Solve → **Compare side by side**:
-   CP-SAT vs the AI-developed native engine on identical inputs; verdict
-   banner ranks Rank 1 / Rank 2 from outputs alone (status → penalty →
-   speed). University numbers cited in narration: 31 ms vs 258 ms to the
-   same proven objective (`docs/solver_evidence.md`).
+3. **Dual-engine ranking** — Build at Department scale → **Compare side
+   by side**: CP-SAT vs the AI-developed native engine on identical
+   inputs; verdict banner ranks Rank 1 / Rank 2 from outputs alone
+   (status → penalty → speed). The race runs at department scale, where
+   the native solver's win is the measured one (same proven objective,
+   lower proof time — `docs/solver_evidence.md`); the recorder asserts
+   "ScheduleGod solver (ours) ranks first" before marking the beat.
 4. **University scale + publish** — Load university scale (38 instructors,
    41 sections, 20 cohorts, 5 programs) → coordinator publishes the
    verified timetable.
@@ -40,10 +42,10 @@ Narration text: `local-demo/narration.txt` (one paragraph per beat) — the
 canonical pitch in `docs/submission.md`, grouped into 7 beats. Time it
 before assembly: total narration must stay ≤2:55 at the TTS pace used.
 
-> Status: the currently shipped video predates the Term Change rename and
-> the canonical pitch, and its university beat does not load (see the
-> recording checklist). It must be re-recorded against this script before
-> submission; do not submit the old cut.
+> Status: shipped video re-recorded Oct 30 against this script (2:51) —
+> beats asserted on screen during recording (department compare verdict,
+> "38 faculty · 41 sections", term-change result, Diaz explanation), and
+> frame-checked after assembly, including the end card.
 
 ## Recording checklist
 

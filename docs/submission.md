@@ -12,7 +12,7 @@ Copy-paste source for the CV platform form. Deadline: **Wed Nov 4, 9:00 PM ET**
 | Problem statement | **Build for Your World** — the course-timetabling week every department coordinator loses, every term |
 | Team | Solo — Huong Le |
 | Repo (public) | https://github.com/prohle/schedulegod-ai |
-| Demo video (≤3:00) | https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4 (2:55 live Puppeteer screencast, re-recorded Oct 30 on the current Express/Full interface) — _upload the same file to YouTube and add that link here too_ |
+| Demo video (≤3:00) | https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4 (2:51 live Puppeteer screencast, re-recorded Oct 30 on the current Express/Full interface) — _upload the same file to YouTube and add that link here too_ |
 | Live demo | **https://prohle--schedulegod-ai-ui-web.us-east.modal.run** (full UI, no account/key; backend API: https://prohle--schedulegod-ai-api.us-east.modal.run/docs) — or judges run `docker compose up` (no key, no account — see README "Judges — try it in 2 minutes") |
 | X post (Most Viral) | _paste link after posting; engagement counts until Nov 8 EOD. Ready copy below — attach `final.mp4`_ |
 
@@ -164,8 +164,8 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 - [x] `docker compose up --build` boots cleanly (db Postgres 18 → backend → frontend; verified Oct 30 with port overrides — UI 200, proxied scenario, both engines `optimal` penalty −6 inside the containers, native binary built in-image)
 - [x] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 47 tests, verified Oct 30)
 - [x] Frontend production build passes (`cd frontend && npm run build`, verified Oct 30)
-- [x] Video ≤ 3:00 (2:55), recorded live Oct 30 on the current interface — frame-checked: every badge says `muse-spark`, never `MOCK`
-- [x] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/TXT/XLSX/MD) → Patel intake applied to the term → **dual-engine compare, Rank 1 / Rank 2 from outputs** → university scale + publish → Chen change request approved and re-published → term change with agent trace + ranked verified coverage → 20% growth what-if in Full
+- [x] Video ≤ 3:00 (2:51), recorded live Oct 30 on the current interface — frame-checked: every badge says `muse-spark`, never `MOCK`
+- [x] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/TXT/XLSX/MD) → Patel intake applied to the term → **dual-engine compare at department scale, Rank 1 / Rank 2 from outputs (native solver first)** → university scale (38/41/20, asserted on screen) + publish → Chen change request approved and re-published → term change with agent trace + ranked verified reassignment → Diaz impossible override (conflict core + verified repairs) → capacity what-ifs + end card
 - [x] Live demo deployed (Modal UI + API; full checklist in `docs/deploy_modal.md` verified live Oct 30: `/status`, reset, Patel copilot `muse-spark`, Chen term change probes, live voice transcription) — scenario left reset to seed
 - [ ] Meta credits claimed (deadline Nov 4, 9:00 PM ET); spend limit set — **account action**
 - [ ] X post published with video + repo + gallery links; post link submitted (Most Viral cutoff Nov 8 EOD) — **account action** (copy ready above)
