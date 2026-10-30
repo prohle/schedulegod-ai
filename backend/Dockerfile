@@ -8,6 +8,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Native C++ search core (the `ours` engine): compile at image build.
+RUN apt-get update && apt-get install -y --no-install-recommends g++ \
+    && rm -rf /var/lib/apt/lists/*
+COPY native ./native
+RUN g++ -O3 -std=c++17 -o native/solver native/schedulergod_solver.cpp
+
 COPY app ./app
 
 EXPOSE 8000

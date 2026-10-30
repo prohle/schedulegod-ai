@@ -53,6 +53,10 @@ if [ ! -d .venv ]; then
 fi
 echo "==> Installing backend dependencies"
 .venv/bin/pip install -q -r requirements.txt
+if command -v g++ >/dev/null 2>&1; then
+  echo "==> Building native solver (C++ search core)"
+  bash scripts/build_native.sh >/dev/null 2>&1 || echo "    (native build failed; Python reference search will be used)"
+fi
 BACKEND_PORT="$(free_port "${BACKEND_PORT:-8000}")"
 
 # --- frontend --------------------------------------------------------------

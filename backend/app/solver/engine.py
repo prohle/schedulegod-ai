@@ -45,9 +45,11 @@ ENGINES: list[EngineInfo] = [
                     "assumption-literal conflict cores, proven optima in milliseconds."),
     EngineInfo(
         id="ours", label="ScheduleGod solver (ours)", kind="ai-crafted",
-        description="From-scratch pure-Python solver built for this problem: MRV + "
-                    "forward checking, branch-and-bound, ejection hill-climbing, "
-                    "deletion-minimized conflict cores."),
+        description="AI-authored solver built for this problem: native C++ search "
+                    "core (MRV + forward checking, branch-and-bound with an admissible "
+                    "bound, ejection hill-climbing, deletion-minimized conflict cores) "
+                    "over the identical domains CP-SAT uses; Python reference search "
+                    "when the native binary is not built."),
     EngineInfo(
         id="greedy", label="Greedy descent (ours, fast)", kind="ai-crafted",
         description="The home solver's first greedy descent only — no optimization "
@@ -110,6 +112,12 @@ def solve_with(engine: str, sc: Scenario,
                            objective=objective, engine="cpsat")
     if engine in ("ours", "greedy"):
         from app.solver.home_solver import solve_home
+        if engine == "ours":
+            from app.solver.native_solver import native_available, solve_native
+            if native_available():
+                return solve_native(sc, request_ops, pins_exact=pins_exact,
+                                    instructor_pins=instructor_pins, slot_hints=slot_hints,
+                                    objective=objective)
         return solve_home(sc, request_ops, pins_exact=pins_exact,
                           instructor_pins=instructor_pins, slot_hints=slot_hints,
                           objective=objective, quick=(engine == "greedy"))

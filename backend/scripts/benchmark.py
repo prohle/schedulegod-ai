@@ -28,6 +28,15 @@ def bench(name: str, sc) -> dict:
     result = solve(sc)
     wall_ms = int((time.perf_counter() - t0) * 1000)
     ours = solve(sc, engine="ours")
+    from app.solver.home_solver import solve_home
+    pyref = solve_home(sc)
+    agreement = None
+    if ours.timetable and result.timetable:
+        a = {p.section_id: (p.instructor_id, tuple(p.days), p.period, p.room_id)
+             for p in ours.timetable.placements}
+        b = {p.section_id: (p.instructor_id, tuple(p.days), p.period, p.room_id)
+             for p in result.timetable.placements}
+        agreement = round(100.0 * sum(1 for k in a if a[k] == b.get(k)) / max(1, len(a)), 1)
     margins = compute_margins(sc, result.timetable, 4)
     util = compute_utilization(sc, result.timetable)
     emergency = run_emergency(sc, "Dr. Chen is out all week — who could cover her sections?")
@@ -45,6 +54,10 @@ def bench(name: str, sc) -> dict:
         "ours_status": ours.status,
         "ours_ms": ours.solve_time_ms,
         "ours_objective": ours.objective,
+        "agreement": agreement,
+        "py_status": pyref.status,
+        "py_ms": pyref.solve_time_ms,
+        "py_objective": pyref.objective,
         "c39": f"{sum(c.ok for c in margins.cohorts)}/{len(margins.cohorts)} cohorts >= 4 courses",
         "room_util": util.room_utilization,
         "emergency": (f"{len(emergency.affected_section_ids)} affected, "
@@ -58,12 +71,14 @@ def main() -> None:
     rows = [bench("Story seed (demo)", seed),
             bench("Department scale", build_department_scenario(seed)),
             bench("University scale", build_university_scenario(seed))]
-    print("| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (home solver) | C39 guarantee | Room util. | Emergency (Chen out) |")
-    print("|---|---:|---:|---:|---:|---:|---|---|---|---:|---|")
+    print("| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (native C++) | Ours (Python ref) | Native↔CP-SAT agreement | C39 guarantee | Room util. | Emergency (Chen out) |")
+    print("|---|---:|---:|---:|---:|---:|---|---|---|---:|---|---:|---|")
     for r in rows:
         print(f"| {r['name']} | {r['instructors']} | {r['sections']} | {r['rooms']} | "
               f"{r['cohorts']} | {r['programs']} | {r['status']} {r['solve_ms']} ms · penalty {r['objective']} | "
               f"{r['ours_status']} {r['ours_ms']} ms · penalty {r['ours_objective']} | "
+              f"{r['py_status']} {r['py_ms']} ms · penalty {r['py_objective']} | "
+              f"{r['agreement']}% | "
               f"{r['c39']} | {r['room_util']:.0%} | {r['emergency']} |")
 
 

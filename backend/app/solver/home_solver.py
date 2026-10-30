@@ -439,6 +439,37 @@ def _conflict_core(sc: Scenario, ops: list[Operation], pins_exact,
     return sorted(core)
 
 
+def build_timetable(sc: Scenario, best: dict) -> tuple[Timetable, dict[str, int]]:
+    """Placements + per-instructor counts for an assignment dict
+    (section_id -> (instructor_id, slot_key, room_id)). Shared by the
+    Python search and the native C++ core so both emit identical output."""
+    placements: list[Placement] = []
+    counts: dict[str, int] = {}
+    for s in sc.sections:
+        iid, key, rid = best[s.id]
+        course = sc.course(s.course_id)
+        inst = sc.instructor(iid)
+        room = sc.room(rid)
+        if course.pattern in ("MWF", "TTh"):
+            days, period, periods = PATTERN_DAYS[course.pattern], key, [key]
+        else:
+            days, period, periods = [key], None, list(BLOCK_PERIODS)
+        start_period = period if period is not None else periods[0]
+        placements.append(Placement(
+            section_id=s.id, course_id=course.id, course_code=course.code,
+            instructor_id=iid, instructor_name=inst.name,
+            days=days, period=period, periods=periods,
+            duration=course.duration_hours(),
+            enrollment=sc.enrollment_for_section(s),
+            start_time=period_start_time(start_period),
+            end_time=period_end_time(start_period, course.duration_hours()),
+            room_id=room.id, room_name=room.name, building_id=room.building_id))
+        counts[iid] = counts.get(iid, 0) + 1
+    for i in sc.instructors:
+        counts.setdefault(i.id, 0)
+    return Timetable(placements=placements, sections_per_instructor=counts), counts
+
+
 def solve_home(sc: Scenario, request_ops: Optional[list[Operation]] = None,
                pins_exact: Optional[dict] = None,
                instructor_pins: Optional[dict[str, str]] = None,
@@ -456,36 +487,13 @@ def solve_home(sc: Scenario, request_ops: Optional[list[Operation]] = None,
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
 
     if search.best is not None:
-        placements: list[Placement] = []
-        counts: dict[str, int] = {}
-        for s in sc.sections:
-            iid, key, rid = search.best[s.id]
-            course = sc.course(s.course_id)
-            inst = sc.instructor(iid)
-            room = sc.room(rid)
-            if course.pattern in ("MWF", "TTh"):
-                days, period, periods = PATTERN_DAYS[course.pattern], key, [key]
-            else:
-                days, period, periods = [key], None, list(BLOCK_PERIODS)
-            start_period = period if period is not None else periods[0]
-            placements.append(Placement(
-                section_id=s.id, course_id=course.id, course_code=course.code,
-                instructor_id=iid, instructor_name=inst.name,
-                days=days, period=period, periods=periods,
-                duration=course.duration_hours(),
-                enrollment=sc.enrollment_for_section(s),
-                start_time=period_start_time(start_period),
-                end_time=period_end_time(start_period, course.duration_hours()),
-                room_id=room.id, room_name=room.name, building_id=room.building_id))
-            counts[iid] = counts.get(iid, 0) + 1
-        for i in sc.instructors:
-            counts.setdefault(i.id, 0)
+        timetable, counts = build_timetable(sc, search.best)
         proven = not search.timed_out or (
             search.best_objective is not None
             and search.best_objective <= sum(search.lb.values()))
         return SolveResult(
             status="optimal" if proven else "feasible",
-            timetable=Timetable(placements=placements, sections_per_instructor=counts),
+            timetable=timetable,
             objective=search.best_objective,
             objective_name=objective,
             solve_time_ms=elapsed_ms,
