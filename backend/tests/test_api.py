@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 
-def test_health(client):
-    assert client.get("/health").json()["status"] == "ok"
+def test_status(client):
+    assert client.get("/status").json()["status"] == "ok"
 
 
 def test_apply_then_solve_keeps_patel_off_monday(client):

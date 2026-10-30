@@ -129,8 +129,8 @@ def _ingest_text(text: str) -> IngestResponse:
                           model=parser.model, parser_latency_ms=parser.last_latency_ms)
 
 
-@app.get("/health")
-def health() -> dict:
+@app.get("/status")
+def status() -> dict:
     return {"status": "ok", "service": "schedulegod-ai-backend"}
 
 

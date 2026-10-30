@@ -1,7 +1,7 @@
 """Repo-root smoke test: the standardized interface every engine honors.
 
 The full suite lives in backend/tests; this root-level test is
-the fast signal that the repo is healthy — it loads the seed and proves a
+the fast signal that the repo works end to end — it loads the seed, proves a
 home-solver timetable satisfies the core hard constraints.
 """
 

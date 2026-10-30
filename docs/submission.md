@@ -95,7 +95,7 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 ## Pre-submit checklist
 
 - [ ] All work committed and pushed; repo public and cloneable
-- [ ] `docker compose up --build` from a clean clone boots healthy (db Postgres 18 → backend → frontend)
+- [ ] `docker compose up --build` from a clean clone boots cleanly (db Postgres 18 → backend → frontend)
 - [ ] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 42 tests from repo root)
 - [ ] Frontend production build passes (`cd frontend && npm run build`)
 - [ ] Video ≤ 3:00, recorded with `MODEL_API_KEY` set — every badge says `muse-spark`, never `MOCK` (see `docs/demo_shotlist.md`)

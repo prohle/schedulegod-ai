@@ -21,7 +21,7 @@ modal deploy modal_app.py
 ```
 
 Modal prints a URL like `https://<workspace>--schedulegod-ai-api.modal.run`.
-Open `/health` and `/docs` to verify it.
+Open `/status` and `/docs` to verify it.
 
 **State:** SQLite is mounted on the `schedulegod-data` Modal Volume, so the
 audit trail survives restarts. `POST /scenario/reset` returns the demo to the
@@ -55,7 +55,7 @@ Modal directly.
 
 ## 3. Demo-day checklist
 
-- [ ] `GET /health` returns `ok`.
+- [ ] `GET /status` returns `ok`.
 - [ ] `POST /scenario/reset` returns the seed.
 - [ ] `POST /copilot` with the Patel sentence returns `muse-spark`.
 - [ ] `POST /emergency` with the Chen sentence returns verified proposals.

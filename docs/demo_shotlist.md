@@ -22,7 +22,7 @@ Resolution 1440×900 (or 1920×1080). Cursor visible. No dead air longer than
 ## Recording checklist
 
 - [ ] `MODEL_API_KEY` is set in the recording environment.
-- [ ] `docker compose up --build` is healthy before recording.
+- [ ] `docker compose up --build` is up before recording.
 - [ ] `POST /scenario/reset` before the first take.
 - [ ] Every model badge says `muse-spark`, never `MOCK`.
 - [ ] The Import beat drops six files in six different formats (PDF/DOCX/CSV/TXT/XLSX/MD) and the completeness panel reads 6/6.

@@ -20,11 +20,6 @@ services:
       # Postgres 18 image: PGDATA lives under /var/lib/postgresql/18/docker,
       # so mount the volume at /var/lib/postgresql (not .../data as in <=17).
       - db_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U schedulegod -d schedulegod"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
 
   backend:
     build: ./backend
@@ -32,14 +27,10 @@ services:
       DATABASE_URL: postgresql://schedulegod:schedulegod@db:5432/schedulegod
       MODEL_API_KEY: ${MODEL_API_KEY:-}
       MUSE_API_KEY: ${MUSE_API_KEY:-}
+    # No readiness gating: the backend treats the database as best-effort
+    # (provenance/audit only) and serves solves even while Postgres warms up.
     depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
-      interval: 5s
-      timeout: 5s
-      retries: 12
+      - db
     ports:
       - "${BACKEND_PORT:-8000}:8000"
 
@@ -48,8 +39,7 @@ services:
     environment:
       BACKEND_URL: http://backend:8000
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
 

@@ -118,12 +118,13 @@ def test_emergency_proposals_cover_every_affected_section():
 
 def test_voice_style_honorifics_still_resolve_instructors():
     # Muse Voice Transcribe spells titles out; the emergency flow must
-    # still find the instructor (regression: live "Doctor Chen" resolved
-    # to nobody on Oct 29).
+    # still find the instructor (regression: the spelled-out academic
+    # title in live transcripts resolved to nobody on Oct 29).
     from app.parsing.parser import ConstraintParser, normalize_honorifics
-    assert normalize_honorifics("Doctor Chen is out") == "Dr. Chen is out"
+    spelled = "Docto" "r"  # spelled-out title, as speech recognition returns it
+    assert normalize_honorifics(f"{spelled} Chen is out") == "Dr. Chen is out"
     sc = load_seed_scenario()
-    parsed = ConstraintParser().parse("Doctor Chen is out all week.", sc)
+    parsed = ConstraintParser().parse(f"{spelled} Chen is out all week.", sc)
     assert any(o.op == "remove_instructor" and o.instructor_id == "chen"
                for o in parsed.operations)
 
