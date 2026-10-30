@@ -60,7 +60,12 @@ class PublishedSchedule(Base):
 
 class ChangeRequest(Base):
     """An instructor's request to change their schedule, pending coordinator
-    decision. Applying runs the verified co-pilot loop, never a raw edit."""
+    decision. Applying runs the verified co-pilot loop, never a raw edit.
+
+    Two shapes share this queue: a free-text `message` (Muse parses it at
+    decision time) or a structured intake — `operations` holds the exact
+    typed operations the professor picked in the availability grid, verified
+    as-is by the solver (no re-parse, no silent edits)."""
 
     __tablename__ = "change_requests"
 
@@ -68,6 +73,7 @@ class ChangeRequest(Base):
     user_id = Column(Integer, nullable=False)
     instructor_id = Column(String(100))
     message = Column(Text, nullable=False)
+    operations = Column(Text)  # JSON list[Operation] for structured intake
     status = Column(String(20), default="pending")  # pending | applied | rejected
     result_summary = Column(Text)
     created_at = Column(DateTime, default=_utcnow)

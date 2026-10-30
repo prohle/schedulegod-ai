@@ -91,6 +91,12 @@ export interface RoomBlackout {
   period?: number;
 }
 
+export interface TermClosure {
+  day: number;
+  period?: number | null;
+  label: string;
+}
+
 export interface Scenario {
   name: string;
   buildings: Building[];
@@ -102,10 +108,23 @@ export interface Scenario {
   cohorts: Cohort[];
   distances: Record<string, Record<string, number>>;
   room_blackouts: RoomBlackout[];
+  closures?: TermClosure[];
   walk_limit_min: number;
   active_enrollment: Record<string, number>;
   instructor_pins?: Record<string, string>;
   room_pins?: Record<string, string>;
+}
+
+export interface IntakeOperation {
+  op: string;
+  instructor_id?: string | null;
+  day?: number | null;
+  period?: number | null;
+  kind?: string | null;
+  weight?: number | null;
+  value?: number | null;
+  label?: string | null;
+  explanation: string;
 }
 
 export interface Placement {

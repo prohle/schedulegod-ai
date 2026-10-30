@@ -70,6 +70,21 @@ def mock_parse(message: str, scenario: Scenario,
     ops: list[Operation] = []
     parts: list[str] = []
 
+    # Term closure / holiday: "no classes on Friday", "campus closed Monday",
+    # "Labor Day holiday — no teaching Thursday". Checked before the
+    # no-entity bail and before room closures (a named building wins there).
+    if not instructors and re.search(
+            r"\b(?:no classes|no teaching|holiday|closed|closure|shutdown)\b", lower):
+        day = _first_day(lower)
+        named_room = any(r.name.lower() in lower for r in scenario.rooms) or \
+            any(b.name.lower() in lower for b in scenario.buildings)
+        if day is not None and not named_room:
+            ops.append(Operation(op="add_term_closure", day=day,
+                                 label="Holiday" if "holiday" in lower else "Closure",
+                                 explanation=f"No classes on {DAY_NAMES[day]}s (term closure)."))
+            return ParsedRequest(
+                summary=f"Mock parse: term closure on {DAY_NAMES[day]}.", operations=ops)
+
     if not instructors and not courses:
         return ParsedRequest(summary="(mock parser) No recognizable instructors or courses in this message.",
                              operations=[])

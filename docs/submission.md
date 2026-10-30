@@ -90,7 +90,7 @@ judges can click every beat offline.
 |---|---|
 | Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at university scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps), 3 programs / 12 cohorts |
 | Use of Meta AI tooling (25%) | 4 runtime Muse Spark roles (ingest, parse, explain, tighten) + Muse Voice Transcribe endpoint, live badges (model + latency) on screen, `muse-verification.json` + `muse-verification-open.json`, agent trace names Muse at every proposing step |
-| Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum 3–8× faster** at every scale (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests), 41 passing tests, CI |
+| Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum 3–8× faster** at every scale (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests, per-professor structured intake grid + term closures), 47 passing tests, CI |
 | Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple emergency, solver-verified resolutions, department-scale solve in the Build step |
 
 ## What was built during the hackathon (Oct 27 – Nov 4)
@@ -102,7 +102,7 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 
 - [x] All work committed and pushed; repo public and cloneable
 - [x] `docker compose up --build` boots cleanly (db Postgres 18 → backend → frontend; verified Oct 30 with port overrides — UI 200, proxied scenario, both engines `optimal` penalty −6 inside the containers, native binary built in-image)
-- [x] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 41 tests, verified Oct 30)
+- [x] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 47 tests, verified Oct 30)
 - [x] Frontend production build passes (`cd frontend && npm run build`, verified Oct 30)
 - [x] Video ≤ 3:00 (2:55), recorded live Oct 30 on the current interface — frame-checked: every badge says `muse-spark`, never `MOCK`
 - [x] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/TXT/XLSX/MD) → Patel intake applied to the term → **dual-engine compare, Rank 1 / Rank 2 from outputs** → university scale + publish → Chen change request approved and re-published → emergency with agent trace + ranked verified coverage → 20% growth what-if in Full

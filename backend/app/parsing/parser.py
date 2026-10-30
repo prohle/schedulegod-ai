@@ -126,5 +126,8 @@ def validate_operations(ops: list[Operation], scenario: Scenario) -> tuple[list[
         if op.op == "add_instructor_unavailability" and op.day is None and op.period is None:
             notes.append(f"Dropped operation {i}: unavailability needs a day or period.")
             continue
+        if op.op == "add_term_closure" and op.day is None and op.period is None:
+            notes.append(f"Dropped operation {i}: a term closure needs a day or period.")
+            continue
         valid.append(op)
     return valid, notes

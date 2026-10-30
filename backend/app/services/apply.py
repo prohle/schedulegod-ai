@@ -17,6 +17,7 @@ from app.models.scenario import (
     RoomBlackout,
     Scenario,
     SlotRef,
+    TermClosure,
 )
 
 
@@ -75,6 +76,15 @@ def apply_operations(scenario: Scenario, operations: list[Operation]) -> Scenari
                     sc.room_blackouts.append(RoomBlackout(
                         room_id=op.room_id, day=day, period=op.period))
                     existing.add(key)
+            continue
+
+        if op.op == "add_term_closure" and (op.day is not None or op.period is not None):
+            days = [op.day] if op.day is not None else list(range(5))
+            for day in days:
+                closure = TermClosure(day=day, period=op.period,
+                                      label=op.label or "Closure")
+                if closure not in sc.closures:
+                    sc.closures.append(closure)
             continue
 
         if op.op == "set_section_instructor" and op.section_id and op.instructor_id:

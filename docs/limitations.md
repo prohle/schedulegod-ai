@@ -65,6 +65,12 @@ our word for it. Scoped claims are stronger than broad ones.
   (2/4 cohorts) — it is the tightener's demo world. Department and
   university scales hold 12/12 and 20/20 (README benchmark table).
 
+- **Closures are weekday-shaped.** The timetable is a weekly pattern, so
+  a holiday is "no Mondays" or "Thursday period 2", not "October 14th".
+  Dated, one-off leave (a conference week) is expressed as the
+  professor's Off pattern on those weekdays via structured intake; true
+  calendar-dated scheduling is out of scope for the pattern model.
+
 ## Voice
 
 - **Upload format is 24 kHz mono WAV** (`POST /emergency/audio`,

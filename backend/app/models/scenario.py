@@ -142,6 +142,16 @@ class Cohort(BaseModel):
     size: int
 
 
+class TermClosure(BaseModel):
+    """A campus closure (holiday, reading day, shutdown): no section may be
+    scheduled on that weekday, or in that period of it. The timetable is a
+    weekly pattern, so closures are weekday-shaped by construction."""
+
+    day: int = Field(ge=0, le=4)
+    period: Optional[int] = Field(default=None, ge=0, le=3)  # None = all day
+    label: str = "Closure"
+
+
 class Scenario(BaseModel):
     name: str
     buildings: list[Building]
@@ -153,6 +163,7 @@ class Scenario(BaseModel):
     cohorts: list[Cohort]
     distances: dict[str, dict[str, int]]  # building_id -> building_id -> walk minutes
     room_blackouts: list[RoomBlackout] = []
+    closures: list[TermClosure] = []  # holidays / campus closures (all rooms)
     walk_limit_min: int = 10  # max walk between back-to-back classes
     active_enrollment: dict[str, int] = {}  # section_id -> registered count (post add/drop)
     # Durable decisions from applied requests (the "world state" after a
@@ -241,6 +252,7 @@ class Operation(BaseModel):
         "add_instructor_unavailability",
         "add_instructor_preference",
         "add_room_unavailability",
+        "add_term_closure",
         "remove_instructor",
         "set_section_instructor",
         "set_section_room",
@@ -257,6 +269,7 @@ class Operation(BaseModel):
     kind: Optional[Literal["prefer", "avoid"]] = None
     weight: Optional[int] = None
     value: Optional[int] = None  # update_enrollment / set_*_cap: new number
+    label: Optional[str] = None  # add_term_closure: holiday/closure name
     explanation: str
 
 

@@ -84,6 +84,12 @@ def _hard_blocked(instructor, day: int, period: int) -> bool:
     return any(s.day == day and s.period == period for s in instructor.hard_unavailable)
 
 
+def _term_closed(sc: Scenario, day: int, period: int) -> bool:
+    """Holidays / campus closures: closed all day, or just that period."""
+    return any(c.day == day and (c.period is None or c.period == period)
+               for c in sc.closures)
+
+
 def _options(sc: Scenario, section: Section) -> list[tuple[str, str, int, str]]:
     """Eligible (instructor_id, slot_key, room_id) options; slot_key is the
     period (0-3) for MWF/TTh or the day (BLOCK_DAYS) for weekly blocks."""
@@ -100,6 +106,8 @@ def _options(sc: Scenario, section: Section) -> list[tuple[str, str, int, str]]:
             for p in range(4):
                 if any(_hard_blocked(i, d, p) for d in days):
                     continue
+                if any(_term_closed(sc, d, p) for d in days):
+                    continue
                 for r in rooms:
                     if any(_slot_blackout(sc, r.id, d, p) for d in days):
                         continue
@@ -108,6 +116,8 @@ def _options(sc: Scenario, section: Section) -> list[tuple[str, str, int, str]]:
         for i in insts:
             for d in BLOCK_DAYS:
                 if any(_hard_blocked(i, d, p) for p in BLOCK_PERIODS):
+                    continue
+                if any(_term_closed(sc, d, p) for p in BLOCK_PERIODS):
                     continue
                 for r in rooms:
                     if any(_slot_blackout(sc, r.id, d, p) for p in BLOCK_PERIODS):
@@ -319,6 +329,11 @@ def solve(
         elif op.op == "add_room_unavailability":
             for k, v in a.items():
                 if k[3] == op.room_id and _covers(sc, k[0], k[2], op.day, op.period):
+                    m.Add(v == 0).OnlyEnforceIf(lit)
+        elif op.op == "add_term_closure":
+            # Holiday / campus closure: nobody teaches into a closed slot.
+            for k, v in a.items():
+                if _covers(sc, k[0], k[2], op.day, op.period):
                     m.Add(v == 0).OnlyEnforceIf(lit)
         elif op.op == "set_section_instructor":
             terms = [v for k, v in a.items() if k[0] == op.section_id and k[1] == op.instructor_id]

@@ -115,6 +115,8 @@ def _prepare(sc: Scenario, request_ops: list[Operation],
             if o.op == "add_room_unavailability" and rid == o.room_id \
                     and _covers(sc, sid, key, o.day, o.period):
                 return False
+            if o.op == "add_term_closure" and _covers(sc, sid, key, o.day, o.period):
+                return False
             if o.op == "set_section_instructor" and sid == o.section_id and iid != o.instructor_id:
                 return False
             if o.op == "set_section_room" and sid == o.section_id and rid != o.room_id:

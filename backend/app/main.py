@@ -33,7 +33,7 @@ from app.models.intelligence import (
     WhatIfReport,
 )
 from app.models.results import AgentStep, CompareResult, CopilotResponse, EmergencyResponse, SolveResult
-from app.models.scenario import Operation, ParsedRequest, Scenario
+from app.models.scenario import Operation, ParsedRequest, Scenario, TermClosure
 from app.parsing.parser import ConstraintParser, validate_operations
 from app.services import audit
 from app.services.apply import apply_operations
@@ -399,7 +399,15 @@ class PublishRequest(BaseModel):
 
 
 class ChangeRequestIn(BaseModel):
-    message: str
+    message: str = ""
+    # Structured intake: the exact typed operations picked in the professor's
+    # availability grid. When present they are verified as-is at decision
+    # time — no re-parse, no silent edits.
+    operations: Optional[list[Operation]] = None
+
+
+class ClosuresIn(BaseModel):
+    closures: list[TermClosure]
 
 
 class DecideRequest(BaseModel):
@@ -545,9 +553,20 @@ def schedule_mine(authorization: Optional[str] = Header(None)) -> dict:
         scope = f"Courses for cohort {(user.cohort_id or '').upper()} this term"
     else:
         scope = "Full institutional timetable (coordinator)"
+    load = None
+    if user.role == "instructor" and user.instructor_id:
+        inst = next((i for i in scenario.instructors
+                     if i.id == user.instructor_id), None)
+        if inst is not None:
+            load = {"current": len(placements),
+                    "preps": len({p["course_id"] for p in placements}),
+                    "max_sections": inst.max_sections,
+                    "max_preps": inst.max_preps,
+                    "hard_unavailable": [s.model_dump() for s in inst.hard_unavailable],
+                    "preferences": [pr.model_dump() for pr in inst.preferences]}
     return {"id": row.id, "role": user.role, "scope": scope,
             "status": row.status, "objective": row.objective,
-            "placements": placements}
+            "placements": placements, "load": load}
 
 
 @app.post("/me/change-requests")
@@ -557,22 +576,54 @@ def create_change_request(req: ChangeRequestIn,
     _require_role(user, "instructor", "coordinator")
     from app.db import SessionLocal
     from app.models.auth import ChangeRequest
+
+    operations_json: Optional[str] = None
+    message = (req.message or "").strip()
+    if req.operations:
+        if user.role != "instructor" or not user.instructor_id:
+            raise HTTPException(status_code=403,
+                                detail="Structured intake is per-professor: sign in as the instructor.")
+        # A professor constrains only themselves — never a colleague, never
+        # a room, never the whole campus (closures are the coordinator's).
+        allowed = {"add_instructor_unavailability", "add_instructor_preference",
+                   "set_load_cap", "set_prep_cap"}
+        ops = [op.model_copy(update={"instructor_id": user.instructor_id})
+               for op in req.operations if op.op in allowed]
+        ops, notes = validate_operations(ops, get_current_scenario())
+        if not ops:
+            raise HTTPException(status_code=422,
+                                detail="No valid intake operations. " + " ".join(notes))
+        operations_json = json.dumps([op.model_dump() for op in ops])
+        summary = "; ".join(op.explanation for op in ops)
+        message = f"{message}\n{summary}".strip() if message else summary
+    if not message:
+        raise HTTPException(status_code=422, detail="Write a request or pick availability first.")
     with SessionLocal() as session:
         row = ChangeRequest(user_id=user.id, instructor_id=user.instructor_id,
-                            message=req.message)
+                            message=message, operations=operations_json)
         session.add(row)
         session.commit()
         session.refresh(row)
         request_id = row.id
     audit.record_event("change-request",
-                       f"{user.display_name} requested: {req.message[:120]}",
-                       {"request_id": request_id})
-    return {"id": request_id, "status": "pending"}
+                       f"{user.display_name} requested: {message[:120]}",
+                       {"request_id": request_id,
+                        "structured": bool(operations_json)})
+    return {"id": request_id, "status": "pending",
+            "structured": bool(operations_json)}
 
 
 def _change_request_dict(row, requester_email: str = "") -> dict:
+    operations = None
+    if row.operations:
+        try:
+            operations = json.loads(row.operations)
+        except (TypeError, ValueError):
+            operations = None
     return {"id": row.id, "instructor_id": row.instructor_id,
             "requester": requester_email, "message": row.message,
+            "operations": operations,
+            "kind": "structured" if operations else "message",
             "status": row.status, "result_summary": row.result_summary,
             "created_at": row.created_at.isoformat() if row.created_at else None}
 
@@ -595,12 +646,26 @@ def all_change_requests(authorization: Optional[str] = Header(None)) -> dict:
     _require_role(user, "coordinator")
     from app.db import SessionLocal
     from app.models.auth import ChangeRequest, User
+    # Staff-load context for the queue: current published load vs contract cap.
+    scenario = get_current_scenario()
+    caps = {i.id: i.max_sections for i in scenario.instructors}
+    loads: dict[str, int] = {}
+    latest = _latest_published()
+    if latest is not None:
+        for p in json.loads(latest.timetable_json)["placements"]:
+            loads[p["instructor_id"]] = loads.get(p["instructor_id"], 0) + 1
     with SessionLocal() as session:
         rows = session.query(ChangeRequest).order_by(
             ChangeRequest.id.desc()).all()
         emails = {u.id: u.email for u in session.query(User).all()}
-        return {"requests": [_change_request_dict(r, emails.get(r.user_id, ""))
-                              for r in rows]}
+        out = []
+        for r in rows:
+            d = _change_request_dict(r, emails.get(r.user_id, ""))
+            if r.instructor_id:
+                d["load"] = {"current": loads.get(r.instructor_id, 0),
+                             "max_sections": caps.get(r.instructor_id)}
+            out.append(d)
+        return {"requests": out}
 
 
 @app.post("/change-requests/{request_id}/decide")
@@ -623,6 +688,44 @@ def decide_change_request(request_id: int, req: DecideRequest,
         if row.status != "pending":
             raise HTTPException(status_code=409, detail="Already decided.")
         message, instructor_id = row.message, row.instructor_id
+        structured_ops = None
+        if row.operations:
+            try:
+                structured_ops = [Operation.model_validate(o)
+                                  for o in json.loads(row.operations)]
+            except (TypeError, ValueError):
+                structured_ops = None
+        if req.action == "apply" and structured_ops is not None:
+            # Structured intake: the professor picked these exact operations.
+            # The solver verifies them as-is — feasible means applied,
+            # infeasible means rejected with the proof translated. No
+            # re-parse and no silent dropping (that is the free-text path).
+            ops, _notes = validate_operations(structured_ops,
+                                              get_current_scenario())
+            result = solve(get_current_scenario(), ops)
+            if ops and result.status != "infeasible":
+                _current_scenario = apply_operations(get_current_scenario(), ops)
+                published = _publish_current("cpsat", user.email)
+                row.status = "applied"
+                row.result_summary = (
+                    f"Structured intake verified by the solver: {result.status} "
+                    f"(penalty {result.objective}). Applied {len(ops)} picked "
+                    f"operation(s) and re-published as schedule #{published['id']}.")
+            else:
+                explanation = None
+                if result.conflicts is not None:
+                    from app.agent.explainer import ConflictExplainer
+                    diag, _mode = ConflictExplainer().explain(
+                        get_current_scenario(), message, ops, result.conflicts)
+                    explanation = diag.explanation
+                row.status = "rejected"
+                row.result_summary = (
+                    explanation or
+                    "The solver proved this intake infeasible; nothing was applied.")
+            row.decided_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            session.commit()
+            session.refresh(row)
+            return _change_request_dict(row)
         if req.action == "reject":
             row.status = "rejected"
             row.result_summary = "Rejected by coordinator."
@@ -652,6 +755,32 @@ def decide_change_request(request_id: int, req: DecideRequest,
         session.commit()
         session.refresh(row)
         return _change_request_dict(row)
+
+
+@app.post("/term/closures")
+def set_term_closures(req: ClosuresIn,
+                      authorization: Optional[str] = Header(None)) -> dict:
+    """Coordinator sets the term's holidays / campus closures. Closures are
+    weekday-shaped (the timetable is a weekly pattern); they take effect on
+    the next solve/publish — the solver never places a section in a closed
+    slot. Returns the updated scenario."""
+    global _current_scenario
+    user = _current_user(authorization)
+    _require_role(user, "coordinator")
+    sc = get_current_scenario().model_copy(deep=True)
+    seen: set[tuple[int, int | None]] = set()
+    closures: list[TermClosure] = []
+    for c in req.closures:
+        key = (c.day, c.period)
+        if key not in seen:
+            seen.add(key)
+            closures.append(c)
+    sc.closures = closures
+    _current_scenario = sc
+    audit.record_event("closures",
+                       f"Term closures set: {len(closures)} slot(s) closed",
+                       {"closures": [c.model_dump() for c in closures]})
+    return {"scenario": sc.model_dump()}
 
 
 # --- intelligence services: sparse matrices, spectral radar, AI tightening ----

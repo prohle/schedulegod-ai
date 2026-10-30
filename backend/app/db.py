@@ -35,5 +35,20 @@ def init_db() -> None:
 
     try:
         Base.metadata.create_all(bind=engine)
+        _migrate_change_requests()
     except Exception:  # noqa: BLE001
         pass
+
+
+def _migrate_change_requests() -> None:
+    """create_all never alters existing tables: add the structured-intake
+    `operations` column to change_requests where it predates it."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    if "change_requests" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("change_requests")}
+    if "operations" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE change_requests ADD COLUMN operations TEXT"))
