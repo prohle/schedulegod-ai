@@ -36,7 +36,9 @@ export function Toast({ message, type = "info", onClose }: ToastProps) {
     <div
       className={cn(
         // Above the mobile tab bar; bottom-right sheet on larger screens.
-        "fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-[80] animate-pop",
+        // Click-through: only the dismiss button captures taps, so the toast
+        // can never block the primary action sitting underneath it.
+        "pointer-events-none fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-[80] animate-pop",
         "sm:inset-x-auto sm:right-5 sm:bottom-5 sm:max-w-sm",
         "flex items-center gap-2 rounded-2xl px-3.5 py-2.5 text-[13px] font-medium shadow-2xl ring-1",
         colors[type]
@@ -47,7 +49,7 @@ export function Toast({ message, type = "info", onClose }: ToastProps) {
       <span className="flex-1 leading-snug">{message}</span>
       <button
         onClick={onClose}
-        className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+        className="pointer-events-auto -mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
         aria-label="Dismiss"
       >
         <X className="h-3.5 w-3.5" />
