@@ -58,7 +58,7 @@ TIGHTEN    when the solver deadlocks or the four-course guarantee fails:
 
 When a request set is infeasible, the solver doesn't just fail — every incoming constraint is guarded by a CP-SAT *assumption literal*, so the model returns the **minimal conflicting subset** of the request. Then the two-layer self-heal fires: **Muse Spark translates the proof** (plain-English explanation + ranked resolutions, each dropping one conflicting request), and **CP-SAT re-solves every proposed resolution** before it can be shown — the agent presents only *proven* options, and auto-applies the least disruptive one.
 
-**Every co-pilot run returns an agent trace** — the autonomous loop made visible, step by step with the actor named: `parse (Muse Spark) → validate → solve (CP-SAT) → conflict-core → explain (Muse Spark) → verify each resolution (CP-SAT) → auto-apply the least-disruptive proven fix → audit`. The Emergency flow traces the same way (`transcribe → parse → impact → probe every candidate → choose → re-solve → audit`). The wizard renders the trace live; it is also in the API response (`agent_trace`). No step is a model guess: each one either proposes (Muse) or proves (CP-SAT).
+**Every co-pilot run returns an agent trace** — the autonomous loop made visible, step by step with the actor named: `parse (Muse Spark) → validate → solve (CP-SAT) → conflict-core → explain (Muse Spark) → verify each resolution (CP-SAT) → auto-apply the least-disruptive proven fix → audit`. The Emergency flow traces the same way (`parse → impact → probe every candidate → choose → re-solve → audit`). The wizard renders the trace live; it is also in the API response (`agent_trace`). No step is a model guess: each one either proposes (Muse) or proves (CP-SAT).
 
 **Spectral warm-start runs on every solve**: the section-conflict graph (cohort hard edges + instructor soft edges) yields Laplacian eigenvalues and the Fiedler vector, whose spectral coloring becomes CP-SAT `AddHint` hints. The same graph powers a **deadlock radar** — algebraic connectivity μ₂, Hoffman chromatic lower bound, exact max clique — that names a structural deadlock (a same-pattern clique exceeding the 4-period MWF/TTh band) *before* the solver wastes a solve, and feeds the tightener.
 
@@ -104,7 +104,15 @@ At department scale every cohort still gets its four-course guarantee, every cou
 
 ## Meta AI tooling at runtime
 
-**Every model this project calls at runtime is a Meta model**, via the Meta Model API. The deterministic core (OR-Tools CP-SAT) is not a model — the LLM proposes, the solver proves. When no API key is present, all model roles degrade to deterministic templates (dev/tests cost zero credits).
+**Every model this project calls at runtime is a Meta model**, via the Meta Model API. The deterministic core (the solver engines) is not a model — the LLM proposes, the solver proves. When no API key is present, all model roles degrade to deterministic templates (dev/tests cost zero credits).
+
+**The role of Muse, stated plainly:**
+- **Cleanse** — messy institutional files in any format (PDF, Word, Excel, CSV, text, zip) are extracted to text, and Muse Spark autocleans them into typed, solver-ready data for the entire institution.
+- **Flag gaps** — the extraction feeds a deterministic completeness check over the six required inputs, so the coordinator is told exactly which requirement is missing before any solve is attempted.
+- **Translate people** — free-text constraints ("can't teach Mondays", "Chen is out all week") become typed, validated operations a solver can reason about.
+- **Explain and break ties** — when a solver proves a request impossible, Muse translates the proof into plain English and ranks the *proven* fixes by human disruption; the least disruptive applies. Muse breaks ties among verified options — never inside the math.
+- **Propose repairs** — typed tightening moves from a closed grammar, each re-solved before it can be shown.
+- **Never decide** — no schedule, coverage, or repair stands because Muse said so. Every one is proven by an engine first.
 
 | # | Runtime call | Model | Code | When it fires |
 |---|---|---|---|---|
@@ -163,7 +171,7 @@ docker compose up --build
 
 Without a key the model roles degrade to a deterministic mock parser, so every beat (parse → solve → self-heal → emergency coverage → department scale) is clickable offline at zero cost. Add `MODEL_API_KEY` (see below) and the same clicks run live Muse Spark with on-screen model + latency badges. Submission details, track, and bonus-prize flags: [docs/submission.md](./docs/submission.md).
 
-**Hosted demo:** the backend is Modal-ready ([docs/deploy_modal.md](./docs/deploy_modal.md)) and the UI deploys to Vercel; set `BACKEND_URL` to the Modal URL. The local one-command path is below.
+**Hosted demo:** the backend is **live on Modal** — https://prohle--schedulegod-ai-api.us-east.modal.run (`/health`, `/docs`, `/engines`; scale-to-zero, warm it with one request). Deploy your own from [docs/deploy_modal.md](./docs/deploy_modal.md); the UI deploys to Vercel with `BACKEND_URL` set to that URL. The local one-command path is below.
 
 **Full stack (one command):**
 
