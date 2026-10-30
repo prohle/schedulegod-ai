@@ -2,10 +2,10 @@
 
 // Vertical nav with the two interfaces: Guided (step-by-step) vs Advanced
 // (Intelligence). No toy views — both routes hit the real backend.
-import { Zap, Brain } from "lucide-react";
+import { Zap, Brain, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ActiveView = "wizard" | "intelligence";
+export type ActiveView = "wizard" | "intelligence" | "schedule";
 
 const VIEWS = [
   {
@@ -14,6 +14,13 @@ const VIEWS = [
     icon: Zap,
     tag: "Simple",
     desc: "Step-by-step: Import → Intake → Build → Review → Emergency",
+  },
+  {
+    id: "schedule" as const,
+    label: "My Schedule",
+    icon: CalendarDays,
+    tag: "Personal",
+    desc: "Your published timetable (per role) + change requests",
   },
   {
     id: "intelligence" as const,

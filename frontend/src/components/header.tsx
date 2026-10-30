@@ -4,10 +4,11 @@
 // current scenario so the strip always reflects the world being scheduled
 // (story seed, department, university, or an ingested institution).
 import { useEffect, useState } from "react";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, LogOut } from "lucide-react";
 import type { Scenario } from "@/types";
+import type { AuthUser } from "@/lib/auth";
 
-export function Header() {
+export function Header({ user, onLogout }: { user?: AuthUser | null; onLogout?: () => void }) {
   const [sc, setSc] = useState<Scenario | null>(null);
   useEffect(() => {
     let live = true;
@@ -52,6 +53,17 @@ export function Header() {
         <span className="text-[10px] text-muted-foreground hidden lg:block">
           Every answer is solver-proven — no guesswork
         </span>
+        {user && (
+          <span className="inline-flex items-center gap-2">
+            <span className="px-2 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold" title={user.email}>
+              {user.display_name} · {user.role}
+            </span>
+            <button onClick={onLogout} title="Sign out"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border font-semibold hover:bg-accent">
+              <LogOut className="w-3 h-3" /> Sign out
+            </button>
+          </span>
+        )}
       </div>
     </header>
   );
