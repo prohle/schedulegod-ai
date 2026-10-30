@@ -28,4 +28,4 @@ build/
 *.log
 
 local*
-native/solver
+backend/native/solver
