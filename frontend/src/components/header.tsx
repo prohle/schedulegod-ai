@@ -36,7 +36,7 @@ export function Header({ user, onLogout }: { user?: AuthUser | null; onLogout?: 
             </span>
           </h1>
           <p className="text-[10px] text-muted-foreground">
-            Agentic scheduling co-pilot · Muse Spark proposes, the solver proves
+            Agentic scheduling co-pilot · Meta AI constraint parsing, solver-verified timetables
           </p>
         </div>
       </div>

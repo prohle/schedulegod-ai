@@ -15,7 +15,7 @@
 
 A department's instructors — twenty-six in the loadable department-scale scenario, six in the demo seed — with hard constraints ("never Tuesdays, committee duty"), soft preferences ("mornings, please"), teaching-load and prep caps. Four cohorts at different points of the same degree roadmap — the CS 2025 cohort needs CS 201 *this term* or forty-five students slip a semester. Elective pools with estimated take-up, enrollment that surges after registration closes. A fixed inventory of rooms — each course needing the right equipment and size — across a campus you can't cross in ten minutes between classes. And one coordinator whose calendar bleeds a week, every term, translating all of it into a spreadsheet that is wrong the moment reality changes.
 
-**ScheduleGod AI is the agentic co-pilot for that week.** Messy files go in — in any format, from any office — Muse Spark autocleans them into one model of the entire institution, natural language adds constraints, and a deterministic solver engine guarantees the output: a provably feasible, recommended timetable for the whole college/university, a minimal-conflict explanation when a request can't hold, and when reality breaks the term mid-flight (an instructor drops out, a hall closes), the co-pilot doesn't guess who can cover. **It proves it.**
+**ScheduleGod AI automates that reconciliation.** Messy files go in — in any format, from any office — Muse Spark autocleans them into one model of the entire institution, natural language adds constraints, and a deterministic solver engine guarantees the output: a provably feasible, recommended timetable for the whole college/university, a minimal-conflict explanation when a request can't hold, and when reality breaks the term mid-flight (an instructor drops out, a hall closes), coverage is determined by solver feasibility probes over every qualified instructor, not by model suggestion.
 
 > The LLM never touches the schedule. It only proposes constraints, and every
 > constraint — and every coverage proposal — is verified by a solver.
@@ -24,7 +24,7 @@ Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* 
 
 > **▶ Live demo (no account, no API key needed): https://prohle--schedulegod-ai-ui-web.us-east.modal.run** — the full wizard UI (Import → Intake → Build → Emergency → Intelligence), proxied to the backend API at https://prohle--schedulegod-ai-api.us-east.modal.run (`/docs`, `/health`, `/engines`). Both are scale-to-zero on Modal, so the first request may take a few seconds. Judges can also run everything locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
 >
-> **▶ Demo video (84 seconds, recorded live with Muse Spark): https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4** — any-format import autoclean → Build solve → university scale + dual-engine compare → emergency with solver-verified coverage + agent trace → self-heal → audit trail.
+> **▶ Demo video (2:55, live Puppeteer screencast of the running app — not screenshots): https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4** — one-click coordinator login → any-format import autoclean → Patel intake → **dual-engine compare with Rank 1 / Rank 2 ranked from outputs** → university-scale publish → instructor change request approved and re-published → Chen emergency with solver-verified coverage + agent trace → growth what-if re-solve. Script and recording pipeline: [docs/demo_script.md](./docs/demo_script.md).
 
 ![Build: visual timetable grid](docs/screenshot-build.png)
 
@@ -45,19 +45,30 @@ INTAKE     the coordinator pastes or drops the term's intake (v1: one
            deadlines are the next step): free-text constraints -> Muse Spark
            (structured output) -> typed hard/soft constraints -> validated
            -> provenance stored
-BUILD      CP-SAT assigns every section an instructor, timeslot set, and room:
-           qualification, loads, prep caps, room capacity/type, equipment,
-           meeting patterns, cohort conflicts, electives, campus walk
-           distances, active enrollment, preferences
-OPERATE    an emergency arrives (a typed message):
-           impact analysis ->
-           propose_candidates: every qualified instructor CP-SAT-probed for
-           zero-ripple feasibility + preference delta, ranked with plain-English
-           reasons -> pick -> timetable morphs
+BUILD      both engines assign every section an instructor, timeslot set,
+           and room: qualification, loads, prep caps, room capacity/type,
+           equipment, meeting patterns, cohort conflicts, electives, campus
+           walk distances, active enrollment, preferences. The AI-built
+           rival solver and CP-SAT then race on identical data; the compare
+           evaluates both final schedules from outputs alone (proven status,
+           then penalty, then speed) and ranks Rank 1 / Rank 2
+OPERATE    the coordinator publishes the winning timetable; instructors and
+           students sign in to their own role-filtered schedules. Changes
+           arrive two ways: an emergency (a typed message -> impact analysis
+           -> propose_candidates: every qualified instructor solver-probed
+           for zero-ripple feasibility + preference delta, ranked with
+           plain-English reasons -> pick -> timetable updates), or an
+           instructor's own change request, which the coordinator approves
+           only after the same verified loop re-proves and re-publishes it
 TIGHTEN    when the solver deadlocks or the four-course guarantee fails:
            spectral radar -> Muse Spark proposes typed repair moves
            (raise_load_cap, add_section, add_qualification, open_elective,
            drop_request) -> CP-SAT verifies each -> only proven moves shown
+GROW       plan with proof before spending: enrollment +20%, repurpose a
+           hall, build a new lab — each what-if re-solved with utilization
+           and guarantee deltas. Add a college, a degree, a course, or an
+           adjusted degree map by re-ingesting the changed files and
+           re-solving the larger institution
 ```
 
 When a request set is infeasible, the solver doesn't just fail — every incoming constraint is guarded by a CP-SAT *assumption literal*, so the model returns the **minimal conflicting subset** of the request. Then the two-layer self-heal fires: **Muse Spark translates the proof** (plain-English explanation + ranked resolutions, each dropping one conflicting request), and **CP-SAT re-solves every proposed resolution** before it can be shown — the agent presents only *proven* options, and auto-applies the least disruptive one.
@@ -78,6 +89,8 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 | "Dr. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 2/3, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
 | "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. Muse Spark's explanation names the binding rule and ranks resolutions ("drop the CS 201 pin — Okafor has capacity to take it"); **every option is re-solved by CP-SAT with its own penalty delta**, the least disruptive one applies. |
 | "CS 350 enrollment jumped to 45 after registration ended." | Active enrollment re-triggers every capacity check; the board re-solves and CS 350 lands in the 120-seat hall with zero cohort conflicts. |
+| *(coordinator clicks Publish, then signs in as Dr. Chen)* | Chen sees **only her own sections**. Her request "I can't teach Fridays" goes to the coordinator, who approves it — the verified loop re-solves, re-publishes, and her personal grid updates. A student signing in sees only their cohort's courses. |
+| "What if enrollment grows 20% — or we repurpose the big hall?" | Each growth/repurpose/build-a-lab what-if is re-solved first: utilization and four-course-guarantee deltas with a plain verdict, before capital is committed. Add a college, degree, or course — or adjust a degree map — by re-ingesting the changed files; the institution re-solves as one. |
 | *(C39 shortfall fires)* | "CS 2023 cohort can only fit 2 of 4 non-conflicting courses." → the tightener proposes opening already-offered electives; CP-SAT verifies the margin gains against the current board and **rejects** moves that make the enlarged scenario infeasible. Only verified moves are shown. |
 
 ## Proof at university scale
@@ -92,9 +105,10 @@ The demo story above is one department slice (6 instructors, 8 sections) so ever
 
 ## Two engines, one contract: industrial CP-SAT vs an AI-crafted solver
 
-**We used AI to build a second solver, not just to call one.** Alongside Google's engine, ScheduleGod ships a complete constraint solver designed and written for this problem — and because both live behind one standardized interface (`GET /engines`, `POST /solve` with `engine`, one `SolveResult` shape), you can choose either per solve, or race them head-to-head on the *exact* same messy constraints, preferences, and room capacities. That split-screen contrast is the trust story: two independent implementations cross-checking each other, live.
+**We used AI to build a second solver, not just to call one.** Alongside Google's engine, ScheduleGod ships a complete constraint solver designed and written for this problem — and because both live behind one standardized interface (`GET /engines`, `POST /solve` with `engine`, one `SolveResult` shape), you can choose either per solve, or race them head-to-head on the *exact* same messy constraints, preferences, and room capacities. Two independent implementations therefore cross-check each other on identical inputs, live.
 
-- **OR-Tools CP-SAT** (`cpsat`): industrial brute force done right — C++, clause learning, cuts through the search space and returns a *mathematically proven* optimum in fractions of a second. Assumption literals give minimal conflict cores.
+**Second engine, built during the hackathon window.** The initial implementation used CP-SAT only. A domain-specialized engine was then developed against it: first a Python reference search, which matched CP-SAT's objective at department and university scale but exceeded its 5 s budget without an optimality proof; then a native C++17 search core (minimum-remaining-values ordering, unit propagation, live and pairwise-conflict admissible bounds). Measured on identical inputs, it returns the same proven objective at every scale with lower proof time (university: 31 ms vs 258 ms). The Build step ranks both engines from outputs alone (Rank 1 / Rank 2 + verdict). CP-SAT remains the general-purpose solver and still powers the emergency feasibility probes; the scope and limits of the comparison are documented in [docs/solver_evidence.md](./docs/solver_evidence.md).
+
 - **OR-Tools CP-SAT** (`cpsat`): industrial brute force done right — C++, clause learning, cuts through the search space and returns a *mathematically proven* optimum in fractions of a second. Assumption literals give minimal conflict cores.
 - **ScheduleGod native solver** (`ours`, `backend/native/schedulergod_solver.cpp` + `backend/app/solver/native_solver.py`): an AI-authored C++17 search core built for this problem — MRV over live domains, unit propagation, branch-and-bound with a live admissible bound plus a *pairwise-conflict bound* (contending sections whose cheapest options clash force a deviation cost), single/ejection hill-climbing, and deletion-minimization conflict cores with itself as oracle. Domains and penalties come from the identical preparation code CP-SAT uses, so the engines differ only in search. A Python reference implementation of the same algorithm (`backend/app/solver/home_solver.py`) is the readable specification and the fallback when the binary is unbuilt. No OR-Tools anywhere in either path.
 - **Greedy descent** (`greedy`): the first descent only — plug-and-play proof that a new engine is one registry entry (`backend/app/solver/engine.py`); it shows exactly what the optimization phases buy.
@@ -114,9 +128,11 @@ At department scale every cohort still gets its four-course guarantee, every cou
 **The role of Muse, stated plainly:**
 - **Cleanse** — messy institutional files in any format (PDF, Word, Excel, CSV, text, zip) are extracted to text, and Muse Spark autocleans them into typed, solver-ready data for the entire institution.
 - **Flag gaps** — the extraction feeds a deterministic completeness check over the six required inputs, so the coordinator is told exactly which requirement is missing before any solve is attempted.
+- **Identify the fit** — who is qualified for what, which room fits which course (capacity, type, equipment), which cover fits an orphaned section: Muse proposes candidates, the solver's qualification/capacity model proves the fit.
 - **Translate people** — free-text constraints ("can't teach Mondays", "Chen is out all week") become typed, validated operations a solver can reason about.
-- **Explain and break ties** — when a solver proves a request impossible, Muse translates the proof into plain English and ranks the *proven* fixes by human disruption; the least disruptive applies. Muse breaks ties among verified options — never inside the math.
-- **Propose repairs** — typed tightening moves from a closed grammar, each re-solved before it can be shown.
+- **Evaluate the finals** — when both engines return optimal schedules, the platform ranks them from outputs alone (proven status → preference penalty → speed) as Rank 1 and Rank 2; Muse explains the verdict and breaks human ties among *verified* options — never inside the math.
+- **Explain and repair** — when a solver proves a request impossible, Muse translates the proof into plain English and ranks the *proven* fixes by human disruption; typed tightening moves from a closed grammar, each re-solved before it can be shown.
+- **Keep distribution explicit** — the objectives Muse's constraints feed are measurable per solve: balanced faculty loads and prep caps (fair distribution), every cohort's ≥4-course guarantee (degree progress), preference satisfaction, and room utilization per building.
 - **Never decide** — no schedule, coverage, or repair stands because Muse said so. Every one is proven by an engine first.
 
 | # | Runtime call | Model | Code | When it fires |
