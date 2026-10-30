@@ -50,7 +50,7 @@ our word for it. Scoped claims are stronger than broad ones.
   It proves CP-SAT's optimum 3–8× faster on the measured seed /
   department / university instances (`docs/solver_evidence.md`,
   `backend/scripts/benchmark.py`). CP-SAT remains the better
-  general-purpose solver and still powers the emergency feasibility
+  general-purpose solver and still powers the term change feasibility
   probes; we claim no general superiority.
 - **The Python reference search cannot prove optimality at scale.** It
   reaches the same penalty but exhausts its 5 s budget unproven at
@@ -73,7 +73,7 @@ our word for it. Scoped claims are stronger than broad ones.
 
 ## Voice
 
-- **Upload format is 24 kHz mono WAV** (`POST /emergency/audio`,
+- **Upload format is 24 kHz mono WAV** (`POST /term-change/audio`,
   `audioEncoding: WAV`). Spelled-out titles from speech recognition
   ("Doctor Chen") are normalized deterministically before parsing
   (`backend/app/services/voice.py`); free-form dictation in other

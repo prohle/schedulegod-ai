@@ -7,7 +7,7 @@ audits, intelligence).
 ## The two interfaces
 
 - **Guided** (default) — the real end-to-end flow: type a constraint → Muse Spark
-  parses it → CP-SAT solves → C39/spectral review → emergency coverage proposals.
+  parses it → CP-SAT solves → C39/spectral review → term change coverage proposals.
   Requires the Python backend.
 - **Expert** — the full view set in the left sidebar, including **Intelligence**
   (spectral radar, C39 four-course guarantee, real CP-SAT solve, and

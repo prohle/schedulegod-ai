@@ -1,8 +1,8 @@
 """ScheduleGod AI — backend entry point.
 
     instructor/chair message -> Muse Spark constraint parsing -> CP-SAT
-    solve -> timetable, minimal-conflict explanation, or verified emergency
-    coverage proposals.
+    solve -> timetable, minimal-conflict explanation, or verified term-change
+    reassignment proposals.
 
 Built during the Meta Global AI Developer Hackathon (Oct 27 - Nov 4, 2026).
 """
@@ -32,13 +32,13 @@ from app.models.intelligence import (
     UtilizationReport,
     WhatIfReport,
 )
-from app.models.results import AgentStep, CompareResult, CopilotResponse, EmergencyResponse, SolveResult
+from app.models.results import AgentStep, CompareResult, CopilotResponse, TermChangeResponse, SolveResult
 from app.models.scenario import Operation, ParsedRequest, Scenario, TermClosure
 from app.parsing.parser import ConstraintParser, validate_operations
 from app.services import audit
 from app.services.apply import apply_operations
 from app.services.copilot import run_copilot
-from app.services.emergency import run_emergency
+from app.services.term_change import run_term_change
 from app.services.voice import transcribe_wav
 from app.solver.scheduling_model import solve
 
@@ -227,7 +227,7 @@ def university_scenario() -> Scenario:
 
 @app.post("/apply", response_model=Scenario)
 def apply_request(req: ApplyOpsRequest) -> Scenario:
-    """Commit a verified co-pilot/emergency proposal to the current term.
+    """Commit a verified co-pilot/term-change proposal to the current term.
 
     This is the explicit "accept" step: after it, every later solve builds on
     the new world state instead of silently reverting to the seed.
@@ -359,18 +359,18 @@ def copilot(req: MessageRequest) -> CopilotResponse:
     return run_copilot(scenario, req.message, speaker_id=req.speaker_id)
 
 
-@app.post("/emergency", response_model=EmergencyResponse)
-def emergency(req: MessageRequest) -> EmergencyResponse:
+@app.post("/term-change", response_model=TermChangeResponse)
+def term_change(req: MessageRequest) -> TermChangeResponse:
     scenario = req.scenario or get_current_scenario()
-    return run_emergency(scenario, req.message)
+    return run_term_change(scenario, req.message)
 
 
-@app.post("/emergency/audio", response_model=EmergencyResponse)
-async def emergency_audio(file: UploadFile = File(...)) -> EmergencyResponse:
-    """Voice call-in: Muse Voice Transcribe -> the same verified emergency flow."""
+@app.post("/term-change/audio", response_model=TermChangeResponse)
+async def term_change_audio(file: UploadFile = File(...)) -> TermChangeResponse:
+    """Voice report: Muse Voice Transcribe -> the same verified term-change flow."""
     audio = await file.read()
     transcript = transcribe_wav(audio, file.filename or "voice-note.wav")
-    response = run_emergency(get_current_scenario(), transcript)
+    response = run_term_change(get_current_scenario(), transcript)
     response.transcript = transcript
     response.agent_trace.insert(0, AgentStep(
         step="transcribe", actor="Muse Voice Transcribe · muse-voice-transcribe-1.0",

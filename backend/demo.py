@@ -5,7 +5,7 @@ Run:  python demo.py   (no API key required)
 Beats:
   1. Build the term timetable from the full constraint world (CP-SAT).
   2. Intake: one instructor sentence reshuffles the timetable legally.
-  3. Emergency: an instructor drops out -> CP-SAT-verified coverage
+  3. Term Change: an instructor will no longer teach this term -> CP-SAT-verified coverage
      proposals ("who could potentially be available") -> auto-pick -> re-solve.
   4. Overload: an impossible request -> minimal conflict core -> self-heal.
 """
@@ -13,16 +13,16 @@ Beats:
 from __future__ import annotations
 
 from app.main import load_seed_scenario
-from app.models.results import CandidateProposal, CopilotResponse, EmergencyResponse, SolveResult
+from app.models.results import CandidateProposal, CopilotResponse, TermChangeResponse, SolveResult
 from app.models.scenario import DAY_NAMES, PERIOD_NAMES
 from app.services.copilot import run_copilot
-from app.services.emergency import run_emergency
+from app.services.term_change import run_term_change
 
 INTAKE_MSG = (
     "Professor Patel can't teach Mondays — committee duty. "
     "She'd rather not teach at 8:00."
 )
-EMERGENCY_MSG = "Prof. Chen is out all week — who could cover her sections?"
+TERM_CHANGE_MSG = "Prof. Chen will no longer teach this term — who should take over her sections?"
 OVERLOAD_MSG = "Diaz is taking over CS 101, MATH 201 and CS 201 personally."
 ENROLLMENT_MSG = "CS 350 enrollment jumped to 45 after registration ended."
 
@@ -69,10 +69,10 @@ def print_copilot(message: str, resp: CopilotResponse) -> None:
         print_timetable(resp.result, "TIMETABLE")
 
 
-def print_emergency(message: str, resp: EmergencyResponse) -> None:
+def print_term_change(message: str, resp: TermChangeResponse) -> None:
     print("=" * 78)
     print(f'CHAIR:   "{message}"')
-    print(f"PARSER ({resp.parser_mode}) — emergency: {resp.removed_instructor_name} removed.")
+    print(f"PARSER ({resp.parser_mode}) — term change: {resp.removed_instructor_name} removed for the rest of the term.")
     print(f"  affected sections: {', '.join(resp.affected_section_ids)}")
     print("  CP-SAT-verified coverage proposals:")
     for p in resp.proposals:
@@ -82,7 +82,7 @@ def print_emergency(message: str, resp: EmergencyResponse) -> None:
     for note in resp.healing_notes:
         print(f"  ! {note}")
     if resp.result:
-        print_timetable(resp.result, "TIMETABLE AFTER EMERGENCY")
+        print_timetable(resp.result, "TIMETABLE AFTER TERM CHANGE")
 
 
 def print_intelligence(scenario) -> None:
@@ -137,7 +137,7 @@ def main() -> None:
     print("\n  (intake shown against the base scenario; in production the "
           "window would merge this into the world state)")
 
-    print_emergency(EMERGENCY_MSG, run_emergency(scenario, EMERGENCY_MSG))
+    print_term_change(TERM_CHANGE_MSG, run_term_change(scenario, TERM_CHANGE_MSG))
     print_copilot(OVERLOAD_MSG, run_copilot(scenario, OVERLOAD_MSG))
     print_copilot(ENROLLMENT_MSG, run_copilot(scenario, ENROLLMENT_MSG))
 

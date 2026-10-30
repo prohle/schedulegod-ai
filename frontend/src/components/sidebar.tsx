@@ -14,7 +14,7 @@ const VIEWS = [
     id: "wizard" as const,
     label: "Express",
     icon: Zap,
-    desc: "Guided — step by step: Import → Intake → Build → Review → Emergency",
+    desc: "Guided — step by step: Import → Intake → Build → Review → Term Change",
   },
   {
     id: "schedule" as const,

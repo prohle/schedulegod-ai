@@ -1,4 +1,4 @@
-"""Result types: timetable, conflict reports, and emergency coverage proposals."""
+"""Result types: timetable, conflict reports, and term-change reassignment proposals."""
 
 from __future__ import annotations
 
@@ -114,7 +114,7 @@ class AgentStep(BaseModel):
     status: Literal["ok", "blocked", "info"] = "ok"
 
 
-class EmergencyResponse(BaseModel):
+class TermChangeResponse(BaseModel):
     removed_instructor_id: str
     removed_instructor_name: str
     affected_section_ids: list[str]

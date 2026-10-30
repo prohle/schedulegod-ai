@@ -57,10 +57,10 @@ export function useCopilot() {
     }
   }, []);
 
-  const sendEmergency = useCallback(async (message: string) => {
+  const sendTermChange = useCallback(async (message: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/emergency`, {
+      const res = await fetch(`${API_BASE}/api/term-change`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
@@ -74,7 +74,7 @@ export function useCopilot() {
     }
   }, []);
 
-  return { response, loading, send, sendEmergency };
+  return { response, loading, send, sendTermChange };
 }
 
 export function useSolve() {

@@ -15,7 +15,7 @@ No OR-Tools. Pure Python constraint search built for exactly this problem:
   is then computed by deletion minimization, using this solver as its own
   oracle — the same contract CP-SAT's assumption literals provide.
 
-It returns the exact same `SolveResult` shape, so the UI, the emergency
+It returns the exact same `SolveResult` shape, so the UI, the term-change flow
 probes, and the comparison view can swap engines without knowing which ran.
 Deterministic: sorted domains, single thread, no randomness.
 """

@@ -86,7 +86,7 @@ return identical placements (tested).
 - CP-SAT is a general solver; ours is specialized. On adversarial or
   much larger instances CP-SAT's clause learning will win, and the UI
   says so — the compare view ranks engines from outputs only.
-- Emergency coverage probes (`propose_candidates`) still run on CP-SAT;
+- Term Change coverage probes (`propose_candidates`) still run on CP-SAT;
   the engines share the contract, so this is a configuration choice,
   not a limitation of the native core.
 - If the native binary is not built (e.g. a platform without `g++`),

@@ -241,7 +241,7 @@ export interface CandidateProposal {
   reason: string;
 }
 
-export interface EmergencyResponse {
+export interface TermChangeResponse {
   removed_instructor_id: string;
   removed_instructor_name: string;
   affected_section_ids: string[];

@@ -91,10 +91,14 @@ def mock_parse(message: str, scenario: Scenario,
 
     inst = instructors[0] if instructors else None
 
-    # Emergency: "Prof. Chen is out all week"
-    if inst and re.search(r"\b(?:out|away|gone|on leave)\b", lower):
+    # Term Change: "Prof. Chen will no longer teach this term" — the
+    # change lasts through the end of the term (also accepts the way
+    # people actually phrase it: leaving, resigning, on leave, drops out).
+    if inst and re.search(
+            r"(?:\bno longer\b.{0,40}\bteach\b|\bwill not teach\b|\bwon'?t teach\b"
+            r"|\bis leaving\b|\bresign\w*\b|\bout\b|\baway\b|\bgone\b|\bon leave\b)", lower):
         ops.append(Operation(op="remove_instructor", instructor_id=inst.id,
-                             explanation=f"{inst.name} is out entirely this term."))
+                             explanation=f"{inst.name} will not teach for the rest of this term."))
         parts.append(f"remove {inst.name}")
 
     # "taking over CS101, MATH201 and CS201 personally"

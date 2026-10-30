@@ -1,7 +1,7 @@
 """Persistence: SQLAlchemy over Postgres (Docker) or SQLite (local dev).
 
 The database holds constraint provenance — every intake submission and every
-change event (parse / apply / drop / emergency / tighten) — the audit trail
+change event (parse / apply / drop / term_change / tighten) — the audit trail
 that tells a coordinator "who said what, when". The deterministic solver core
 never depends on it: every record call is best-effort, so the timetable keeps
 solving even if the database is down.

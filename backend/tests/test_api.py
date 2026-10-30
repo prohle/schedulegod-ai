@@ -24,14 +24,14 @@ def test_apply_then_solve_keeps_patel_off_monday(client):
     assert not patel
 
 
-def test_emergency_apply_removes_instructor_for_good(client):
-    emergency = client.post("/emergency", json={
-        "message": "Prof. Chen is out all week — who could cover her sections?"}).json()
-    assert emergency["chosen"]
+def test_term_change_apply_removes_instructor_for_good(client):
+    term_change = client.post("/term-change", json={
+        "message": "Prof. Chen will no longer teach this term — who should take over her sections?"}).json()
+    assert term_change["chosen"]
 
     applied = client.post("/apply", json={
-        "pins": emergency["chosen"],
-        "remove_instructor_id": emergency["removed_instructor_id"],
+        "pins": term_change["chosen"],
+        "remove_instructor_id": term_change["removed_instructor_id"],
     }).json()
     assert not [i for i in applied["instructors"] if i["id"] == "chen"]
 
@@ -53,7 +53,7 @@ def test_speaker_context_attributes_identity_dependent_requests(client):
 
 def test_voice_endpoint_requires_a_meta_key(client):
     response = client.post(
-        "/emergency/audio",
+        "/term-change/audio",
         files={"file": ("note.wav", b"RIFF0000WAVE", "audio/wav")},
     )
     assert response.status_code == 503

@@ -27,13 +27,23 @@
 5. **Role-based change** — sign in as Prof. Chen: only her sections visible →
    "I can't teach Fridays" change request → coordinator approves →
    co-pilot re-solves, schedule re-publishes, her grid updates.
-6. **Mid-term emergency** — "Prof. Chen is out all week" → feasibility probes
-   over every qualified instructor → ranked zero-ripple coverage →
+6. **Term change** — "Prof. Chen will no longer teach this term" (the
+   change lasts through the end of the term) → feasibility probes over
+   every qualified instructor → ranked zero-ripple reassignment →
    before/after grids, agent trace visible.
-7. **Capacity planning** — Intelligence → Planning → "20% growth" what-if
-   re-solved with utilization/guarantee deltas; closing frame.
+7. **Impossible override + capacity** — Diaz overload → minimal conflict
+   core → Muse explanation → every repair re-proven before it is shown;
+   then Intelligence → Planning → "20% growth" what-if re-solved with
+   utilization/guarantee deltas; closing end card (live demo + repo URLs).
 
-Narration text: `local-demo/narration.txt` (one paragraph per beat).
+Narration text: `local-demo/narration.txt` (one paragraph per beat) — the
+canonical pitch in `docs/submission.md`, grouped into 7 beats. Time it
+before assembly: total narration must stay ≤2:55 at the TTS pace used.
+
+> Status: the currently shipped video predates the Term Change rename and
+> the canonical pitch, and its university beat does not load (see the
+> recording checklist). It must be re-recorded against this script before
+> submission; do not submit the old cut.
 
 ## Recording checklist
 
@@ -41,5 +51,5 @@ Narration text: `local-demo/narration.txt` (one paragraph per beat).
 - [ ] `cd local-demo && BASE_URL=http://localhost:3021 node record_live.js`
 - [ ] `python3 narrate.py --voice dee_us --cfg 2.8 --expr 0.15` + whisper gate
 - [ ] `python3 assemble_live.py live-final.mp4` (≤3:00), spot-check frames:
-      beat 3 verdict banner, beat 6 emergency result, beat 5 applied request
+      beat 3 verdict banner, beat 6 term change result, beat 5 applied request
 - [ ] Upload as the `demo-video` release asset; YouTube upload uses the same file

@@ -1,8 +1,8 @@
 {
   "verified": "2026-10-29",
-  "endpoint": "POST /emergency/audio",
+  "endpoint": "POST /term-change/audio",
   "asr_model": "muse-voice-transcribe-1.0",
-  "audio_file": "demo voice note (Chen emergency call-in)",
+  "audio_file": "demo voice note (Chen term-change call-in)",
   "outcome": {
     "removed_instructor_id": "chen",
     "affected_section_ids": ["sec-cs301", "sec-cs310"],
@@ -12,6 +12,6 @@
     "model": "muse-spark-1.3-contributor",
     "parser_mode": "muse-spark",
     "parser_latency_ms": 8006,
-    "note": "Speech recognition expands abbreviated academic titles to their spelled-out form; titles are normalized deterministically before parsing (app/parsing/parser.py). The transcript itself is retained in the audit trail (GET /history) rather than quoted here. Reproduce: POST a WAV of the Chen call-in to /emergency/audio on the live API."
+    "note": "Speech recognition expands abbreviated academic titles to their spelled-out form; titles are normalized deterministically before parsing (app/parsing/parser.py). The transcript itself is retained in the audit trail (GET /history) rather than quoted here. Reproduce: POST a WAV of the Chen call-in to /term-change/audio on the live API."
   }
 }

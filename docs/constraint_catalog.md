@@ -136,7 +136,7 @@ What a chair/secretary actually says mid-term, and what each maps to:
 | "Move the intro lecture to the big hall, the small one is packed" | `set_section_room` |
 | "Keep me under 3 preps" / "cap me at two sections" | `set_prep_cap` / `set_load_cap` |
 | "CS 350 enrollment jumped to 45 after registration ended" | `update_enrollment` (re-triggers C24 capacity) |
-| **(emergency)** "Prof. Chen is out all next week — who can cover her sections?" | `propose_candidates` — a **query**, not an edit: ranked coverage proposals |
+| **(term change)** "Prof. Chen will no longer teach this term — who should take over her sections?" | `propose_candidates` — a **query**, not an edit: ranked coverage proposals |
 
 Every operation is guarded by a CP-SAT assumption literal — infeasible
 requests produce the minimal conflicting subset, the self-healing hook.
@@ -159,8 +159,8 @@ requests produce the minimal conflicting subset, the self-healing hook.
 ### Phase 2 — Build
 - Scheduler runs the CP-SAT model over the merged constraint set.
 
-### Phase 3 — Operate (emergency resource changes)
-- An emergency arrives (text or voice — Muse Voice Transcribe):
+### Phase 3 — Operate (term changes: changes through the end of the term)
+- A term change arrives (text or voice — Muse Voice Transcribe):
   "Prof. Chen is out all next week."
 - **Impact analysis:** which sections/meetings lose their instructor.
 - **Coverage proposal — "who could potentially be available":**
@@ -173,10 +173,10 @@ requests produce the minimal conflicting subset, the self-healing hook.
      verifies.
 - Scheduler picks a candidate → change applies → timetable re-solves → diff.
 - **Zero-ripple guarantee:** every unaffected placement is frozen (`pins_exact`)
-  during the final emergency solve; only the affected sections may move. The
+  during the final term change solve; only the affected sections may move. The
   before/after diff in the UI shows exactly that.
 - **Durable apply:** accepted requests are committed to the current scenario
-  (`POST /apply`), so the next build/review/emergency solve builds on the new
+  (`POST /apply`), so the next build/review/term-change solve builds on the new
   world instead of reverting to the seed.
 
 ---
@@ -192,7 +192,7 @@ Deferred: C3, C6, C11, C22, C27, C28, C31, C33.
 Lifecycle features:
 - Intake windows: single-user flow in v1 (one instructor submits free text →
   parse → validate → merge); multi-user windows + deadlines v2.
-- Emergency coverage proposals: `propose_candidates` for a lost instructor
+- Term Change coverage proposals: `propose_candidates` for a lost instructor
   (CP-SAT probe per candidate, ranked) — v1 core, it's the demo centerpiece.
 - Persistence (SQLite): constraint provenance + change/event log — powers
   the self-healing execution stream UI. Postgres via docker-compose stays a

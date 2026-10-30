@@ -32,7 +32,7 @@ class Event(Base):
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True)
-    kind = Column(String(40), nullable=False)  # parse / apply / drop / emergency / tighten
+    kind = Column(String(40), nullable=False)  # parse / apply / drop / term_change / tighten
     description = Column(Text)
     payload = Column(Text)  # JSON string
     created_at = Column(DateTime, default=_utcnow)

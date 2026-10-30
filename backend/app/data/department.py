@@ -13,7 +13,7 @@ It exists so judges can verify the engine at department scale in one click
 solve numbers. The core wing is untouched: every demo beat (Patel, Chen,
 Diaz, Okafor, Nguyen) behaves exactly as it does on the seed. The only core
 patch is two course preferences for Prof. Chen, which keep her on CS 301 /
-CS 310 — the sections the emergency beat re-homes — at the larger scale.
+CS 310 — the sections the term-change beat re-homes — at the larger scale.
 """
 
 from __future__ import annotations
@@ -331,7 +331,7 @@ def build_department_scenario(seed: Scenario) -> Scenario:
     for term, reqs in _CS_ELECTIVES.items():
         bscs.roadmap[term] = [*bscs.roadmap.get(term, []), *reqs]
 
-    # Keep the emergency beat's subject on her two sections at this scale.
+    # Keep the term-change beat's subject on her two sections at this scale.
     chen = sc.instructor("chen")
     chen.preferences = [
         *chen.preferences,

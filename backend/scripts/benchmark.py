@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.data.department import build_department_scenario, build_university_scenario
 from app.intelligence.matrices import compute_margins, compute_utilization
 from app.main import load_seed_scenario
-from app.services.emergency import run_emergency
+from app.services.term_change import run_term_change
 from app.solver.scheduling_model import solve
 
 
@@ -39,7 +39,7 @@ def bench(name: str, sc) -> dict:
         agreement = round(100.0 * sum(1 for k in a if a[k] == b.get(k)) / max(1, len(a)), 1)
     margins = compute_margins(sc, result.timetable, 4)
     util = compute_utilization(sc, result.timetable)
-    emergency = run_emergency(sc, "Prof. Chen is out all week — who could cover her sections?")
+    term_change = run_term_change(sc, "Prof. Chen will no longer teach this term — who should take over her sections?")
     return {
         "name": name,
         "instructors": len(sc.instructors),
@@ -60,9 +60,9 @@ def bench(name: str, sc) -> dict:
         "py_objective": pyref.objective,
         "c39": f"{sum(c.ok for c in margins.cohorts)}/{len(margins.cohorts)} cohorts >= 4 courses",
         "room_util": util.room_utilization,
-        "emergency": (f"{len(emergency.affected_section_ids)} affected, "
-                      f"{sum(p.feasible for p in emergency.proposals)}/{len(emergency.proposals)} probes feasible, "
-                      f"re-solve {emergency.result.status}"),
+        "term_change": (f"{len(term_change.affected_section_ids)} affected, "
+                      f"{sum(p.feasible for p in term_change.proposals)}/{len(term_change.proposals)} probes feasible, "
+                      f"re-solve {term_change.result.status}"),
     }
 
 
@@ -71,7 +71,7 @@ def main() -> None:
     rows = [bench("Story seed (demo)", seed),
             bench("Department scale", build_department_scenario(seed)),
             bench("University scale", build_university_scenario(seed))]
-    print("| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (native C++) | Ours (Python ref) | Native↔CP-SAT agreement | C39 guarantee | Room util. | Emergency (Chen out) |")
+    print("| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (native C++) | Ours (Python ref) | Native↔CP-SAT agreement | C39 guarantee | Room util. | Term Change (Chen leaves the term) |")
     print("|---|---:|---:|---:|---:|---:|---|---|---|---:|---|---:|---|")
     for r in rows:
         print(f"| {r['name']} | {r['instructors']} | {r['sections']} | {r['rooms']} | "
@@ -79,7 +79,7 @@ def main() -> None:
               f"{r['ours_status']} {r['ours_ms']} ms · penalty {r['ours_objective']} | "
               f"{r['py_status']} {r['py_ms']} ms · penalty {r['py_objective']} | "
               f"{r['agreement']}% | "
-              f"{r['c39']} | {r['room_util']:.0%} | {r['emergency']} |")
+              f"{r['c39']} | {r['room_util']:.0%} | {r['term_change']} |")
 
 
 if __name__ == "__main__":

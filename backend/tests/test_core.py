@@ -5,7 +5,7 @@ from __future__ import annotations
 from app.main import load_seed_scenario
 from app.models.scenario import Operation
 from app.services.apply import apply_operations
-from app.services.emergency import run_emergency
+from app.services.term_change import run_term_change
 from app.solver.scheduling_model import solve
 from app.intelligence.spectral import analyze
 
@@ -95,10 +95,10 @@ def test_infeasible_request_returns_a_minimal_core():
     assert result.conflicts.conflicting_operation_indices
 
 
-def test_emergency_proposals_cover_every_affected_section():
+def test_term_change_proposals_cover_every_affected_section():
     sc = load_seed_scenario()
     base = solve(sc)
-    response = run_emergency(sc, "Prof. Chen is out all week — who could cover her sections?")
+    response = run_term_change(sc, "Prof. Chen will no longer teach this term — who should take over her sections?")
     assert response.affected_section_ids
     assert set(response.chosen) == set(response.affected_section_ids)
     assert all(pid != "chen" for pid in response.chosen.values())
@@ -117,14 +117,14 @@ def test_emergency_proposals_cover_every_affected_section():
 
 
 def test_voice_style_honorifics_still_resolve_instructors():
-    # Muse Voice Transcribe spells titles out; the emergency flow must
+    # Muse Voice Transcribe spells titles out; the term-change flow must
     # still find the instructor (regression: the spelled-out academic
     # title in live transcripts resolved to nobody on Oct 29).
     from app.parsing.parser import ConstraintParser, normalize_honorifics
     spelled = "Docto" "r"  # spelled-out title, as speech recognition returns it
     assert normalize_honorifics(f"{spelled} Chen is out") == "Prof. Chen is out"
     sc = load_seed_scenario()
-    parsed = ConstraintParser().parse(f"{spelled} Chen is out all week.", sc)
+    parsed = ConstraintParser().parse(f"{spelled} Chen will no longer teach this term.", sc)
     assert any(o.op == "remove_instructor" and o.instructor_id == "chen"
                for o in parsed.operations)
 

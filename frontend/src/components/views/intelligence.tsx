@@ -618,7 +618,7 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
                   {history?.events.map((e) => (
                     <div key={e.id} className="border border-border rounded p-2 text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="px-1.5 py-0.5 rounded bg-muted font-bold uppercase text-[9px]">{e.kind}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-muted font-bold uppercase text-[9px]">{e.kind.replaceAll("_", " ")}</span>
                         <span className="text-[10px] text-muted-foreground ml-auto">{new Date(e.created_at).toLocaleString()}</span>
                       </div>
                       <div className="mt-1 text-foreground">{e.description}</div>

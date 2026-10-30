@@ -15,20 +15,20 @@
 
 A department's instructors — twenty-six in the loadable department-scale scenario, six in the demo seed — with hard constraints ("never Tuesdays, committee duty"), soft preferences ("mornings, please"), teaching-load and prep caps. Four cohorts at different points of the same degree roadmap — the CS 2025 cohort needs CS 201 *this term* or forty-five students slip a semester. Elective pools with estimated take-up, enrollment that surges after registration closes. A fixed inventory of rooms — each course needing the right equipment and size — across a campus you can't cross in ten minutes between classes. And one coordinator whose calendar bleeds a week, every term, translating all of it into a spreadsheet that is wrong the moment reality changes.
 
-**ScheduleGod AI automates that reconciliation.** Messy files go in — in any format, from any office — Muse Spark autocleans them into one model of the entire institution, natural language adds constraints, and a deterministic solver engine guarantees the output: a provably feasible, recommended timetable for the whole college/university, a minimal-conflict explanation when a request can't hold, and when reality breaks the term mid-flight (an instructor drops out, a hall closes), coverage is determined by solver feasibility probes over every qualified instructor, not by model suggestion.
+**ScheduleGod AI automates that reconciliation.** Messy files go in — in any format, from any office — Muse Spark autocleans them into one model of the entire institution, natural language adds constraints, and a deterministic solver engine guarantees the output: a provably feasible, recommended timetable for the whole college/university, a minimal-conflict explanation when a request can't hold, and when reality breaks the term mid-flight (an instructor will no longer teach this term, a hall closes), coverage is determined by solver feasibility probes over every qualified instructor, not by model suggestion.
 
 > The LLM never touches the schedule. It only proposes constraints, and every
 > constraint — and every coverage proposal — is verified by a solver.
 
 Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* track. This is the problem we know firsthand.
 
-> **▶ Live demo (no account, no API key needed): https://prohle--schedulegod-ai-ui-web.us-east.modal.run** — the full Express flow (Import → Intake → Build → Review → Emergency) plus the Full advanced workspace, proxied to the backend API at https://prohle--schedulegod-ai-api.us-east.modal.run (`/docs`, `/status`, `/engines`). Both are scale-to-zero on Modal, so the first request may take a few seconds. Judges can also run everything locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
+> **▶ Live demo (no account, no API key needed): https://prohle--schedulegod-ai-ui-web.us-east.modal.run** — the full Express flow (Import → Intake → Build → Review → Term Change) plus the Full advanced workspace, proxied to the backend API at https://prohle--schedulegod-ai-api.us-east.modal.run (`/docs`, `/status`, `/engines`). Both are scale-to-zero on Modal, so the first request may take a few seconds. Judges can also run everything locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
 >
-> **▶ Demo video (2:55, live Puppeteer screencast of the running app — not screenshots): https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4** — one-click coordinator login → any-format import autoclean → Patel intake → **dual-engine compare with Rank 1 / Rank 2 ranked from outputs** → university-scale publish → instructor change request approved and re-published → Chen emergency with solver-verified coverage + agent trace → growth what-if re-solve. Script and recording pipeline: [docs/demo_script.md](./docs/demo_script.md).
+> **▶ Demo video (2:55, live Puppeteer screencast of the running app — not screenshots): https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4** — one-click coordinator login → any-format import autoclean → Patel intake → **dual-engine compare with Rank 1 / Rank 2 ranked from outputs** → university-scale publish → instructor change request approved and re-published → Chen term change with solver-verified coverage + agent trace → growth what-if re-solve. Script and recording pipeline: [docs/demo_script.md](./docs/demo_script.md).
 
 ![Express · Build: visual timetable grid](docs/screenshot-build.png)
 
-![Express · Emergency: before/after with CP-SAT-verified coverage](docs/screenshot-emergency.png)
+![Express · Term Change: before/after with CP-SAT-verified reassignment](docs/screenshot-term-change.png)
 
 ## How it works
 
@@ -54,7 +54,7 @@ BUILD      both engines assign every section an instructor, timeslot set,
            then penalty, then speed) and ranks Rank 1 / Rank 2
 OPERATE    the coordinator publishes the winning timetable; instructors and
            students sign in to their own role-filtered schedules. Changes
-           arrive two ways: an emergency (a typed message -> impact analysis
+           arrive two ways: a term change (a typed message -> impact analysis
            -> propose_candidates: every qualified instructor solver-probed
            for zero-ripple feasibility + preference delta, ranked with
            plain-English reasons -> pick -> timetable updates), or an
@@ -73,7 +73,7 @@ GROW       plan with proof before spending: enrollment +20%, repurpose a
 
 When a request set is infeasible, the solver doesn't just fail — every incoming constraint is guarded by a CP-SAT *assumption literal*, so the model returns the **minimal conflicting subset** of the request. Then the two-layer self-heal fires: **Muse Spark translates the proof** (plain-English explanation + ranked resolutions, each dropping one conflicting request), and **CP-SAT re-solves every proposed resolution** before it can be shown — the agent presents only *proven* options, and auto-applies the least disruptive one.
 
-**Every co-pilot run returns an agent trace** — the autonomous loop made visible, step by step with the actor named: `parse (Muse Spark) → validate → solve (CP-SAT) → conflict-core → explain (Muse Spark) → verify each resolution (CP-SAT) → auto-apply the least-disruptive proven fix → audit`. The Emergency flow traces the same way (`parse → impact → probe every candidate → choose → re-solve → audit`). Express renders the trace live; it is also in the API response (`agent_trace`). No step is a model guess: each one either proposes (Muse) or proves (CP-SAT).
+**Every co-pilot run returns an agent trace** — the autonomous loop made visible, step by step with the actor named: `parse (Muse Spark) → validate → solve (CP-SAT) → conflict-core → explain (Muse Spark) → verify each resolution (CP-SAT) → auto-apply the least-disruptive proven fix → audit`. The Term Change flow traces the same way (`parse → impact → probe every candidate → choose → re-solve → audit`). Express renders the trace live; it is also in the API response (`agent_trace`). No step is a model guess: each one either proposes (Muse) or proves (CP-SAT).
 
 **Spectral warm-start runs on every solve**: the section-conflict graph (cohort hard edges + instructor soft edges) yields Laplacian eigenvalues and the Fiedler vector, whose spectral coloring becomes CP-SAT `AddHint` hints. The same graph powers a **deadlock radar** — algebraic connectivity μ₂, Hoffman chromatic lower bound, exact max clique — that names a structural deadlock (a same-pattern clique exceeding the 4-period MWF/TTh band) *before* the solver wastes a solve, and feeds the tightener.
 
@@ -86,7 +86,7 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 | Who says | What happens |
 |---|---|
 | "Prof. Patel can't teach Mondays — committee duty." | Her sections legally re-home to other instructors and the rest of the board shifts to keep the cohort conflict-free. One sentence, a multi-section ripple, all solver-verified — and **applied to the term**, so the next solve keeps it. |
-| "Prof. Chen is out all week — who could cover her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 2/3, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
+| "Prof. Chen will no longer teach this term — who should take over her sections?" | Two affected sections. Ranked, CP-SAT-verified coverage proposals — *Okafor (qualified, load 2/3, no preference cost)* over *Nguyen (qualified, +8 preference penalty)* — chosen, re-solved. |
 | "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. Muse Spark's explanation names the binding rule and ranks resolutions ("drop the CS 201 pin — Okafor has capacity to take it"); **every option is re-solved by CP-SAT with its own penalty delta**, the least disruptive one applies. |
 | "CS 350 enrollment jumped to 45 after registration ended." | Active enrollment re-triggers every capacity check; the board re-solves and CS 350 lands in the 120-seat hall with zero cohort conflicts. |
 | *(coordinator clicks Publish, then signs in as Prof. Chen)* | Chen sees **only her own sections**. Her request "I can't teach Fridays" goes to the coordinator, who approves it — the verified loop re-solves, re-publishes, and her personal grid updates. A student signing in sees only their cohort's courses. |
@@ -97,7 +97,7 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 
 The demo story above is one department slice (6 instructors, 8 sections) so every beat fits in three minutes. The same engine — same code path, one click in the Build step (**Department** / **University** scale buttons, or `POST /scenario/department` / `/scenario/university`) — solves a full department cluster (**26 instructors, 25 sections, 12 cohorts, 3 programs**) or the entire university (**38 instructors, 41 sections, 20 cohorts, 5 programs** sharing the same rooms, slots, and campus walk matrix), built deterministically from the seed (`backend/app/data/department.py`). Measured with `backend/scripts/benchmark.py` (single-worker deterministic CP-SAT, dev laptop):
 
-| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (native C++) | Ours (Python ref) | C39 guarantee | Room util. | Emergency (Chen out) |
+| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (native C++) | Ours (Python ref) | C39 guarantee | Room util. | Term Change (Chen leaves the term) |
 |---|---:|---:|---:|---:|---:|---|---|---|---|---:|---|
 | Story seed (demo) | 6 | 8 | 7 | 4 | 1 | optimal 16 ms · penalty −6 | **optimal 5 ms · penalty −6** | optimal 47 ms · penalty −6 | 2/4 (tightener demo world) | 39% | 2 affected, 3/3 probes feasible |
 | Department scale | 26 | 25 | 16 | 12 | 3 | optimal 164 ms · penalty −40 | **optimal 22 ms · penalty −40** | feasible 5 s · penalty −40 (unproven) | 12/12 cohorts ≥ 4 courses | 52% | 2 affected, 3/3 probes feasible, re-solve optimal |
@@ -107,7 +107,7 @@ The demo story above is one department slice (6 instructors, 8 sections) so ever
 
 **We used AI to build a second solver, not just to call one.** Alongside Google's engine, ScheduleGod ships a complete constraint solver designed and written for this problem — and because both live behind one standardized interface (`GET /engines`, `POST /solve` with `engine`, one `SolveResult` shape), you can choose either per solve, or race them head-to-head on the *exact* same messy constraints, preferences, and room capacities. Two independent implementations therefore cross-check each other on identical inputs, live.
 
-**Second engine, built during the hackathon window.** The initial implementation used CP-SAT only. A domain-specialized engine was then developed against it: first a Python reference search, which matched CP-SAT's objective at department and university scale but exceeded its 5 s budget without an optimality proof; then a native C++17 search core (minimum-remaining-values ordering, unit propagation, live and pairwise-conflict admissible bounds). Measured on identical inputs, it returns the same proven objective at every scale with lower proof time (university: 31 ms vs 258 ms). The Build step ranks both engines from outputs alone (Rank 1 / Rank 2 + verdict). CP-SAT remains the general-purpose solver and still powers the emergency feasibility probes; the scope and limits of the comparison are documented in [docs/solver_evidence.md](./docs/solver_evidence.md).
+**Second engine, built during the hackathon window.** The initial implementation used CP-SAT only. A domain-specialized engine was then developed against it: first a Python reference search, which matched CP-SAT's objective at department and university scale but exceeded its 5 s budget without an optimality proof; then a native C++17 search core (minimum-remaining-values ordering, unit propagation, live and pairwise-conflict admissible bounds). Measured on identical inputs, it returns the same proven objective at every scale with lower proof time (university: 31 ms vs 258 ms). The Build step ranks both engines from outputs alone (Rank 1 / Rank 2 + verdict). CP-SAT remains the general-purpose solver and still powers the term change feasibility probes; the scope and limits of the comparison are documented in [docs/solver_evidence.md](./docs/solver_evidence.md).
 
 - **OR-Tools CP-SAT** (`cpsat`): industrial brute force done right — C++, clause learning, cuts through the search space and returns a *mathematically proven* optimum in fractions of a second. Assumption literals give minimal conflict cores.
 - **ScheduleGod native solver** (`ours`, `backend/native/schedulergod_solver.cpp` + `backend/app/solver/native_solver.py`): an AI-authored C++17 search core built for this problem — MRV over live domains, unit propagation, branch-and-bound with a live admissible bound plus a *pairwise-conflict bound* (contending sections whose cheapest options clash force a deviation cost), single/ejection hill-climbing, and deletion-minimization conflict cores with itself as oracle. Domains and penalties come from the identical preparation code CP-SAT uses, so the engines differ only in search. A Python reference implementation of the same algorithm (`backend/app/solver/home_solver.py`) is the readable specification and the fallback when the binary is unbuilt. No OR-Tools anywhere in either path.
@@ -115,7 +115,7 @@ The demo story above is one department slice (6 instructors, 8 sections) so ever
 
 **Head-to-head (measured, `scripts/benchmark.py`):** ours *proves the same optimum as CP-SAT at every scale, 3–8× faster* (university: optimal −40 in 31 ms vs 258 ms). The pure-Python reference reaches the same penalty but cannot prove optimality inside its 5 s budget at scale — that measured gap is exactly why the search core is native C++, and why the claim is scoped to this problem class (CP-SAT remains the better general solver; full analysis in [docs/solver_evidence.md](./docs/solver_evidence.md)). **Compare engines** (Build step, or `POST /solve/compare`) diffs status, runtime, penalty delta, placement-agreement %, and both grids with differing sections ringed; the compare ranks engines from outputs only. Tests verify ours independently — hard constraints checked from placements alone, proven objective parity at all scales, the identical conflict core `[0,1,2]` on the Diaz overload, determinism (`backend/tests/test_native_solver.py`, `backend/tests/test_home_solver.py`).
 
-At department scale every cohort still gets its four-course guarantee, every course has ≥2 qualified instructors, and the Chen emergency still re-homes exactly CS 301 + CS 310 with zero ripple. Locked in by `backend/tests/test_department.py`. Reproduce: `cd backend && .venv/bin/python scripts/benchmark.py`.
+At department scale every cohort still gets its four-course guarantee, every course has ≥2 qualified instructors, and the Chen term change still re-homes exactly CS 301 + CS 310 with zero ripple. Locked in by `backend/tests/test_department.py`. Reproduce: `cd backend && .venv/bin/python scripts/benchmark.py`.
 
 **Capacity showcase (university scale, one click in Build):** 5 degree programs (CS, Mathematics, Data Science, Business, Humanities) · 38 instructors · 41 sections · 20 cohorts · **530 students** on degree roadmaps · 16 rooms / 694 seats / 4 buildings with a walk-time matrix · 20 weekly slots per room — all of it solved as *one* institution sharing the same rooms and hours, not five toy departments side by side. That is the capacity a real registrar's office actually schedules.
 
@@ -127,11 +127,11 @@ Honest accounting — the rented parts are named, not hidden:
 
 | Ours (written this hackathon) | Rented (named, not claimed) |
 |---|---|
-| **Native C++ solver** (522 lines, `backend/native/schedulergod_solver.cpp`) + Python reference (`home_solver.py`) — MRV search, unit propagation, pairwise-conflict admissible bound; proves CP-SAT's optimum 3–8× faster on this problem class | OR-Tools CP-SAT (Google) — general solver, emergency probes |
+| **Native C++ solver** (522 lines, `backend/native/schedulergod_solver.cpp`) + Python reference (`home_solver.py`) — MRV search, unit propagation, pairwise-conflict admissible bound; proves CP-SAT's optimum 3–8× faster on this problem class | OR-Tools CP-SAT (Google) — general solver, term change probes |
 | CP-SAT timetable model with assumption-literal minimal conflict cores (`scheduling_model.py`, 516 lines) | Muse Spark / Spark Open / Voice Transcribe (Meta) — propose, never decide |
 | Spectral engine: Laplacian/Fiedler/Hoffman/exact max-clique → warm-start hints + deadlock radar (`intelligence/spectral.py`) | Next.js, FastAPI, scipy/numpy, Postgres |
 | Self-healing loop: minimal core → explanation → **every resolution re-solved before it can be shown** → least-disruptive auto-apply (`services/copilot.py`) | Modal hosting, Baseten inference for the open-weights path |
-| Emergency probe-and-rank over every qualified instructor; C39 four-course audit; typed tightener with closed move grammar | |
+| Term Change probe-and-rank over every qualified instructor; C39 four-course audit; typed tightener with closed move grammar | |
 | Any-format ingestion (PDF/DOCX/XLSX/CSV/JSON/TXT/MD/ZIP → typed scenario) + deterministic completeness check | |
 | Multi-user product: role-filtered schedules, verified change requests, Express/Full UI, audit ledger | |
 
@@ -145,7 +145,7 @@ Boundaries we don't cross are listed just as plainly: [docs/limitations.md](./do
 - **Cleanse** — messy institutional files in any format (PDF, Word, Excel, CSV, text, zip) are extracted to text, and Muse Spark autocleans them into typed, solver-ready data for the entire institution.
 - **Flag gaps** — the extraction feeds a deterministic completeness check over the six required inputs, so the coordinator is told exactly which requirement is missing before any solve is attempted.
 - **Identify the fit** — who is qualified for what, which room fits which course (capacity, type, equipment), which cover fits an orphaned section: Muse proposes candidates, the solver's qualification/capacity model proves the fit.
-- **Translate people** — free-text constraints ("can't teach Mondays", "Chen is out all week") become typed, validated operations a solver can reason about.
+- **Translate people** — free-text constraints ("can't teach Mondays", "Chen will no longer teach this term") become typed, validated operations a solver can reason about.
 - **Evaluate the finals** — when both engines return optimal schedules, the platform ranks them from outputs alone (proven status → preference penalty → speed) as Rank 1 and Rank 2; Muse explains the verdict and breaks human ties among *verified* options — never inside the math.
 - **Explain and repair** — when a solver proves a request impossible, Muse translates the proof into plain English and ranks the *proven* fixes by human disruption; typed tightening moves from a closed grammar, each re-solved before it can be shown.
 - **Keep distribution explicit** — the objectives Muse's constraints feed are measurable per solve: balanced faculty loads and prep caps (fair distribution), every cohort's ≥4-course guarantee (degree progress), preference satisfaction, and room utilization per building.
@@ -154,10 +154,10 @@ Boundaries we don't cross are listed just as plainly: [docs/limitations.md](./do
 | # | Runtime call | Model | Code | When it fires |
 |---|---|---|---|---|
 | 1 | Data ingestion → autoclean free-form institutional data into the structured scenario (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/ingestion/parser.py` | you paste a catalog / degree maps / cohorts / faculty / rooms |
-| 2 | Constraint parsing → typed operations (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` | every intake submission, chair request, emergency message |
+| 2 | Constraint parsing → typed operations (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` | every intake submission, chair request, term change message |
 | 3 | Self-healing explanation → conflict explanation + ranked resolutions (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/explainer.py` | whenever a solver proves a request infeasible |
 | 4 | Intelligence tightening → typed repair moves (structured output) | Muse Spark `muse-spark-1.3-contributor` | `backend/app/intelligence/tightener.py` | spectral deadlock warning, C39 margin shortfall, or base infeasibility |
-| 5 | Voice call-in → transcript that feeds the same emergency pipeline | Muse Voice Transcribe `muse-voice-transcribe-1.0` | `backend/app/services/voice.py` (`POST /emergency/audio`) | a coordinator phones in "Prof. Chen is out all week" instead of typing it |
+| 5 | Voice call-in → transcript that feeds the same term change pipeline | Muse Voice Transcribe `muse-voice-transcribe-1.0` | `backend/app/services/voice.py` (`POST /term-change/audio`) | a coordinator phones in "Prof. Chen will no longer teach this term" instead of typing it |
 
 **Set your key** (the repo ships `.env.example` — copy it to `.env` and fill in `MODEL_API_KEY`; `.env` is gitignored):
 
@@ -180,7 +180,7 @@ docker compose up --build   # live Muse Spark
 | `GET /intelligence/spectral` | Conflict-graph spectrum: Laplacian eigenvalues, algebraic connectivity μ₂, Hoffman chromatic lower bound, exact max clique (Bron-Kerbosch), Fiedler vector + 2-way partition, spectral ordering → **slot hints injected into CP-SAT as AddHint warm-start**. Deadlock warnings (structural infeasibility, clique > band capacity). |
 | `GET /intelligence/margins` | C39 four-course guarantee audit against the placed timetable: per-cohort max non-overlapping course count, example track, offered pool, risk flag. |
 | `POST /intelligence/tighten` | Muse proposes typed moves from closed grammar; CP-SAT re-solves each mutated scenario. Only *verified* moves returned, with their penalty deltas and new margins. |
-| `GET /history` | The provenance ledger: every intake submission and change event (`parse` / `apply` / `drop` / `emergency` / `tighten`), surfaced in the **Audit Trail** tab. |
+| `GET /history` | The provenance ledger: every intake submission and change event (`parse` / `apply` / `drop` / `term_change` / `tighten`), surfaced in the **Audit Trail** tab. |
 
 ### Screens
 
@@ -205,10 +205,10 @@ docker compose up --build   # live Muse Spark
 ```bash
 git clone https://github.com/prohle/schedulegod-ai && cd schedulegod-ai
 docker compose up --build
-# open http://localhost:3000 — Import → Intake → Build → Review → Emergency
+# open http://localhost:3000 — Import → Intake → Build → Review → Term Change
 ```
 
-Without a key the model roles degrade to a deterministic mock parser, so every beat (parse → solve → self-heal → emergency coverage → department scale) is clickable offline at zero cost. Add `MODEL_API_KEY` (see below) and the same clicks run live Muse Spark with on-screen model + latency badges. Submission details, track, and bonus-prize flags: [docs/submission.md](./docs/submission.md).
+Without a key the model roles degrade to a deterministic mock parser, so every beat (parse → solve → self-heal → term-change reassignment → department scale) is clickable offline at zero cost. Add `MODEL_API_KEY` (see below) and the same clicks run live Muse Spark with on-screen model + latency badges. Submission details, track, and bonus-prize flags: [docs/submission.md](./docs/submission.md).
 
 **Multi-user, role-based:** the app opens on a login. One-click demo accounts (password `demo1234`, seeded from the scenario itself — no signup needed): `coordinator@schedulegod.demo` runs the term (Express, publish, approves changes); `chen@schedulegod.demo` (any `<instructor-id>@…`) sees **only their own sections** in **Schedule**; `cs2025@schedulegod.demo` (any `<cohort-id>@…`) sees **only their cohort's courses**. The coordinator publishes the solved timetable (**Publish**); instructors' grids update only when an approved change is re-proven by the solver and re-published — an infeasible request comes back rejected with the solver-backed explanation. You can also register your own account and link it to any instructor/cohort.
 
@@ -223,7 +223,7 @@ Without a key the model roles degrade to a deterministic mock parser, so every b
 2. **One sentence, proven ripple** — Intake: "Prof. Patel can't teach Mondays" → typed ops, agent trace, applied to the term.
 3. **Two engines, ranked from outputs** — Build → Solve → **Compare engines**: Rank 1 / Rank 2 from status → penalty → speed alone.
 4. **Scale** — Build → **University**: 38 instructors, 41 sections, 20 cohorts solved as one institution; KPI strip shows the proof time.
-5. **Emergency** — Emergency → Handle Emergency: ranked zero-ripple coverage, only CS 301 + CS 310 move in the After grid.
+5. **Term Change** — Term Change → Apply Term Change: ranked zero-ripple reassignment, only CS 301 + CS 310 move in the After grid.
 6. **The advanced workspace** — Full → Radar (spectral health), Planning (20% growth what-if, re-solved first), Audit (every step above, with `muse-spark` provenance).
 Nothing here needs an API key or an account beyond the one-tap demo logins.
 
@@ -262,7 +262,7 @@ cd backend
 ```
 
 The suite covers solve determinism, hard-constraint satisfaction, the
-minimal-conflict core, durable applied state (`/apply` then `/solve`), emergency
+minimal-conflict core, durable applied state (`/apply` then `/solve`), term change
 coverage, the spectral graph, and the API contract. GitHub Actions runs the
 backend suite and a production frontend build on every push.
 
@@ -278,7 +278,7 @@ the commit history is the build log. The main pieces:
 | Intelligence | Sparse matrices, Laplacian/Fiedler/Hoffman/max-clique radar, C39 audit, AI tightener | `backend/app/intelligence/` |
 | Ingestion | Free-form institutional data → Muse extraction → deterministic normalizer → Scenario | `backend/app/ingestion/` |
 | Scale | Department-cluster scenario (26 instructors / 25 sections / 12 cohorts) generated deterministically from the seed, one-click load, measured benchmark | `backend/app/data/department.py`, `backend/scripts/benchmark.py` |
-| Agent trace | Every co-pilot/emergency response carries the step-by-step loop (actor per step); Express renders it live | `agent_trace` in `backend/app/services/copilot.py`, `emergency.py` |
+| Agent trace | Every co-pilot/term-change response carries the step-by-step loop (actor per step); Express renders it live | `agent_trace` in `backend/app/services/copilot.py`, `term_change.py` |
 | UI | Express guided flow, visual timetable grid + before/after diff, Full advanced view, audit trail | `frontend/src/` |
 | Ops | Docker Compose (Postgres + API + UI), one-command local runner, provenance ledger | `docker-compose.yml`, `start.sh`, `backend/app/db.py` |
 

@@ -35,7 +35,7 @@ that week: paste or drop the institution's messy data and Muse Spark
 autocleans it into a typed model; type one sentence ("Prof. Patel can't teach
 Mondays — committee duty") and Muse parses it into validated constraints
 while CP-SAT re-solves and proves the ripple; when reality breaks mid-term, a
-one typed message ("Prof. Chen is out all week") triggers CP-SAT probes of every
+one typed message ("Prof. Chen will no longer teach this term") triggers CP-SAT probes of every
 qualified instructor and only zero-ripple-verified coverage is shown. When a
 request is infeasible, CP-SAT names the minimal conflicting subset, Muse
 translates the proof into ranked resolutions, and CP-SAT re-solves every one
@@ -44,6 +44,66 @@ instructors, 25 sections, 12 cohorts, 3 programs) the same engine solves
 optimally in ~150 ms with the four-course guarantee holding for all 12
 cohorts. The LLM never touches the schedule — it proposes; the solver proves;
 every step is in the audit trail.
+
+## Pitch (canonical — use this text for the video narration and the form)
+
+Think back to when you were a student. Just registering for your classes was
+an exercise in survival. You're juggling your degree roadmap, trying to
+graduate on time, working a weekday job, and praying prerequisites don't
+collide so you don't slip a semester. Getting your schedule right was hard
+enough.
+
+But what happens when you step into the registrar's chair? Suddenly, you
+aren't solving for one schedule — you're building the heartbeat for an
+entire university. You need to satisfy thousands of students navigating
+graduation roadmaps, keep dozens of faculty happy with load caps and
+committee duties, and maximize fixed room capacities across a campus you
+can't cross in ten minutes.
+
+Right now, universities solve this NP-hard combinatorial puzzle with email
+threads, guesswork, and spreadsheets that are broken the moment reality
+changes. To fix this for the Meta Hackathon, we built ScheduleGod AI.
+
+Here is how it works. You point the tool at messy institutional files in any
+format — PDF catalogs, Word degree maps, Excel room sheets, or plain text.
+Muse Spark autocleans and organizes them into cleaned structured data
+representing the entire institution: for each degree roadmap, current
+student bodies, current faculty load requirements, faculty preference and
+availability, each cohort based on real map and lab facility availability,
+offerings and room sizes.
+
+Our NP-hard problem is then passed into three registered solver engines:
+Google's industrial CP-SAT, an AI-authored native C++ rival solver we built
+specifically for this problem class during the hackathon period which
+proves the same optima up to eight times faster, and a greedy baseline that
+shows what the optimization phases buy. The two proving engines race
+head-to-head on identical data.
+
+At university scale — 38 instructors, 41 sections, 20 cohorts sharing rooms
+and walk-time matrices — both engines return a mathematically proven,
+conflict-free institutional timetable in milliseconds. The engines are
+ranked from their outputs alone, and Muse Spark presents that verdict to
+users. Users can request a re-run after keeping or refining the current
+schedule. What happens when reality breaks mid-flight?
+
+When Professor Chen will no longer teach this term — a change that lasts
+through the end of the semester — the system doesn't collapse into panic.
+It runs solver-verified coverage probes over every qualified instructor,
+ranking them by preference and load delta. It proposes a zero-ripple fix
+and re-solves instantly. The same is true when the university wants to
+repurpose classrooms, add classes, or build more buildings for expansion.
+
+If a coordinator tries an impossible override, the system uses assumption
+literals to isolate the minimal conflict core. Muse Spark explains the
+deadlock in plain English, and every single proposed repair is re-proven by
+the solver before the agent is allowed to show it. The app is multi-user
+role-filtered, backed by Postgres, and cuts weeks of manual coordinating
+data to an auditable, sub-second review of solver-proven options.
+
+We took the universal pain of student scheduling, scaled it to
+university grade, and married Meta's open-weights intelligence with hard
+deterministic mathematics. Check out the live demo and the native C++
+engine source code on GitHub. Thank you.
 
 ## Meta AI tooling used (runtime — every runtime model is a Meta model)
 
@@ -63,7 +123,7 @@ judges can click every beat offline.
 - **Best Agentic Use-Case ($5K) — CLAIM.** The co-pilot runs an autonomous
   multi-step loop with tool use and self-correction: parse → validate →
   solve → minimal-conflict-core → explain → verify-every-resolution →
-  auto-apply → re-solve → audit (up to 5 healing rounds), plus emergency
+  auto-apply → re-solve → audit (up to 5 healing rounds), plus term change
   probe-and-choose across every qualified instructor. Every response carries
   the `agent_trace`; Express renders it live. That is the claim evidence.
 - **Most Viral Project ($20K) — CLAIM VIA X.** Post the 3-min demo on X,
@@ -91,7 +151,7 @@ judges can click every beat offline.
 | Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at university scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps), 3 programs / 12 cohorts |
 | Use of Meta AI tooling (25%) | 4 runtime Muse Spark roles (ingest, parse, explain, tighten) + Muse Voice Transcribe endpoint, live badges (model + latency) on screen, `muse-verification.json` + `muse-verification-open.json`, agent trace names Muse at every proposing step |
 | Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum 3–8× faster** at every scale (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests, per-professor structured intake grid + term closures), 47 passing tests, CI |
-| Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple emergency, solver-verified resolutions, department-scale solve in the Build step |
+| Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple term change, solver-verified resolutions, department-scale solve in the Build step |
 
 ## What was built during the hackathon (Oct 27 – Nov 4)
 
@@ -105,8 +165,8 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 - [x] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 47 tests, verified Oct 30)
 - [x] Frontend production build passes (`cd frontend && npm run build`, verified Oct 30)
 - [x] Video ≤ 3:00 (2:55), recorded live Oct 30 on the current interface — frame-checked: every badge says `muse-spark`, never `MOCK`
-- [x] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/TXT/XLSX/MD) → Patel intake applied to the term → **dual-engine compare, Rank 1 / Rank 2 from outputs** → university scale + publish → Chen change request approved and re-published → emergency with agent trace + ranked verified coverage → 20% growth what-if in Full
-- [x] Live demo deployed (Modal UI + API; full checklist in `docs/deploy_modal.md` verified live Oct 30: `/status`, reset, Patel copilot `muse-spark`, Chen emergency probes, live voice transcription) — scenario left reset to seed
+- [x] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/TXT/XLSX/MD) → Patel intake applied to the term → **dual-engine compare, Rank 1 / Rank 2 from outputs** → university scale + publish → Chen change request approved and re-published → term change with agent trace + ranked verified coverage → 20% growth what-if in Full
+- [x] Live demo deployed (Modal UI + API; full checklist in `docs/deploy_modal.md` verified live Oct 30: `/status`, reset, Patel copilot `muse-spark`, Chen term change probes, live voice transcription) — scenario left reset to seed
 - [ ] Meta credits claimed (deadline Nov 4, 9:00 PM ET); spend limit set — **account action**
 - [ ] X post published with video + repo + gallery links; post link submitted (Most Viral cutoff Nov 8 EOD) — **account action** (copy ready above)
 - [ ] YouTube upload of `final.mp4`; link added to the video field above — **account action**

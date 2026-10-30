@@ -2,7 +2,7 @@
 
 // Guided wizard — the real end-to-end flow, no toy solver. Every step hits the
 // Python backend: Muse Spark parse, CP-SAT solve, the C39/spectral audit, and
-// verified emergency coverage proposals. The default inputs are the demo beats.
+// verified term-change reassignment proposals. The default inputs are the demo beats.
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -17,7 +17,7 @@ import { TimetableGrid, changedSections } from "@/components/timetable-grid";
 import { useIntelligence, useScenario } from "@/hooks/use-api";
 import {
   DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
-  type Placement, type CopilotResponse, type EmergencyResponse, type IngestResponse,
+  type Placement, type CopilotResponse, type TermChangeResponse, type IngestResponse,
   type InstitutionData, type AgentStep, type CompareResult,
 } from "@/types";
 
@@ -30,7 +30,7 @@ const STEPS = [
   { id: "intake", label: "Intake", desc: "Type a constraint → Muse parses it", icon: Users },
   { id: "build", label: "Build", desc: "Run the CP-SAT solver", icon: Zap },
   { id: "review", label: "Review", desc: "C39 audit + spectral radar", icon: ShieldCheck },
-  { id: "emergency", label: "Emergency", desc: "Coverage proposals + re-solve", icon: AlertTriangle },
+  { id: "term-change", label: "Term Change", desc: "Reassignment proposals + re-solve", icon: AlertTriangle },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -202,12 +202,12 @@ export function WizardView({ onToast }: WizardViewProps) {
   const [speakerId, setSpeakerId] = useState("");
   const [intakeBusy, setIntakeBusy] = useState(false);
   const [copilot, setCopilot] = useState<CopilotResponse | null>(null);
-  const [emergencyMsg, setEmergencyMsg] = useState("Prof. Chen is out all week — who could cover her sections?");
-  const [emergencyBusy, setEmergencyBusy] = useState(false);
-  const [emergency, setEmergency] = useState<EmergencyResponse | null>(null);
+  const [termChangeMsg, setTermChangeMsg] = useState("Prof. Chen will no longer teach this term — who should take over her sections?");
+  const [termChangeBusy, setTermChangeBusy] = useState(false);
+  const [termChange, setTermChange] = useState<TermChangeResponse | null>(null);
   const [scaleBusy, setScaleBusy] = useState(false);
 
-  const stepOrder: StepId[] = ["import", "intake", "build", "review", "emergency"];
+  const stepOrder: StepId[] = ["import", "intake", "build", "review", "term-change"];
   const currentIndex = stepOrder.indexOf(step);
 
   const post = async (path: string, body: unknown) =>
@@ -356,7 +356,7 @@ export function WizardView({ onToast }: WizardViewProps) {
       if (r.result?.status === "infeasible") {
         onToast("Infeasible — the solver named the conflict and self-healed", "warning");
       } else if (r.applied_operations?.length) {
-        // Commit the verified request so Build/Review/Emergency build on it
+        // Commit the verified request so Build/Review/Term Change build on it
         // instead of silently reverting to the pre-request world.
         await post("/api/apply", { operations: r.applied_operations });
         await reload();
@@ -369,8 +369,8 @@ export function WizardView({ onToast }: WizardViewProps) {
     }
   };
 
-  const commitEmergency = async (r: EmergencyResponse) => {
-    setEmergency(r);
+  const commitTermChange = async (r: TermChangeResponse) => {
+    setTermChange(r);
     const rehomed = Object.keys(r.chosen).length;
     const feasible = r.result?.status !== "infeasible";
     if (r.removed_instructor_id && feasible
@@ -382,28 +382,28 @@ export function WizardView({ onToast }: WizardViewProps) {
         remove_instructor_id: r.removed_instructor_id,
       });
       await reload();
-      onToast(`Emergency applied — ${rehomed} section(s) re-homed`, "success");
+      onToast(`Term Change applied — ${rehomed} section(s) re-homed`, "success");
     } else {
-      onToast(`Emergency analysed — ${rehomed} section(s) re-homed`, "warning");
+      onToast(`Term Change analysed — ${rehomed} section(s) re-homed`, "warning");
     }
   };
 
-  const handleEmergency = async () => {
-    setEmergencyBusy(true);
-    setEmergency(null);
+  const handleTermChange = async () => {
+    setTermChangeBusy(true);
+    setTermChange(null);
     try {
-      await commitEmergency(await post("/api/emergency", { message: emergencyMsg }));
+      await commitTermChange(await post("/api/term-change", { message: termChangeMsg }));
     } finally {
-      setEmergencyBusy(false);
+      setTermChangeBusy(false);
     }
   };
 
   const buildPlacements = solveResult?.timetable?.placements ?? [];
   const intakePlacements = copilot?.result?.timetable?.placements ?? buildPlacements;
-  const emergencyPlacements = emergency?.result?.timetable?.placements ?? [];
-  const emergencyBaseline = buildPlacements.length ? buildPlacements : intakePlacements;
-  const emergencyChanged = emergencyBaseline.length && emergencyPlacements.length
-    ? changedSections(emergencyBaseline, emergencyPlacements)
+  const termChangePlacements = termChange?.result?.timetable?.placements ?? [];
+  const termChangeBaseline = buildPlacements.length ? buildPlacements : intakePlacements;
+  const termChangeChanged = termChangeBaseline.length && termChangePlacements.length
+    ? changedSections(termChangeBaseline, termChangePlacements)
     : undefined;
 
   return (
@@ -873,36 +873,36 @@ export function WizardView({ onToast }: WizardViewProps) {
           </div>
         )}
 
-        {step === "emergency" && (
+        {step === "term-change" && (
           <div className="space-y-4 max-w-3xl mx-auto">
-            <Section title="Emergency" hint="An instructor drops out? The solver probes every qualified instructor and ranks zero-ripple covers — no name is shown until cover is proven." icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} tone="amber">
+            <Section title="Term Change" hint="A change that lasts through the end of the term — an instructor will no longer teach, so their sections are reassigned for the rest of the term. The solver probes every qualified instructor and ranks only zero-ripple reassignments; no name is shown until the reassignment is proven. A room change for the rest of the term (e.g. a hall withdrawn) is entered in Intake instead." icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} tone="amber">
               <textarea
-                value={emergencyMsg}
-                onChange={(e) => setEmergencyMsg(e.target.value)}
+                value={termChangeMsg}
+                onChange={(e) => setTermChangeMsg(e.target.value)}
                 rows={2}
                 className="w-full border border-input rounded-lg p-2 text-sm bg-background"
               />
-<Button variant="primary" size="md" onClick={handleEmergency} disabled={emergencyBusy} className="mt-3 flex items-center gap-2">
-                {emergencyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}
-                Handle Emergency
+<Button variant="primary" size="md" onClick={handleTermChange} disabled={termChangeBusy} className="mt-3 flex items-center gap-2">
+                {termChangeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}
+                Apply Term Change
               </Button>
             </Section>
 
-            {emergency && (
+            {termChange && (
               <>
                 <div className="text-xs text-muted-foreground">
-                  {emergency.removed_instructor_name ? `${emergency.removed_instructor_name} removed` : "No instructor identified"} — {emergency.affected_section_ids.length} section(s) affected
-                  {emergency.parser_mode === "muse-spark"
-                    ? ` · live Muse Spark${emergency.model ? ` (${emergency.model})` : ""}${emergency.parser_latency_ms != null ? ` · ${Math.round(emergency.parser_latency_ms / 100) / 10}s` : ""}`
+                  {termChange.removed_instructor_name ? `${termChange.removed_instructor_name} removed` : "No instructor identified"} — {termChange.affected_section_ids.length} section(s) affected
+                  {termChange.parser_mode === "muse-spark"
+                    ? ` · live Muse Spark${termChange.model ? ` (${termChange.model})` : ""}${termChange.parser_latency_ms != null ? ` · ${Math.round(termChange.parser_latency_ms / 100) / 10}s` : ""}`
                     : " · mock parser"}
                 </div>
-                {emergency.transcript && (
+                {termChange.transcript && (
                   <div className="text-xs bg-sky-50 border border-sky-200 text-sky-900 rounded p-2">
-                    <strong>Heard:</strong> “{emergency.transcript}”
+                    <strong>Heard:</strong> “{termChange.transcript}”
                   </div>
                 )}
-                <AgentTrace steps={emergency.agent_trace} />
-                {emergency.proposals.map((p, i) => (
+                <AgentTrace steps={termChange.agent_trace} />
+                {termChange.proposals.map((p, i) => (
                   <div key={i} className={cn("flex items-center gap-2 text-xs border rounded p-2", p.feasible ? "bg-white border-emerald-200" : "bg-muted/40 border-border")}>
                     {p.feasible ? <CircleCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <CircleX className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                     <span className="font-semibold">{p.course_code}</span>
@@ -910,19 +910,19 @@ export function WizardView({ onToast }: WizardViewProps) {
                     <span className="text-muted-foreground flex-1">{p.reason}</span>
                   </div>
                 ))}
-                {emergencyPlacements.length > 0 && (
+                {termChangePlacements.length > 0 && (
                   <div className="space-y-3">
                     <div className="grid gap-3 2xl:grid-cols-2">
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-muted-foreground mb-1">Before</div>
-                        <TimetableGrid placements={emergencyBaseline} compact />
+                        <TimetableGrid placements={termChangeBaseline} compact />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-amber-700 mb-1">After — verified coverage</div>
-                        <TimetableGrid placements={emergencyPlacements} changed={emergencyChanged} compact />
+                        <div className="text-xs font-bold text-amber-700 mb-1">After — verified reassignment</div>
+                        <TimetableGrid placements={termChangePlacements} changed={termChangeChanged} compact />
                       </div>
                     </div>
-                    <PlacementsTable placements={emergencyPlacements} dense />
+                    <PlacementsTable placements={termChangePlacements} dense />
                   </div>
                 )}
               </>

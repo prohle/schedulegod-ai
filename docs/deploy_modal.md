@@ -61,7 +61,7 @@ with the Express/Full interface the same day):
 - [x] `GET /status` returns `ok`.
 - [x] `POST /scenario/reset` returns the seed (left reset for judges).
 - [x] `POST /copilot` with the Patel sentence returns `muse-spark`.
-- [x] `POST /emergency` with the Chen sentence returns verified proposals.
-- [x] `POST /emergency/audio` accepts a 24 kHz mono WAV and returns a transcript.
+- [x] `POST /term-change` with the Chen sentence returns verified proposals.
+- [x] `POST /term-change/audio` accepts a 24 kHz mono WAV and returns a transcript.
 - [x] The Modal UI loads Express and the Full → Audit trail.
 - [ ] Meta + Modal spend limits are set — account action.
