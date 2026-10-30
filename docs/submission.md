@@ -174,6 +174,27 @@ mock parser, so judges can click every beat offline.
 Everything in the repo — solver, agent loop, intelligence layer, ingestion,
 UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 
+## Pilot outreach (human action — highest-ROI hour left)
+
+The one score gap code cannot close is Impact evidence: the coordinator-week
+baseline is currently an estimate. Two or three real replies change that.
+Send this (adapt the bracket) to department coordinators / registrars you
+can reach, and quote any reply (with permission) in the form's Impact field:
+
+> Subject: 10-minute look — AI timetabling that proves its schedule?
+>
+> Hi [Name], I built ScheduleGod AI for the Meta hackathon: it takes the
+> messy files a department already has (catalog, degree maps, room sheets,
+> faculty emails), turns natural-language constraints ("Patel can't teach
+> Mondays") into a timetable a solver mathematically proves feasible, and
+> re-proves every mid-term change before showing it. It also suggests
+> students a personal course plan that fits their work schedule and degree
+> roadmap — or warns them before a must-take course slips a semester.
+> Live demo (no signup): https://prohle--schedulegod-ai-ui-web.us-east.modal.run
+> Would you be willing to look for 10 minutes and tell me (a) how long
+> timetabling takes your office today, and (b) whether a proven schedule
+> would change that? One quotable sentence helps more than any feature.
+
 ## Pre-submit checklist
 
 - [x] All work committed and pushed; repo public and cloneable

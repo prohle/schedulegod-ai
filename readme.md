@@ -231,6 +231,7 @@ Without a key the model roles degrade to a deterministic mock parser, so every b
 4. **Scale** — Build → **University**: 38 instructors, 41 sections, 20 cohorts solved as one institution; KPI strip shows the proof time.
 5. **Term Change** — Term Change → Apply Term Change: ranked zero-ripple reassignment, only CS 301 + CS 310 move in the After grid.
 6. **The advanced workspace** — Full → Radar (spectral health), Planning (20% growth what-if, re-solved first), Audit (every step above, with `muse-spark` provenance).
+7. **A student's plan, proven** — sign in as `cs2025@schedulegod.demo` → Schedule → *Suggest my schedule*: "I work Tuesdays and Thursdays. I need CS 201 this term." → a personal plan that fits the job and the degree roadmap, re-verified before it is shown (add "no 8:00 classes" and it will honestly refuse CS 201's only section instead of slipping the degree).
 Nothing here needs an API key or an account beyond the one-tap demo logins.
 
 **Full stack (one command):**
