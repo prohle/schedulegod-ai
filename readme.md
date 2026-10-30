@@ -22,7 +22,7 @@ A department's instructors — twenty-six in the loadable department-scale scena
 
 Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* track. This is the problem we know firsthand.
 
-> **▶ Live demo (no account, no API key needed):** backend API + interactive docs at **https://prohle--schedulegod-ai-api.us-east.modal.run/docs** (`/health`, `/engines`, live solve + emergency endpoints; scale-to-zero, so the first request may take a few seconds). Judges can also run the full UI locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
+> **▶ Live demo (no account, no API key needed): https://prohle--schedulegod-ai-ui-web.us-east.modal.run** — the full wizard UI (Import → Intake → Build → Emergency → Intelligence), proxied to the backend API at https://prohle--schedulegod-ai-api.us-east.modal.run (`/docs`, `/health`, `/engines`). Both are scale-to-zero on Modal, so the first request may take a few seconds. Judges can also run everything locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
 
 ![Build: visual timetable grid](docs/screenshot-build.png)
 
@@ -159,7 +159,7 @@ docker compose up --build   # live Muse Spark
 - **Intelligence:** `scipy.sparse` CSR matrices, `numpy`/`scipy` spectral graph (Laplacian, Fiedler, Hoffman bound, exact max clique)
 - **Inference:** Meta Model API (OpenAI-compatible, `beta.chat.completions.parse` structured output) — deterministic mock parser included so dev/tests burn zero credits
 - **Persistence:** SQLAlchemy over **Postgres 18** (Docker) or **SQLite** (no-Docker fallback) — constraint provenance + the self-healing audit trail (`/history`)
-- **Deploy:** `docker compose up` (db + backend + frontend) or `./start.sh` for a no-Docker local run; public demo via Modal (backend) + Vercel (UI)
+- **Deploy:** `docker compose up` (db + backend + frontend) or `./start.sh` for a no-Docker local run; public demo live on Modal (UI + backend, both scale-to-zero)
 
 ## Run it
 
@@ -173,7 +173,7 @@ docker compose up --build
 
 Without a key the model roles degrade to a deterministic mock parser, so every beat (parse → solve → self-heal → emergency coverage → department scale) is clickable offline at zero cost. Add `MODEL_API_KEY` (see below) and the same clicks run live Muse Spark with on-screen model + latency badges. Submission details, track, and bonus-prize flags: [docs/submission.md](./docs/submission.md).
 
-**Hosted demo:** the backend is **live on Modal** — https://prohle--schedulegod-ai-api.us-east.modal.run (`/health`, `/docs`, `/engines`; scale-to-zero, warm it with one request). Deploy your own from [docs/deploy_modal.md](./docs/deploy_modal.md); the UI deploys to Vercel with `BACKEND_URL` set to that URL. The local one-command path is below.
+**Hosted demo (live now):** UI at **https://prohle--schedulegod-ai-ui-web.us-east.modal.run** and backend at https://prohle--schedulegod-ai-api.us-east.modal.run (`/health`, `/docs`, `/engines`; both scale-to-zero on Modal, warm them with one request). Deploy your own from [docs/deploy_modal.md](./docs/deploy_modal.md). The local one-command path is below.
 
 **Full stack (one command):**
 

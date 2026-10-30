@@ -1,8 +1,13 @@
 # Live demo on Modal
 
+Deployed and live:
+- **UI:** https://prohle--schedulegod-ai-ui-web.us-east.modal.run (`modal deploy frontend/modal_app.py` — Next.js standalone Node server, scale-to-zero)
+- **Backend API:** https://prohle--schedulegod-ai-api.us-east.modal.run (FastAPI, scale-to-zero)
+
 The backend is a standard FastAPI app; Modal runs it as a scale-to-zero ASGI
-container. The Next.js UI stays on Vercel and proxies through its existing
-`/api/*` routes, so no CORS changes are needed.
+container. The Next.js UI proxies through its existing `/api/*` routes
+(server-side `BACKEND_URL`), so no CORS changes are needed. Vercel remains an
+alternative UI host with the same `BACKEND_URL` setting.
 
 ## 1. Deploy the backend
 
@@ -34,6 +39,12 @@ caller that needs it.
 
 ## 2. Deploy the UI
 
+Deployed option (live above): `modal deploy frontend/modal_app.py` builds
+the Next.js standalone server (`output: "standalone"` in `next.config.ts`,
+assets copied per the Next.js standalone guide) and serves it with
+`BACKEND_URL` pointing at the backend Modal URL.
+
+Alternative (Vercel):
 - Import the repo into Vercel.
 - Root directory: `frontend`.
 - Environment variable: `BACKEND_URL=https://<workspace>--schedulegod-ai-api.modal.run`.

@@ -13,7 +13,7 @@ Copy-paste source for the CV platform form. Deadline: **Wed Nov 4, 9:00 PM ET**
 | Team | Solo — Huong Le |
 | Repo (public) | https://github.com/prohle/schedulegod-ai |
 | Demo video (≤3:00) | _paste link after upload_ |
-| Live demo | _paste Modal/Vercel URL after deploy, else: judges run `docker compose up` (no key, no account — see README "Judges — try it in 2 minutes")_ |
+| Live demo | **https://prohle--schedulegod-ai-ui-web.us-east.modal.run** (full UI, no account/key; backend API: https://prohle--schedulegod-ai-api.us-east.modal.run/docs) — or judges run `docker compose up` (no key, no account — see README "Judges — try it in 2 minutes") |
 | X post (Most Viral) | _paste link after posting; engagement counts until Nov 8 EOD_ |
 
 **One-liner:** An agentic co-pilot that turns natural-language scheduling
