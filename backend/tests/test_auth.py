@@ -73,14 +73,16 @@ def test_change_request_round_trip_through_verified_apply(client):
 
 
 def test_register_new_instructor_and_login(client):
+    import uuid
+    email = f"newprof-{uuid.uuid4().hex[:8]}@example.edu"  # dev DB persists
     response = client.post("/auth/register", json={
-        "email": "newprof@example.edu", "password": "demo1234",
+        "email": email, "password": "demo1234",
         "role": "instructor", "display_name": "Dr. Diaz",
         "instructor_id": "diaz"})
     assert response.status_code == 200, response.text
-    headers = _login(client, "newprof@example.edu")
+    headers = _login(client, email)
     me = client.get("/auth/me", headers=headers).json()["user"]
     assert me["instructor_id"] == "diaz"
     duplicate = client.post("/auth/register", json={
-        "email": "newprof@example.edu", "password": "x", "role": "student"})
+        "email": email, "password": "x", "role": "student"})
     assert duplicate.status_code == 409

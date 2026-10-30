@@ -2,14 +2,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](./backend)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg)](./frontend)
-[![Tests](https://img.shields.io/badge/tests-32%20passing-brightgreen.svg)](#run-it)
+[![Tests](https://img.shields.io/badge/tests-42%20passing-brightgreen.svg)](#run-it)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](./docker-compose.yml)
 
 # ScheduleGod AI — Agentic Constraint Solver & Timetable Infrastructure
 
 > **Category:** Autonomous Agents & Workflows · Education & Knowledge Systems
 > **Domain:** Combinatorial optimization, operations research, constraint programming (CP-SAT), spectral graph analysis
-> **Stack:** Meta Model API (Muse Spark) · **dual solver engines — OR-Tools CP-SAT and an AI-built, from-scratch pure-Python solver you can choose instead, then compare side by side** · FastAPI · Next.js · Postgres 18
+> **Stack:** Meta Model API (Muse Spark) · **dual solver engines — OR-Tools CP-SAT and an AI-built native C++ rival solver that proves the same optima faster on this problem class (evidence: [docs/solver_evidence.md](./docs/solver_evidence.md))** · FastAPI · Next.js · Postgres 18 · multi-user (coordinator / instructor / student logins)
 
 **Every term, every department rediscovers that the course timetable is an NP-hard constraint problem managed with email and spreadsheets.**
 
@@ -84,21 +84,22 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 
 The demo story above is one department slice (6 instructors, 8 sections) so every beat fits in three minutes. The same engine — same code path, one click in the Build step (**Load department scale** / **Load university scale**, or `POST /scenario/department` / `/scenario/university`) — solves a full department cluster (**26 instructors, 25 sections, 12 cohorts, 3 programs**) or the entire university (**38 instructors, 41 sections, 20 cohorts, 5 programs** sharing the same rooms, slots, and campus walk matrix), built deterministically from the seed (`backend/app/data/department.py`). Measured with `backend/scripts/benchmark.py` (single-worker deterministic CP-SAT, dev laptop):
 
-| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (home solver) | C39 guarantee | Room util. | Emergency (Chen out) |
-|---|---:|---:|---:|---:|---:|---|---|---|---:|---|
-| Story seed (demo) | 6 | 8 | 7 | 4 | 1 | optimal ~70 ms · penalty −6 | optimal ~45 ms · penalty −6 | 2/4 (tightener demo world) | 39% | 2 affected, 3/3 probes feasible |
-| Department scale | 26 | 25 | 16 | 12 | 3 | optimal ~140 ms · penalty −40 | feasible ~5 s · penalty −40 | 12/12 cohorts ≥ 4 courses | 52% | 2 affected, 3/3 probes feasible, re-solve optimal |
-| University scale | 38 | 41 | 16 | 20 | 5 | **optimal ~260 ms · penalty −40** | feasible ~5 s · penalty −40 | **20/20 cohorts ≥ 4 courses** | 64% | 2 affected, 3/3 probes feasible, re-solve optimal |
+| Scenario | Instructors | Sections | Rooms | Cohorts | Programs | CP-SAT | Ours (native C++) | Ours (Python ref) | C39 guarantee | Room util. | Emergency (Chen out) |
+|---|---:|---:|---:|---:|---:|---|---|---|---|---:|---|
+| Story seed (demo) | 6 | 8 | 7 | 4 | 1 | optimal 16 ms · penalty −6 | **optimal 5 ms · penalty −6** | optimal 47 ms · penalty −6 | 2/4 (tightener demo world) | 39% | 2 affected, 3/3 probes feasible |
+| Department scale | 26 | 25 | 16 | 12 | 3 | optimal 164 ms · penalty −40 | **optimal 22 ms · penalty −40** | feasible 5 s · penalty −40 (unproven) | 12/12 cohorts ≥ 4 courses | 52% | 2 affected, 3/3 probes feasible, re-solve optimal |
+| University scale | 38 | 41 | 16 | 20 | 5 | optimal 258 ms · penalty −40 | **optimal 31 ms · penalty −40** | feasible 5 s · penalty −40 (unproven) | **20/20 cohorts ≥ 4 courses** | 64% | 2 affected, 3/3 probes feasible, re-solve optimal |
 
 ## Two engines, one contract: industrial CP-SAT vs an AI-crafted solver
 
 **We used AI to build a second solver, not just to call one.** Alongside Google's engine, ScheduleGod ships a complete constraint solver designed and written for this problem — and because both live behind one standardized interface (`GET /engines`, `POST /solve` with `engine`, one `SolveResult` shape), you can choose either per solve, or race them head-to-head on the *exact* same messy constraints, preferences, and room capacities. That split-screen contrast is the trust story: two independent implementations cross-checking each other, live.
 
 - **OR-Tools CP-SAT** (`cpsat`): industrial brute force done right — C++, clause learning, cuts through the search space and returns a *mathematically proven* optimum in fractions of a second. Assumption literals give minimal conflict cores.
-- **ScheduleGod home solver** (`ours`, `backend/app/solver/home_solver.py`): custom heuristic intelligence, built with AI assistance around this domain's trade-offs — MRV ordering over live domains, forward checking, least-penalty value ordering with spectral-hint tie-breaks, branch-and-bound with an admissible bound, then a hill-climbing phase (single-section + ejection moves) that balances soft preferences the way a human coordinator would, and deletion-minimization conflict cores with itself as oracle. No OR-Tools anywhere in its path.
-- **Greedy descent** (`greedy`): the home solver's first pass only — plug-and-play proof that a new engine is one registry entry (`backend/app/solver/engine.py`); it shows exactly what the optimization phases buy.
+- **OR-Tools CP-SAT** (`cpsat`): industrial brute force done right — C++, clause learning, cuts through the search space and returns a *mathematically proven* optimum in fractions of a second. Assumption literals give minimal conflict cores.
+- **ScheduleGod native solver** (`ours`, `backend/native/schedulergod_solver.cpp` + `backend/app/solver/native_solver.py`): an AI-authored C++17 search core built for this problem — MRV over live domains, unit propagation, branch-and-bound with a live admissible bound plus a *pairwise-conflict bound* (contending sections whose cheapest options clash force a deviation cost), single/ejection hill-climbing, and deletion-minimization conflict cores with itself as oracle. Domains and penalties come from the identical preparation code CP-SAT uses, so the engines differ only in search. A Python reference implementation of the same algorithm (`backend/app/solver/home_solver.py`) is the readable specification and the fallback when the binary is unbuilt. No OR-Tools anywhere in either path.
+- **Greedy descent** (`greedy`): the first descent only — plug-and-play proof that a new engine is one registry entry (`backend/app/solver/engine.py`); it shows exactly what the optimization phases buy.
 
-**Head-to-head (measured, `scripts/benchmark.py`):** on the seed, ours is *faster* than CP-SAT and proves the same optimum (−6). At department and university scale it reaches CP-SAT's optimal penalty (−40) inside its 5 s budget; CP-SAT additionally *proves* optimality in ~0.15–0.3 s — the honest difference is proof speed at scale, and the UI says so instead of hiding it. **Compare side by side** (Build step, or `POST /solve/compare`) diffs status, runtime, penalty delta, placement-agreement %, and both grids with differing sections ringed. When two engines built completely differently agree, you can trust the timetable; when they disagree, the diff shows exactly where and by how much. Tests verify ours independently — hard constraints checked from placements alone, objective parity, the identical conflict core `[0,1,2]` on the Diaz overload, determinism (`backend/tests/test_home_solver.py`, `tests/test_extract.py` for the format layer).
+**Head-to-head (measured, `scripts/benchmark.py`):** ours *proves the same optimum as CP-SAT at every scale, 3–8× faster* (university: optimal −40 in 31 ms vs 258 ms). The pure-Python reference reaches the same penalty but cannot prove optimality inside its 5 s budget at scale — that measured gap is exactly why the search core is native C++, and why the claim is scoped to this problem class (CP-SAT remains the better general solver; full analysis in [docs/solver_evidence.md](./docs/solver_evidence.md)). **Compare side by side** (Build step, or `POST /solve/compare`) diffs status, runtime, penalty delta, placement-agreement %, and both grids with differing sections ringed; the compare ranks engines from outputs only. Tests verify ours independently — hard constraints checked from placements alone, proven objective parity at all scales, the identical conflict core `[0,1,2]` on the Diaz overload, determinism (`backend/tests/test_native_solver.py`, `backend/tests/test_home_solver.py`).
 
 At department scale every cohort still gets its four-course guarantee, every course has ≥2 qualified instructors, and the Chen emergency still re-homes exactly CS 301 + CS 310 with zero ripple. Locked in by `backend/tests/test_department.py`. Reproduce: `cd backend && .venv/bin/python scripts/benchmark.py`.
 
@@ -157,7 +158,8 @@ docker compose up --build   # live Muse Spark
 
 ## Stack
 
-- **Backend:** Python / FastAPI, OR-Tools CP-SAT (assumption literals for minimal-conflict explanation, feasibility probes for coverage proposals, `AddHint` for spectral warm-start) **plus a from-scratch pure-Python home solver** (`backend/app/solver/home_solver.py`), selectable per solve and comparable side by side
+- **Backend:** Python / FastAPI, OR-Tools CP-SAT (assumption literals for minimal-conflict explanation, feasibility probes for coverage proposals, `AddHint` for spectral warm-start) **plus an AI-authored native C++ rival solver** (`backend/native/schedulergod_solver.cpp`, Python reference in `backend/app/solver/home_solver.py`), selectable per solve and comparable side by side
+- **Multi-user:** SQLAlchemy accounts with PBKDF2 password hashes + hashed bearer sessions; coordinator / instructor / student roles; published schedules and instructor change requests in the same Postgres/SQLite store
 - **Frontend:** Next.js
 - **Intelligence:** `scipy.sparse` CSR matrices, `numpy`/`scipy` spectral graph (Laplacian, Fiedler, Hoffman bound, exact max clique)
 - **Inference:** Meta Model API (OpenAI-compatible, `beta.chat.completions.parse` structured output) — deterministic mock parser included so dev/tests burn zero credits
@@ -175,6 +177,8 @@ docker compose up --build
 ```
 
 Without a key the model roles degrade to a deterministic mock parser, so every beat (parse → solve → self-heal → emergency coverage → department scale) is clickable offline at zero cost. Add `MODEL_API_KEY` (see below) and the same clicks run live Muse Spark with on-screen model + latency badges. Submission details, track, and bonus-prize flags: [docs/submission.md](./docs/submission.md).
+
+**Multi-user, role-based:** the app opens on a login. One-click demo accounts (password `demo1234`, seeded from the scenario itself — no signup needed): `coordinator@schedulegod.demo` runs the term (wizard, publish, approves changes); `chen@schedulegod.demo` (any `<instructor-id>@…`) sees **only their own sections** in **My Schedule** and submits plain-language change requests; `cs2025@schedulegod.demo` (any `<cohort-id>@…`) sees **only their cohort's courses**. The coordinator publishes the solved timetable (`Publish current schedule`); instructors' grids update only when an approved change is re-proven by the solver and re-published — an infeasible request comes back rejected with the solver-backed explanation. You can also register your own account and link it to any instructor/cohort.
 
 **Hosted demo (live now):** UI at **https://prohle--schedulegod-ai-ui-web.us-east.modal.run** and backend at https://prohle--schedulegod-ai-api.us-east.modal.run (`/health`, `/docs`, `/engines`; both scale-to-zero on Modal, warm them with one request). Deploy your own from [docs/deploy_modal.md](./docs/deploy_modal.md). The local one-command path is below.
 
