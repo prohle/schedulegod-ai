@@ -88,7 +88,10 @@ class MessageRequest(BaseModel):
 
 
 class StudentPlanRequest(BaseModel):
-    cohort_id: str
+    cohort_id: Optional[str] = None       # progress lookup when no record given
+    program_id: Optional[str] = None      # desired degree (default: cohort's)
+    study_record: Optional[str] = None    # pasted record: course codes/names
+    completed_course_ids: list[str] = []
     message: str
     target_courses: Optional[int] = None
     scenario: Optional[Scenario] = None
@@ -400,7 +403,10 @@ def student_plan(req: StudentPlanRequest) -> StudentPlanResponse:
     try:
         return suggest_student_plan(
             scenario, req.cohort_id, req.message,
-            target_override=req.target_courses)
+            target_override=req.target_courses,
+            program_id=req.program_id,
+            study_record=req.study_record,
+            completed_course_ids=req.completed_course_ids)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

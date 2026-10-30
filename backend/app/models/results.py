@@ -138,11 +138,27 @@ class StudentConstraints(BaseModel):
 
     summary: str = ""
     must_course_ids: list[str] = []
+    completed_course_ids: list[str] = []  # "I've already passed CS 101..."
     avoid_days: list[int] = []      # days the student cannot attend at all
     avoid_periods: list[int] = []   # periods (0-3) the student cannot attend
     prefer_morning: bool = False
     prefer_afternoon: bool = False
     target_courses: int = 4
+
+
+class StudentProgress(BaseModel):
+    """Where one student stands in their desired degree — from their record."""
+
+    source: str                     # provided record | cohort progress lookup
+    program_id: str
+    program_name: str
+    completed_course_ids: list[str] = []
+    required_total: int = 0         # mandatory courses in the degree map
+    required_completed: int = 0
+    pct_complete: int = 0
+    mandatory_ready: list[str] = []   # course codes: remaining + eligible now
+    mandatory_locked: list[str] = []  # course codes: earlier courses unfinished
+    optional_remaining: int = 0
 
 
 class StudentPlanCourse(BaseModel):
@@ -165,9 +181,10 @@ class StudentPlanCourse(BaseModel):
 class StudentPlanResponse(BaseModel):
     """A suggested personal schedule, verified conflict-free before shown."""
 
-    cohort_id: str
-    cohort_name: str
+    cohort_id: Optional[str] = None
+    cohort_name: str = ""
     constraints: StudentConstraints
+    progress: Optional[StudentProgress] = None
     courses: list[StudentPlanCourse] = []
     target_courses: int = 4
     target_met: bool = False

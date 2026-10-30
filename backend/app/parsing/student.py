@@ -25,9 +25,31 @@ logger = logging.getLogger(__name__)
 _NO_TIME = re.compile(r"\b(no|not|avoid|never|hate)\b[^.]*\b(8:00|8 am|early|morning)\b", re.I)
 
 
+_DONE = re.compile(r"\b(completed|passed|finished|took|taken|already have|done)\b", re.I)
+
+
+def extract_course_ids(text: str, scenario: Scenario) -> list[str]:
+    """Course ids/codes literally present in a study record — factual
+    extraction, no model involved."""
+    squashed = re.sub(r"\s+", "", text.lower())
+    found = []
+    for c in scenario.courses:
+        if c.id.lower() in squashed or c.code.lower().replace(" ", "") in squashed:
+            found.append(c.id)
+    return found
+
+
 def mock_student_parse(message: str, scenario: Scenario, cohort) -> StudentConstraints:  # noqa: ANN001
     lower = message.lower()
-    must = [c.id for c in _mentioned_courses(message, scenario)]
+    # Courses named in a "I've completed..." clause are record, not requests.
+    completed: list[str] = []
+    must: list[str] = []
+    for clause in re.split(r"[.,;]", message):
+        ids = [c.id for c in _mentioned_courses(clause, scenario)]
+        if _DONE.search(clause):
+            completed.extend(i for i in ids if i not in completed)
+        else:
+            must.extend(i for i in ids if i not in must and i not in completed)
 
     # Work days: any day named in a sentence about work/job/unavailability.
     avoid_days: list[int] = []
@@ -52,6 +74,7 @@ def mock_student_parse(message: str, scenario: Scenario, cohort) -> StudentConst
     return StudentConstraints(
         summary="Parsed student request (offline rules).",
         must_course_ids=must,
+        completed_course_ids=completed,
         avoid_days=sorted(avoid_days),
         avoid_periods=sorted(set(avoid_periods)),
         prefer_morning=bool(re.search(r"\b(prefer|love|like|rather)\b[^.]*\bmorning", lower)),
@@ -78,6 +101,8 @@ ENCODING
 
 RULES
 - must_course_ids: courses the student says they need/must take this term.
+- completed_course_ids: courses the student says they have already
+  completed/passed — these are their study record, never requests.
 - avoid_days: days they cannot attend at all (e.g. work days).
 - avoid_periods: times of day they cannot attend (e.g. "no 8 AM" -> [0],
   "I work evenings" -> [3]).
@@ -137,6 +162,8 @@ class StudentPlanParser:
     def _clean(c: StudentConstraints, pool: list[str]) -> StudentConstraints:
         pool_set = set(pool)
         c.must_course_ids = [x for x in dict.fromkeys(c.must_course_ids) if x in pool_set]
+        c.completed_course_ids = [x for x in dict.fromkeys(c.completed_course_ids)
+                                  if x not in c.must_course_ids]
         c.avoid_days = sorted({d for d in c.avoid_days if 0 <= d <= 4})
         c.avoid_periods = sorted({p for p in c.avoid_periods if 0 <= p <= 3})
         c.target_courses = max(1, min(6, c.target_courses or 4))
