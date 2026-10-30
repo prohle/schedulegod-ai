@@ -1,7 +1,7 @@
 # ScheduleGod AI — 3-minute demo script
 
 > Target: **top prize**. Every beat is backed by a live, deterministic CP-SAT
-> solve and a live Muse Spark call (parse / diagnosis / tighten). Long solver
+> solve and a live Muse Spark call (parse / explanation / tighten). Long solver
 > or model steps are fast-forwarded in the video; the on-screen text is real
 > output (see `backend/demo.py`, `backend/scripts/verify_muse.py`, and
 > `backend/muse-verification.json`).
@@ -18,12 +18,12 @@ reality changes. Scheduling is NP-hard. This is ScheduleGod AI."
 
 ## Beat 2 — Import → Build (0:20–1:20)
 
-**Visual:** the Guided wizard, **Import** step: paste the free-form dump (course
-catalog, degree maps, cohorts, faculty, rooms). Click **Auto-clean & Prepare**.
+**Visual:** the Guided wizard, **Import** step: drop the six messy files — PDF catalog, Word degree map, CSV cohorts,
+faculty email text, Excel room sheet, Markdown campus map. Click **Auto-clean & Prepare**.
 
 **Narration:** "Point the tool at your data — catalog, degree maps, cohorts,
-faculty, rooms — in whatever messy shape it arrives. Muse Spark autocleans it
-into the structured model. No spreadsheet babysitting."
+faculty, rooms — in whatever messy shape it arrives. Every format is extracted to text first;
+Muse Spark autocleans it into the structured model of the whole institution. No spreadsheet babysitting."
 
 **On-screen:** the structured counts (courses, instructors, cohorts, rooms —
 whatever Muse extracted). Then the **Build** step → **Solve** → `OPTIMAL` + the **visual
@@ -32,14 +32,13 @@ timetable grid** (days × periods, colored sections, 3h block badge). Then the
 
 ## Beat 3 — Emergency (1:10–2:10)
 
-**Visual:** Emergency step. Click **Record voice note** and say *"Dr. Chen is
-out all week — who could cover her sections?"* (or upload a WAV). Muse Voice
-Transcribe shows the transcript, then the same verified flow runs.
+**Visual:** Emergency step. The message *"Dr. Chen is out all week — who could
+cover her sections?"* is pre-filled; click **Handle Emergency**. The agent
+trace (impact → probe → choose → re-solve) and ranked proposals appear.
 
-**Narration:** "Reality breaks the term mid-flight. A voice note is enough:
-Muse Voice Transcribe turns it into a request, then the co-pilot doesn't guess
-who can cover — it probes every qualified instructor with CP-SAT and ranks the
-zero-ripple swaps."
+**Narration:** "Reality breaks the term mid-flight. One typed message is
+enough: the co-pilot doesn't guess who can cover — it probes every qualified
+instructor with the solver and ranks the zero-ripple swaps."
 
 **On-screen:** ranked proposals with `feasible` / `objective_delta` /
 `load_after`; the chosen candidate; the **Before / After grids** with changed
@@ -56,7 +55,7 @@ core — Diaz's load cap. Muse Spark translates the proof into ranked
 resolutions; every one is re-solved before it's shown; the least disruptive
 one applies."
 
-**On-screen:** the diagnosis + the **solver-verified resolution options**
+**On-screen:** the explanation + the **solver-verified resolution options**
 (each with `status` + penalty), then the **AI Tightening** tab: Muse proposes
 typed moves, CP-SAT verifies each (accepted and rejected moves shown). Point
 at the live `muse-spark` / model / latency badge so the 25% Meta criterion is
@@ -66,7 +65,7 @@ visible on screen.
 
 **Visual:** the diagram.
 
-**Narration:** "Muse Spark parses, diagnoses, and tightens — but it never
+**Narration:** "Muse Spark parses, explains, and tightens — but it never
 decides the schedule. OR-Tools CP-SAT proves every answer, scipy spectral
 graph theory predicts deadlocks before they happen, and Postgres keeps the
 audit trail. One command brings it all up: `docker compose up`."

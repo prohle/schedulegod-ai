@@ -6,7 +6,7 @@ optimally, keeps the C39 four-course guarantee for every cohort, preserves
 every demo beat, and exposes the autonomous agent loop as a trace.
 """
 
-from app.data.department import build_department_scenario
+from app.data.department import build_department_scenario, build_university_scenario
 from app.intelligence.matrices import compute_margins
 from app.main import load_seed_scenario
 from app.models.scenario import Operation
@@ -67,12 +67,26 @@ def test_department_preserves_demo_beats():
     assert not [p for p in resp.result.timetable.placements if p.instructor_id == "chen"]
 
 
+def test_university_scale_solves_with_c39_guarantee():
+    sc = build_university_scenario(load_seed_scenario())
+    assert len(sc.instructors) >= 36
+    assert len(sc.sections) >= 40
+    assert len(sc.programs) >= 5
+    assert len(sc.cohorts) >= 20
+    result = solve(sc)
+    assert result.status == "optimal"
+    margins = compute_margins(sc, result.timetable, 4)
+    assert margins.all_ok, [(c.cohort_id, c.margin) for c in margins.cohorts if not c.ok]
+    chen = {p.course_code for p in result.timetable.placements if p.instructor_id == "chen"}
+    assert chen == {"CS 301", "CS 310"}
+
+
 def test_agent_trace_exposes_the_loop():
     sc = load_seed_scenario()
     healed = run_copilot(sc, "Diaz is taking over CS 101, MATH 201 and CS 201 personally.")
     steps = [s.step for s in healed.agent_trace]
     assert steps[0] == "parse" and "validate" in steps and "solve" in steps
-    assert "conflict-core" in steps and "diagnose" in steps and "verify" in steps
+    assert "conflict-core" in steps and "explain" in steps and "verify" in steps
     assert steps[-1] == "audit"
     assert all(s.actor and s.detail for s in healed.agent_trace)
 

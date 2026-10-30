@@ -57,8 +57,8 @@ def print_copilot(message: str, resp: CopilotResponse) -> None:
         print(f"  - [{op.op}] {op.explanation}")
     for note in resp.healing_notes:
         print(f"  ! {note}")
-    if resp.diagnosis:
-        print(f"  DIAGNOSIS ({resp.diagnosis_mode}): {resp.diagnosis}")
+    if resp.explanation:
+        print(f"  EXPLANATION ({resp.explanation_mode}): {resp.explanation}")
     if resp.options:
         print("  Solver-verified resolution options (Muse proposes, CP-SAT proves):")
         for i, opt in enumerate(resp.options, 1):

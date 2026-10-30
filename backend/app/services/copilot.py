@@ -1,10 +1,10 @@
-"""Co-pilot orchestration: parse -> validate -> solve -> Muse-diagnosed self-heal.
+"""Co-pilot orchestration: parse -> validate -> solve -> Muse-explaind self-heal.
 
 When the solver reports infeasibility, CP-SAT has already named the minimal
 conflicting subset (assumption literals). The self-healing loop works in two
 layers:
 
-1. Muse Spark translates the proof into a plain-English diagnosis and ranks
+1. Muse Spark translates the proof into a plain-English explanation and ranks
    resolutions (each drops exactly one conflicting request).
 2. CP-SAT verifies every proposed resolution by re-solving. Only verified
    options are shown; the least-disruptive one is auto-applied.
@@ -14,7 +14,7 @@ The LLM never decides feasibility; the solver never talks to humans.
 
 from __future__ import annotations
 
-from app.agent.diagnosis import DiagnosisParser
+from app.agent.explainer import ConflictExplainer
 from app.models.results import AgentStep, CopilotResponse, ResolutionOption, SolveResult
 from app.models.scenario import Operation, Scenario
 from app.parsing.parser import ConstraintParser, validate_operations
@@ -28,11 +28,11 @@ def run_copilot(
     scenario: Scenario,
     message: str,
     parser: ConstraintParser | None = None,
-    diagnoser: DiagnosisParser | None = None,
+    explainr: ConflictExplainer | None = None,
     speaker_id: str | None = None,
 ) -> CopilotResponse:
     parser = parser or ConstraintParser()
-    diagnoser = diagnoser or DiagnosisParser()
+    explainr = explainr or ConflictExplainer()
     parsed = parser.parse(message, scenario, speaker_id)
     record_submission(message, parsed.summary, parser.mode)  # type: ignore[arg-type]
 
@@ -53,8 +53,8 @@ def run_copilot(
     remaining: list[Operation] = list(ops)
     dropped: list[Operation] = []
     options: list[ResolutionOption] = []
-    diagnosis: str | None = None
-    diagnosis_mode: str | None = None
+    explanation: str | None = None
+    explanation_mode: str | None = None
     result: SolveResult | None = None
 
     for round_no in range(MAX_HEALING_ROUNDS):
@@ -79,16 +79,16 @@ def run_copilot(
             step="conflict-core", actor="CP-SAT", status="blocked",
             detail=f"Minimal conflicting subset: operation(s) {core} — {conflict.explanation}"))
 
-        # --- layer 1: Muse diagnoses; layer 2: CP-SAT verifies each option ---
-        if diagnosis is None:
-            diag, dmode = diagnoser.diagnose(scenario, message, remaining, conflict)
-            diagnosis = diag.diagnosis
-            diagnosis_mode = dmode
-            dactor = f"Muse Spark · {diagnoser.model}" if dmode == "muse-spark" else "Template diagnosis (fallback)"
+        # --- layer 1: Muse explains; layer 2: CP-SAT verifies each option ---
+        if explanation is None:
+            diag, dmode = explainr.explain(scenario, message, remaining, conflict)
+            explanation = diag.explanation
+            explanation_mode = dmode
+            dactor = f"Muse Spark · {explainr.model}" if dmode == "muse-spark" else "Template explanation (fallback)"
             trace.append(AgentStep(
-                step="diagnose", actor=dactor,
+                step="explain", actor=dactor,
                 detail=f"Translated the solver proof into plain English with "
-                       f"{len(diag.resolutions)} ranked resolution(s): {diag.diagnosis}"))
+                       f"{len(diag.resolutions)} ranked resolution(s): {diag.explanation}"))
             for res in diag.resolutions:
                 if res.drop_operation_index >= len(remaining):
                     continue
@@ -151,8 +151,8 @@ def run_copilot(
         applied_operations=remaining,
         dropped_operations=dropped,
         healing_notes=healing_notes,
-        diagnosis=diagnosis,
-        diagnosis_mode=diagnosis_mode,
+        explanation=explanation,
+        explanation_mode=explanation_mode,
         options=options,
         result=result,
         parser_mode=parser.mode,  # type: ignore[arg-type]

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Day 1 — Muse runtime verification battery.
 
-Confirms the three Muse Spark runtime roles (parse / diagnosis / tighten)
+Confirms the three Muse Spark runtime roles (parse / explanation / tighten)
 work live against the seed scenario, and captures traces. Run from
 `backend/` so `app.*` resolves:  .venv/bin/python scripts/verify_muse.py
 
 Each role is exercised through its real code path:
 - parse:      structured-output call (same prompt + schema as parser.py)
-- diagnosis:  run_copilot on infeasible messages (fires Muse after CP-SAT
+- explanation:  run_copilot on infeasible messages (fires Muse after CP-SAT
               proves the conflict core)
 - tighten:    run_tightener (Muse proposes typed moves, CP-SAT verifies)
 
@@ -110,7 +110,7 @@ def main() -> None:
         base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY,
         timeout=config.MUSE_TIMEOUT_S,
     )
-    out: dict = {"parse": [], "diagnosis": [], "tighten": [], "ingestion": []}
+    out: dict = {"parse": [], "explanation": [], "tighten": [], "ingestion": []}
 
     def muse_parse(msg: str, speaker_id: str | None = None) -> dict:
         t = time.time()
@@ -144,24 +144,24 @@ def main() -> None:
         else:
             print(f"         ERROR: {r['err']}", flush=True)
 
-    print("\n=== DIAGNOSIS (run_copilot on infeasible requests) ===", flush=True)
+    print("\n=== EXPLANATION (run_copilot on infeasible requests) ===", flush=True)
     for m in DIAG_MSGS:
         t = time.time()
         try:
             resp = run_copilot(scenario, m)
             dt = time.time() - t
-            ok = resp.diagnosis_mode == "muse-spark" and bool(resp.diagnosis)
+            ok = resp.explanation_mode == "muse-spark" and bool(resp.explanation)
             status = resp.result.status if resp.result else "?"
-            out["diagnosis"].append({
+            out["explanation"].append({
                 "msg": m, "ok": ok, "s": round(dt, 1),
-                "mode": resp.diagnosis_mode, "status": status,
-                "diagnosis": (resp.diagnosis or "")[:160],
+                "mode": resp.explanation_mode, "status": status,
+                "explanation": (resp.explanation or "")[:160],
             })
-            print(f"[diag] {'OK ' if ok else 'CHECK'} {dt:.1f}s  mode={resp.diagnosis_mode} "
+            print(f"[diag] {'OK ' if ok else 'CHECK'} {dt:.1f}s  mode={resp.explanation_mode} "
                   f"status={status}", flush=True)
-            print(f"        {(resp.diagnosis or '')[:150]}", flush=True)
+            print(f"        {(resp.explanation or '')[:150]}", flush=True)
         except Exception as e:  # noqa: BLE001
-            out["diagnosis"].append({"msg": m, "ok": False, "err": str(e)[:120]})
+            out["explanation"].append({"msg": m, "ok": False, "err": str(e)[:120]})
             print(f"[diag] FAIL  {m}: {e}", flush=True)
 
     print("\n=== INGESTION (free-form institutional dump) ===", flush=True)

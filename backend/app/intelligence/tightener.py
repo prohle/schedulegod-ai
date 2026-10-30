@@ -1,7 +1,7 @@
 """AI tightening layer: Muse Spark proposes typed repairs, CP-SAT verifies.
 
 Third runtime role for Muse Spark (after constraint parsing and infeasibility
-diagnosis): when the solver deadlocks or the four-course offering guarantee
+explanation): when the solver deadlocks or the four-course offering guarantee
 (C39) fails, the intelligence layer hands Muse the evidence — the spectral
 deadlock warnings, the CP-SAT conflict core, the margin shortfalls, the load
 board — and Muse proposes a small set of TYPED moves from a closed grammar:

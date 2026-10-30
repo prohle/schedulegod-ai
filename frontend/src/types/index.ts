@@ -170,6 +170,16 @@ export interface ResolutionOption {
   result: SolveResult;
 }
 
+export interface CompareResult {
+  cpsat: SolveResult;
+  ours: SolveResult;
+  same_status: boolean;
+  agreement_pct?: number;
+  differing_sections: string[];
+  objective_delta?: number;
+  speed_ratio?: number;
+}
+
 export interface AgentStep {
   step: string;
   actor: string;
@@ -183,8 +193,8 @@ export interface CopilotResponse {
   applied_operations: Operation[];
   dropped_operations: Operation[];
   healing_notes: string[];
-  diagnosis?: string;
-  diagnosis_mode?: string;
+  explanation?: string;
+  explanation_mode?: string;
   options: ResolutionOption[];
   result?: SolveResult;
   parser_mode: "muse-spark" | "mock";

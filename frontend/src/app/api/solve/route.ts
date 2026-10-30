@@ -9,7 +9,11 @@ export async function POST(request: Request) {
     return forward("/solve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenario, operations: body.operations || [] }),
+      body: JSON.stringify({
+        scenario,
+        operations: body.operations || [],
+        engine: typeof body.engine === "string" ? body.engine : "cpsat",
+      }),
     });
   } catch {
     return forward("/solve", {

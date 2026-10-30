@@ -121,14 +121,14 @@
       "ops": []
     }
   ],
-  "diagnosis": [
+  "explanation": [
     {
       "msg": "Diaz is taking over CS 101, MATH 201 and CS 201 personally.",
       "ok": true,
       "s": 20.5,
       "mode": "muse-spark",
       "status": "optimal",
-      "diagnosis": "Dr. Diaz was pinned to three sections at once \u2014 CS 101, MATH 201, and CS 201. Diaz's load cap is max 2 sections, so all three pins cannot be honored together. T"
+      "explanation": "Dr. Diaz was pinned to three sections at once \u2014 CS 101, MATH 201, and CS 201. Diaz's load cap is max 2 sections, so all three pins cannot be honored together. T"
     },
     {
       "msg": "Dr. Chen is taking CS 301, CS 310 and CS 350 personally.",
@@ -136,7 +136,7 @@
       "s": 24.7,
       "mode": "muse-spark",
       "status": "optimal",
-      "diagnosis": "Dr. Chen was pinned to CS 301, CS 310, and CS 350 at the same time, but Dr. Chen has a max load of 2 sections, so all three cannot hold together. The binding ru"
+      "explanation": "Dr. Chen was pinned to CS 301, CS 310, and CS 350 at the same time, but Dr. Chen has a max load of 2 sections, so all three cannot hold together. The binding ru"
     },
     {
       "msg": "CS 350 enrollment jumped to 200 after registration ended.",
@@ -144,7 +144,7 @@
       "s": 18.4,
       "mode": "muse-spark",
       "status": "optimal",
-      "diagnosis": "The request to raise CS 350 enrollment to 200 students is infeasible by itself. No available room with the required type and equipment can seat 200 while respec"
+      "explanation": "The request to raise CS 350 enrollment to 200 students is infeasible by itself. No available room with the required type and equipment can seat 200 while respec"
     }
   ],
   "tighten": [

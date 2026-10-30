@@ -4,21 +4,20 @@
 // Python backend: Muse Spark parse, CP-SAT solve, the C39/spectral audit, and
 // verified emergency coverage proposals. The default inputs are the demo beats.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle, Zap,
   Users, Loader2, CircleCheck, CircleX, Sparkles, Wrench, Radar, Database,
-  UploadCloud, FileText, X, ListChecks, Mic, Square, Upload,
+  UploadCloud, FileText, X, ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TimetableGrid, changedSections } from "@/components/timetable-grid";
-import { blobToWav } from "@/lib/audio";
 import { useIntelligence, useScenario } from "@/hooks/use-api";
 import {
   DAY_NAMES, PERIOD_NAMES, PATTERN_DAYS,
   type Placement, type CopilotResponse, type EmergencyResponse, type IngestResponse,
-  type InstitutionData, type AgentStep,
+  type InstitutionData, type AgentStep, type CompareResult,
 } from "@/types";
 
 interface WizardViewProps {
@@ -176,7 +175,22 @@ function AgentTrace({ steps }: { steps?: AgentStep[] }) {
 }
 
 export function WizardView({ onToast }: WizardViewProps) {
-  const { margins, spectral, solveResult, busy, error, runSolve, reload } = useIntelligence();
+  const { margins, spectral, solveResult, setSolveResult, busy, error, runSolve, reload } = useIntelligence();
+  const [engine, setEngine] = useState<string>("cpsat");
+  const [lastEngine, setLastEngine] = useState<string>("cpsat");
+  const [engineList, setEngineList] = useState<{ id: string; label: string; description: string }[]>([
+    { id: "cpsat", label: "OR-Tools CP-SAT", description: "" },
+    { id: "ours", label: "ScheduleGod solver (ours)", description: "" },
+    { id: "greedy", label: "Greedy descent (ours, fast)", description: "" },
+  ]);
+  useEffect(() => {
+    fetch("/api/engines")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d.engines) && d.engines.length) setEngineList(d.engines); })
+      .catch(() => {});
+  }, []);
+  const [compare, setCompare] = useState<CompareResult | null>(null);
+  const [compareBusy, setCompareBusy] = useState(false);
   const { scenario: currentScenario } = useScenario();
   const [step, setStep] = useState<StepId>("import");
   const [importText, setImportText] = useState(SAMPLE_DUMP);
@@ -192,11 +206,7 @@ export function WizardView({ onToast }: WizardViewProps) {
   const [emergencyMsg, setEmergencyMsg] = useState("Dr. Chen is out all week — who could cover her sections?");
   const [emergencyBusy, setEmergencyBusy] = useState(false);
   const [emergency, setEmergency] = useState<EmergencyResponse | null>(null);
-  const [voiceBusy, setVoiceBusy] = useState(false);
   const [scaleBusy, setScaleBusy] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const mediaRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
 
   const stepOrder: StepId[] = ["import", "intake", "build", "review", "emergency"];
   const currentIndex = stepOrder.indexOf(step);
@@ -299,16 +309,31 @@ export function WizardView({ onToast }: WizardViewProps) {
     setStep(stepOrder[currentIndex + 1]);
   };
 
-  const loadScale = async (kind: "department" | "reset") => {
+  const solveWith = async (eng: string) => {
+    setLastEngine(eng);
+    setSolveResult(await post("/api/solve", { operations: [], engine: eng }));
+  };
+
+  const runCompare = async () => {
+    setCompareBusy(true);
+    setCompare(null);
+    try {
+      setCompare(await post("/api/solve/compare", {}));
+    } finally {
+      setCompareBusy(false);
+    }
+  };
+
+  const loadScale = async (kind: "department" | "university" | "reset") => {
     setScaleBusy(true);
     try {
       const sc = await post(`/api/scenario/${kind}`, {});
       await reload();
-      runSolve();
+      solveWith(engine);
       onToast(
-        kind === "department"
-          ? `Department scale loaded — ${sc.instructors?.length ?? "?"} instructors, ${sc.sections?.length ?? "?"} sections, ${sc.cohorts?.length ?? "?"} cohorts. Solving…`
-          : "Back to the story seed — solving…",
+        kind === "reset"
+          ? "Back to the story seed — solving…"
+          : `${kind === "university" ? "University" : "Department"} scale loaded — ${sc.instructors?.length ?? "?"} instructors, ${sc.sections?.length ?? "?"} sections, ${sc.cohorts?.length ?? "?"} cohorts. Solving…`,
         "success",
       );
     } finally {
@@ -370,60 +395,6 @@ export function WizardView({ onToast }: WizardViewProps) {
     }
   };
 
-  const sendVoice = async (file: Blob, name: string) => {
-    setVoiceBusy(true);
-    setEmergency(null);
-    try {
-      const form = new FormData();
-      form.append("file", file, name);
-      const res = await fetch("/api/emergency/audio", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) {
-        onToast(data.detail || "Voice transcription failed", "error");
-        return;
-      }
-      await commitEmergency(data as EmergencyResponse);
-    } finally {
-      setVoiceBusy(false);
-    }
-  };
-
-  const startVoice = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        try {
-          await sendVoice(await blobToWav(blob), "voice-note.wav");
-        } catch {
-          onToast("Could not convert the recording — upload a WAV instead", "error");
-        }
-      };
-      mediaRef.current = recorder;
-      recorder.start();
-      setRecording(true);
-    } catch {
-      onToast("Microphone unavailable — upload a WAV instead", "warning");
-    }
-  };
-
-  const stopVoice = () => {
-    mediaRef.current?.stop();
-    setRecording(false);
-  };
-
-  const onVoiceFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) await sendVoice(file, file.name);
-    event.target.value = "";
-  };
-
   const buildPlacements = solveResult?.timetable?.placements ?? [];
   const intakePlacements = copilot?.result?.timetable?.placements ?? buildPlacements;
   const emergencyPlacements = emergency?.result?.timetable?.placements ?? [];
@@ -477,8 +448,11 @@ export function WizardView({ onToast }: WizardViewProps) {
           <div className="space-y-4 max-w-3xl mx-auto">
             <Section title="Drop your scheduling data" icon={<Database className="w-5 h-5 text-primary" />} tone="primary">
               <p className="text-sm text-muted-foreground mb-3">
-                Drop a zipped file, one file, or many — degree catalog, degree maps, student bodies, faculty
-                availability, facilities, and the campus map. Muse Spark autocleans whatever shape they arrive in.
+                Drop messy institutional files in <strong>any format</strong> — a PDF catalog, an Excel room
+                sheet, a Word memo, CSV exports, plain-text emails, or a zip of all of them. If the files
+                answer the six requirements (catalog, degree maps, cohorts, faculty, rooms, campus map),
+                Muse Spark autocleans them into one model and the solver recommends a schedule for the
+                entire institution.
               </p>
 
               <div
@@ -493,8 +467,9 @@ export function WizardView({ onToast }: WizardViewProps) {
               >
                 <UploadCloud className="w-6 h-6 mx-auto text-muted-foreground" />
                 <p className="text-sm font-medium mt-2">Drag &amp; drop files here, or click to browse</p>
-                <p className="text-[11px] text-muted-foreground mt-1">.zip · .txt · .csv · .json · .md — one at a time or many</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Any format: .pdf · .docx · .xlsx · .csv · .json · .txt · .md · .zip — one at a time or all at once</p>
                 <input id="file-input" type="file" multiple className="hidden"
+                  accept=".pdf,.docx,.xlsx,.csv,.tsv,.json,.txt,.md,.html,.zip"
                   onChange={(e) => e.target.files && addFiles(e.target.files)} />
               </div>
 
@@ -649,9 +624,9 @@ export function WizardView({ onToast }: WizardViewProps) {
                     <span className="text-muted-foreground">{op.explanation}</span>
                   </div>
                 ))}
-                {copilot.diagnosis && (
+                {copilot.explanation && (
                   <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-800">
-                    <strong>Diagnosis ({copilot.diagnosis_mode}):</strong> {copilot.diagnosis}
+                    <strong>Explanation ({copilot.explanation_mode}):</strong> {copilot.explanation}
                   </div>
                 )}
                 <AgentTrace steps={copilot.agent_trace} />
@@ -699,20 +674,85 @@ export function WizardView({ onToast }: WizardViewProps) {
                 The OR-Tools CP-SAT solver assigns every section an instructor, timeslot set, and room under all
                 hard constraints — capacity, loads, cohort conflicts, equipment, walk distances.
               </p>
-              <Button variant="primary" size="md" onClick={() => { runSolve(); onToast("Running CP-SAT…", "info"); }} disabled={busy !== null} className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-xs font-semibold text-emerald-900">Engine:</span>
+                {engineList.map((e) => (
+                  <button
+                    key={e.id}
+                    onClick={() => setEngine(e.id)}
+                    title={e.description}
+                    className={cn("px-2.5 py-1 rounded-full text-xs font-semibold border",
+                      engine === e.id ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-emerald-200 text-emerald-800")}
+                  >
+                    {e.label}
+                  </button>
+                ))}
+                <Button variant="outline" size="sm" onClick={runCompare} disabled={compareBusy} className="ml-auto flex items-center gap-1.5">
+                  {compareBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  Compare side by side
+                </Button>
+              </div>
+              <Button variant="primary" size="md" onClick={() => { solveWith(engine); onToast(engine === "ours" ? "Running ScheduleGod solver…" : "Running CP-SAT…", "info"); }} disabled={busy !== null} className="flex items-center gap-2">
                 {busy === "solve" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                Solve
+                Solve with {engineList.find((e) => e.id === engine)?.label ?? engine}
               </Button>
+              {compare && (
+                <div className="mt-4 border-t border-emerald-200 pt-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs mb-3">
+                    <div className="bg-white border rounded p-2">
+                      <div className="font-bold">{compare.cpsat.status} · {compare.cpsat.solve_time_ms} ms</div>
+                      <div className="text-muted-foreground">CP-SAT · penalty {compare.cpsat.objective ?? "—"}</div>
+                    </div>
+                    <div className="bg-white border rounded p-2">
+                      <div className="font-bold">{compare.ours.status} · {compare.ours.solve_time_ms} ms</div>
+                      <div className="text-muted-foreground">Ours · penalty {compare.ours.objective ?? "—"}</div>
+                    </div>
+                    <div className="bg-white border rounded p-2">
+                      <div className="font-bold">{compare.agreement_pct != null ? `${compare.agreement_pct}%` : "—"}</div>
+                      <div className="text-muted-foreground">identical placements</div>
+                    </div>
+                    <div className="bg-white border rounded p-2">
+                      <div className="font-bold">{compare.objective_delta != null ? (compare.objective_delta > 0 ? `+${compare.objective_delta}` : compare.objective_delta) : "—"}</div>
+                      <div className="text-muted-foreground">penalty delta (ours − CP-SAT)</div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 mb-2">
+                    Same world, same constraints, two independent engines. Differing sections are ringed in the
+                    right-hand grid ({compare.differing_sections.length} of {compare.cpsat.timetable?.placements.length ?? 0}).
+                  </p>
+                  {compare.cpsat.timetable && compare.ours.timetable && (
+                    <div className="grid gap-3 2xl:grid-cols-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-muted-foreground mb-1">CP-SAT</div>
+                        <TimetableGrid placements={compare.cpsat.timetable.placements} compact />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-emerald-700 mb-1">ScheduleGod solver (ours)</div>
+                        <TimetableGrid
+                          placements={compare.ours.timetable.placements}
+                          changed={changedSections(compare.cpsat.timetable.placements, compare.ours.timetable.placements)}
+                          compact
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="mt-4 border-t border-emerald-200 pt-3">
                 <p className="text-xs text-emerald-800 mb-2">
-                  <strong>Scale proof:</strong> the demo story is one CS department slice. Load the full
-                  department cluster — 26 instructors, 25 sections, 16 rooms, 3 programs, 12 cohorts —
-                  and the same engine solves it optimally, live.
+                  <strong>Scale proof:</strong> the demo story is one CS department slice. Load a full
+                  department cluster (26 instructors, 25 sections, 12 cohorts, 3 programs) or the entire
+                  university (38 instructors, 41 sections, 20 cohorts, 5 programs sharing the same rooms
+                  and slots) — the same engine solves it live.
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   <Button variant="outline" size="sm" onClick={() => loadScale("department")} disabled={scaleBusy} className="flex items-center gap-1.5">
                     {scaleBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
                     Load department scale
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => loadScale("university")} disabled={scaleBusy} className="flex items-center gap-1.5">
+                    {scaleBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
+                    Load university scale
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => loadScale("reset")} disabled={scaleBusy}>
                     Back to story seed
@@ -723,6 +763,7 @@ export function WizardView({ onToast }: WizardViewProps) {
             {solveResult && solveResult.status !== "infeasible" && (
               <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground">
                 <span className="font-bold text-emerald-600">{solveResult.status.toUpperCase()}</span>
+                <span>{engineList.find((e) => e.id === lastEngine)?.label ?? lastEngine}</span>
                 <span>{solveResult.solve_time_ms} ms</span>
                 <span>penalty {solveResult.objective ?? "—"}</span>
               </div>
@@ -797,28 +838,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                 rows={2}
                 className="w-full border border-input rounded-lg p-2 text-sm bg-background"
               />
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Button
-                  variant={recording ? "destructive" : "outline"}
-                  size="sm"
-                  onClick={recording ? stopVoice : startVoice}
-                  disabled={voiceBusy || emergencyBusy}
-                  className="flex items-center gap-1.5"
-                >
-                  {recording ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                  {recording ? "Stop & transcribe" : "Record voice note"}
-                </Button>
-                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-input bg-background hover:bg-accent cursor-pointer">
-                  <Upload className="w-3.5 h-3.5" /> or upload WAV
-                  <input type="file" accept=".wav,audio/wav" className="hidden" onChange={onVoiceFile} disabled={voiceBusy || emergencyBusy} />
-                </label>
-                {voiceBusy && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Muse Voice Transcribe…
-                  </span>
-                )}
-              </div>
-              <Button variant="primary" size="md" onClick={handleEmergency} disabled={emergencyBusy || voiceBusy} className="mt-3 flex items-center gap-2">
+<Button variant="primary" size="md" onClick={handleEmergency} disabled={emergencyBusy} className="mt-3 flex items-center gap-2">
                 {emergencyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}
                 Handle Emergency
               </Button>
@@ -834,7 +854,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                 </div>
                 {emergency.transcript && (
                   <div className="text-xs bg-sky-50 border border-sky-200 text-sky-900 rounded p-2">
-                    <strong>Muse Voice Transcribe heard:</strong> “{emergency.transcript}”
+                    <strong>Heard:</strong> “{emergency.transcript}”
                   </div>
                 )}
                 <AgentTrace steps={emergency.agent_trace} />

@@ -1,7 +1,7 @@
 """ScheduleGod AI — backend entry point.
 
     instructor/chair message -> Muse Spark constraint parsing -> CP-SAT
-    solve -> timetable, minimal-conflict diagnosis, or verified emergency
+    solve -> timetable, minimal-conflict explanation, or verified emergency
     coverage proposals.
 
 Built during the Meta Global AI Developer Hackathon (Oct 27 - Nov 4, 2026).
@@ -9,9 +9,7 @@ Built during the Meta Global AI Developer Hackathon (Oct 27 - Nov 4, 2026).
 
 from __future__ import annotations
 
-import io
 import json
-import zipfile
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -34,7 +32,7 @@ from app.models.intelligence import (
     UtilizationReport,
     WhatIfReport,
 )
-from app.models.results import AgentStep, CopilotResponse, EmergencyResponse, SolveResult
+from app.models.results import AgentStep, CompareResult, CopilotResponse, EmergencyResponse, SolveResult
 from app.models.scenario import Operation, ParsedRequest, Scenario
 from app.parsing.parser import ConstraintParser, validate_operations
 from app.services import audit
@@ -88,6 +86,7 @@ class ApplyOpsRequest(BaseModel):
 class SolveRequest(BaseModel):
     scenario: Scenario
     operations: Optional[list] = None
+    engine: str = "cpsat"  # "cpsat" (OR-Tools) | "ours" (ScheduleGod home solver)
 
 
 class IngestRequest(BaseModel):
@@ -151,21 +150,16 @@ def ingest_data(req: IngestRequest) -> IngestResponse:
 
 @app.post("/ingest/files", response_model=IngestResponse)
 async def ingest_files(files: list[UploadFile] = File(...)) -> IngestResponse:
-    """Drop one file, many files, or a zip. Every file's text is concatenated
-    (zips are extracted) and autocleaned; the response reports which of the six
-    required inputs were found and which are missing."""
+    """Drop messy institutional files in any format — PDF, Word, Excel, CSV,
+    JSON, text, or a zip of all of them. Each file is extracted to text
+    (app.ingestion.extract), concatenated, and autocleaned; the response
+    reports which of the six required inputs were found and which are missing."""
+    from app.ingestion.extract import extract_text
     chunks: list[str] = []
     for f in files:
         content = await f.read()
-        if f.filename and f.filename.lower().endswith(".zip"):
-            with zipfile.ZipFile(io.BytesIO(content)) as z:
-                for name in z.namelist():
-                    if name.endswith("/"):
-                        continue
-                    chunks.append(f"\n--- {name} ---\n" + z.read(name).decode("utf-8", errors="replace"))
-        else:
-            chunks.append(f"\n--- {f.filename or 'file'} ---\n"
-                          + content.decode("utf-8", errors="replace"))
+        name = f.filename or "file"
+        chunks.append(f"\n--- {name} ---\n" + extract_text(name, content))
     return _ingest_text("".join(chunks))
 
 
@@ -211,6 +205,21 @@ def department_scenario() -> Scenario:
     return _current_scenario
 
 
+@app.post("/scenario/university", response_model=Scenario)
+def university_scenario() -> Scenario:
+    """Load the university-scale scenario (38 instructors, 41 sections,
+    5 programs, 20 cohorts) — the entire institution on one solve."""
+    global _current_scenario
+    from app.data.department import build_university_scenario
+    _current_scenario = build_university_scenario(load_seed_scenario())
+    audit.record_event(
+        "scenario", "Loaded university-scale scenario "
+        f"({len(_current_scenario.instructors)} instructors, "
+        f"{len(_current_scenario.sections)} sections, "
+        f"{len(_current_scenario.cohorts)} cohorts)", {})
+    return _current_scenario
+
+
 @app.post("/apply", response_model=Scenario)
 def apply_request(req: ApplyOpsRequest) -> Scenario:
     """Commit a verified co-pilot/emergency proposal to the current term.
@@ -244,12 +253,60 @@ def parse(req: MessageRequest) -> ParsedRequest:
     return ConstraintParser().parse(req.message, scenario, req.speaker_id)
 
 
+@app.get("/engines")
+def engines() -> dict:
+    """Registered solver engines behind the standardized interface —
+    the Build-step picker and any API client discover them here."""
+    from app.solver.engine import list_engines
+    return {"engines": list_engines()}
+
+
 @app.post("/solve", response_model=SolveResult)
 def solve_scenario(req: SolveRequest) -> SolveResult:
+    from fastapi import HTTPException
     from app.models.scenario import Operation
+    from app.solver.engine import ENGINE_IDS
+    if req.engine not in ENGINE_IDS:
+        raise HTTPException(status_code=400,
+                            detail=f"unknown engine {req.engine!r}; available: {ENGINE_IDS}")
     ops, _ = validate_operations(
         [Operation.model_validate(o) for o in (req.operations or [])], req.scenario)
-    return solve(req.scenario, ops)
+    return solve(req.scenario, ops, engine=req.engine)
+
+
+class CompareRequest(BaseModel):
+    scenario: Optional[Scenario] = None
+    operations: Optional[list] = None
+
+
+@app.post("/solve/compare", response_model=CompareResult)
+def solve_compare(req: CompareRequest) -> CompareResult:
+    """Run both engines on the same world and diff the timetables."""
+    from app.models.scenario import Operation
+    scenario = req.scenario or get_current_scenario()
+    ops, _ = validate_operations(
+        [Operation.model_validate(o) for o in (req.operations or [])], scenario)
+    cpsat = solve(scenario, ops, engine="cpsat")
+    ours = solve(scenario, ops, engine="ours")
+    differing: list[str] = []
+    agreement: Optional[float] = None
+    if cpsat.timetable and ours.timetable:
+        a = {p.section_id: (p.instructor_id, tuple(p.days), p.period, p.room_id)
+             for p in cpsat.timetable.placements}
+        b = {p.section_id: (p.instructor_id, tuple(p.days), p.period, p.room_id)
+             for p in ours.timetable.placements}
+        differing = sorted(sid for sid in a if a[sid] != b.get(sid))
+        agreement = round(100.0 * (len(a) - len(differing)) / max(1, len(a)), 1)
+    return CompareResult(
+        cpsat=cpsat, ours=ours,
+        same_status=cpsat.status == ours.status,
+        agreement_pct=agreement,
+        differing_sections=differing,
+        objective_delta=(ours.objective - cpsat.objective)
+        if cpsat.objective is not None and ours.objective is not None else None,
+        speed_ratio=round(ours.solve_time_ms / cpsat.solve_time_ms, 2)
+        if cpsat.solve_time_ms else None,
+    )
 
 
 class OptionsRequest(BaseModel):

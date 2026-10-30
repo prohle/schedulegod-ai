@@ -23,7 +23,7 @@ MUSE_MODEL = os.getenv("MUSE_MODEL", "muse-spark-1.3-contributor")
 MUSE_REASONING_EFFORT = os.getenv("MUSE_REASONING_EFFORT", "low")
 
 # Hard timeout on every Meta API call. A hung/slow response must fail fast so
-# the deterministic fallback (mock parser / template diagnosis / template
+# the deterministic fallback (mock parser / template explanation / template
 # tightening) takes over instead of stalling the co-pilot loop. muse-spark is
 # a reasoning model — the tightening prompt can take 40-90s, so this is
 # generous rather than tight.
@@ -37,6 +37,10 @@ SEED_SCENARIO_PATH = os.path.join(os.path.dirname(__file__), "data", "seed_scena
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./schedulegod.db")
 
 SOLVER_TIME_LIMIT_S = float(os.getenv("SOLVER_TIME_LIMIT_S", "10"))
+
+# ScheduleGod home solver (pure-Python competitor to CP-SAT): wall-clock
+# budget per run before it returns its best incumbent as "feasible".
+HOME_SOLVER_TIME_LIMIT_S = float(os.getenv("HOME_SOLVER_TIME_LIMIT_S", "5"))
 
 # C39: full-time offering guarantee — every cohort must be able to assemble
 # at least this many distinct, non-overlapping courses toward graduation.

@@ -15,7 +15,7 @@ Decisions: for each section -> (instructor, timeslot, room), honoring:
 Every constraint coming from the current request is guarded by a CP-SAT
 assumption literal, so `SufficientAssumptionsForInfeasibility()` returns the
 minimal conflicting subset of the request — the solver, not the LLM,
-diagnoses conflicts.
+explains conflicts.
 
 `propose_candidates` answers "who could potentially be available": for each
 instructor qualified for an affected section, it probes a CP-SAT solve with
@@ -136,7 +136,17 @@ def solve(
     instructor_pins: Optional[dict[str, str]] = None,
     slot_hints: Optional[dict[str, int]] = None,
     objective: str = "preference",
+    engine: str = "cpsat",
 ) -> SolveResult:
+    if engine != "cpsat":
+        # Plug-and-play dispatch (app.solver.engine registry): "ours",
+        # "greedy", and any future engine behind the same SolveResult
+        # contract. Imported lazily — home_solver reuses this module's
+        # option generator.
+        from app.solver.engine import solve_with
+        return solve_with(engine, sc, request_ops, pins_exact=pins_exact,
+                          instructor_pins=instructor_pins, slot_hints=slot_hints,
+                          objective=objective)
     t0 = time.perf_counter()
     request_ops = list(request_ops or [])
     m = cp_model.CpModel()

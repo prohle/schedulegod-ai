@@ -29,7 +29,7 @@ that week: paste or drop the institution's messy data and Muse Spark
 autocleans it into a typed model; type one sentence ("Prof. Patel can't teach
 Mondays — committee duty") and Muse parses it into validated constraints
 while CP-SAT re-solves and proves the ripple; when reality breaks mid-term, a
-voice note ("Dr. Chen is out all week") triggers CP-SAT probes of every
+one typed message ("Dr. Chen is out all week") triggers CP-SAT probes of every
 qualified instructor and only zero-ripple-verified coverage is shown. When a
 request is infeasible, CP-SAT names the minimal conflicting subset, Muse
 translates the proof into ranked resolutions, and CP-SAT re-solves every one
@@ -45,9 +45,8 @@ every step is in the audit trail.
 |---|---|---|
 | Ingestion autoclean → typed scenario | Muse Spark `muse-spark-1.3-contributor` | `backend/app/ingestion/parser.py` |
 | Constraint parsing → typed operations | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` |
-| Self-heal diagnosis → ranked resolutions | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/diagnosis.py` |
+| Self-heal explanation → ranked resolutions | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/explanation.py` |
 | Intelligence tightening → typed repair moves | Muse Spark `muse-spark-1.3-contributor` | `backend/app/intelligence/tightener.py` |
-| Voice call-in → transcript | Muse Voice Transcribe `muse-voice-transcribe-1.0` | `backend/app/services/voice.py` |
 
 Live captured proof: `backend/muse-verification.json` (all structured roles,
 real outputs + latencies). No-key fallback is a deterministic mock parser, so
@@ -57,7 +56,7 @@ judges can click every beat offline.
 
 - **Best Agentic Use-Case ($5K) — CLAIM.** The co-pilot runs an autonomous
   multi-step loop with tool use and self-correction: parse → validate →
-  solve → minimal-conflict-core → diagnose → verify-every-resolution →
+  solve → minimal-conflict-core → explain → verify-every-resolution →
   auto-apply → re-solve → audit (up to 5 healing rounds), plus emergency
   probe-and-choose across every qualified instructor. Every response carries
   the `agent_trace`; the wizard renders it live. That is the claim evidence.
@@ -82,7 +81,7 @@ judges can click every beat offline.
 |---|---|
 | Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at department scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps), 3 programs / 12 cohorts |
 | Use of Meta AI tooling (25%) | 5 runtime Muse roles, live badges (model + latency) on screen, `muse-verification.json`, agent trace names Muse at every proposing step |
-| Technical depth & execution (20%) | CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, 21 passing tests, CI |
+| Technical depth & execution (20%) | CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, 29 passing tests, CI |
 | Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple emergency, solver-verified resolutions, department-scale solve in the Build step |
 
 ## What was built during the hackathon (Oct 27 – Nov 4)
@@ -94,10 +93,10 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 
 - [ ] All work committed and pushed; repo public and cloneable
 - [ ] `docker compose up --build` from a clean clone boots healthy (db Postgres 18 → backend → frontend)
-- [ ] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 21 tests)
+- [ ] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 29 tests)
 - [ ] Frontend production build passes (`cd frontend && npm run build`)
-- [ ] Video ≤ 3:00, recorded with `MODEL_API_KEY` set — every badge says `muse-spark` / `muse-voice-transcribe-1.0`, never `MOCK` (see `docs/demo_shotlist.md`)
-- [ ] Video shows, in order: import autoclean → Patel intake applied to the term → Build solve → **department-scale solve** → voice emergency with before/after → Diaz self-heal with verified resolutions + agent trace → audit trail
+- [ ] Video ≤ 3:00, recorded with `MODEL_API_KEY` set — every badge says `muse-spark`, never `MOCK` (see `docs/demo_shotlist.md`)
+- [ ] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/XLSX/TXT/MD) → Patel intake applied to the term → Build solve → **university-scale solve + dual-engine compare** → emergency with before/after → Diaz self-heal with verified resolutions + agent trace → audit trail
 - [ ] Live demo deployed (Modal + Vercel per `docs/deploy_modal.md`) OR README quickstart verified from a clean clone
 - [ ] Meta credits claimed (deadline Nov 4, 9:00 PM ET); spend limit set
 - [ ] X post published with video + repo + gallery links; post link submitted (Most Viral cutoff Nov 8 EOD)

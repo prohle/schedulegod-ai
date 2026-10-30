@@ -49,6 +49,18 @@ class SolveResult(BaseModel):
     solve_time_ms: int
 
 
+class CompareResult(BaseModel):
+    """Side-by-side: CP-SAT vs ScheduleGod's own solver on the same world."""
+
+    cpsat: SolveResult
+    ours: SolveResult
+    same_status: bool
+    agreement_pct: Optional[float] = None   # share of sections placed identically
+    differing_sections: list[str] = []
+    objective_delta: Optional[int] = None   # ours - cpsat (preference penalty)
+    speed_ratio: Optional[float] = None     # ours_ms / cpsat_ms (>1 = CP-SAT faster)
+
+
 class CandidateProposal(BaseModel):
     """One instructor's CP-SAT-verified viability for covering a section."""
 
@@ -69,10 +81,10 @@ class Resolution(BaseModel):
     tradeoff: str
 
 
-class DiagnosisResult(BaseModel):
-    """Structured-output contract for the Muse Spark diagnosis call."""
+class ExplanationResult(BaseModel):
+    """Structured-output contract for the Muse Spark explanation call."""
 
-    diagnosis: str
+    explanation: str
     resolutions: list[Resolution]
 
 
@@ -88,13 +100,13 @@ class ResolutionOption(BaseModel):
 class AgentStep(BaseModel):
     """One step of the autonomous co-pilot loop, in execution order.
 
-    The agent acts in stages — parse, validate, solve, diagnose, verify,
+    The agent acts in stages — parse, validate, solve, explain, verify,
     apply, audit — and this trace makes that loop visible to the coordinator
     (and to judges): who acted, what they did, and whether the solver
     approved it. `actor` is the component that ran the step, never a guess.
     """
 
-    step: str        # parse | validate | solve | conflict-core | diagnose | verify | apply | probe | choose | re-solve | audit
+    step: str        # parse | validate | solve | conflict-core | explain | verify | apply | probe | choose | re-solve | audit
     actor: str       # e.g. "Muse Spark", "CP-SAT", "Validator", "Audit trail"
     detail: str
     status: Literal["ok", "blocked", "info"] = "ok"
@@ -121,8 +133,8 @@ class CopilotResponse(BaseModel):
     applied_operations: list = []
     dropped_operations: list = []
     healing_notes: list[str] = []
-    diagnosis: Optional[str] = None
-    diagnosis_mode: Optional[str] = None
+    explanation: Optional[str] = None
+    explanation_mode: Optional[str] = None
     options: list[ResolutionOption] = []
     result: Optional[SolveResult] = None
     parser_mode: Literal["muse-spark", "mock"]
