@@ -35,7 +35,8 @@ def test_progress_lookup_from_cohort():
     assert p.required_completed == 1 and p.required_total == 7
     assert p.optional_remaining == 1                 # CS 350 elective
     assert p.mandatory_ready == ["CS 201", "MATH 201"]
-    assert "CS 301" in p.mandatory_locked            # needs CS 201 first
+    assert "CS 301" in p.mandatory_co_ready          # co-take with CS 201/MATH 201
+    assert "CS 310" in p.mandatory_locked            # depth-7 chain still closed
 
 
 def test_suggestion_is_conflict_free_and_respects_availability():
@@ -43,8 +44,10 @@ def test_suggestion_is_conflict_free_and_respects_availability():
     resp = suggest_student_plan(sc, "cs2025", MSG_FITS)
     assert resp.parser_mode == "mock"
     codes = [c.course_code for c in resp.courses]
-    assert codes == ["CS 201", "MATH 201"]           # the two mandatory-ready
-    assert all(c.required for c in resp.courses)     # both mandatory picks
+    # Both mandatory-ready courses, plus CS 301 co-enrolled with its gating
+    # courses (Tue/Thu work rules out the Thursday-block CS 210).
+    assert set(codes) == {"CS 201", "MATH 201", "CS 301"}
+    assert all(c.required for c in resp.courses)     # all mandatory picks
     for course in resp.courses:
         assert not ({1, 3} & set(course.days)), course
     cells = [{(d, course.period) for d in course.days} for course in resp.courses]
@@ -67,11 +70,20 @@ def test_study_record_unlocks_next_sequence():
     assert "CS 201" not in codes                      # already on the record
 
 
-def test_must_course_locked_by_unfinished_prerequisites():
+def test_must_course_co_enrolled_with_its_gating_courses():
     sc = load_seed_scenario()
     resp = suggest_student_plan(sc, "cs2025", "I need CS 301 this term.")
-    assert all(c.course_code != "CS 301" for c in resp.courses)
-    assert any("CS 301 is still locked" in n for n in resp.notes)
+    codes = [c.course_code for c in resp.courses]
+    # CS 301 is not completed-first eligible, but its gating courses are
+    # takeable now, so the plan co-enrolls them rather than refusing.
+    assert "CS 301" in codes and "CS 201" in codes and "MATH 201" in codes
+
+
+def test_must_course_locked_by_unfinished_prerequisites():
+    sc = load_seed_scenario()
+    resp = suggest_student_plan(sc, "cs2025", "I need CS 310 this term.")
+    assert all(c.course_code != "CS 310" for c in resp.courses)
+    assert any("CS 310 is still locked" in n for n in resp.notes)
 
 
 def test_completed_named_in_message_counts_as_record():

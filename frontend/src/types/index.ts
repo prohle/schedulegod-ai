@@ -271,12 +271,28 @@ export interface StudentPlanCourse {
   reason: string;
 }
 
+export interface StudentProgress {
+  source: string;
+  program_id: string;
+  program_name: string;
+  completed_course_ids: string[];
+  required_total: number;
+  required_completed: number;
+  pct_complete: number;
+  mandatory_ready: string[];
+  mandatory_co_ready: string[];
+  mandatory_locked: string[];
+  optional_remaining: number;
+}
+
 export interface StudentPlanResponse {
-  cohort_id: string;
+  cohort_id?: string | null;
   cohort_name: string;
+  progress?: StudentProgress | null;
   constraints: {
     summary: string;
     must_course_ids: string[];
+    completed_course_ids: string[];
     avoid_days: number[];
     avoid_periods: number[];
     prefer_morning: boolean;

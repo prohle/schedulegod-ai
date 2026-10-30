@@ -123,13 +123,23 @@ def suggest_student_plan(
         return all(o in completed_set for o, d in depths.items()
                    if d < depths.get(cid, 0))
 
+    def blockers(cid: str) -> set[str]:
+        return {o for o, d in depths.items()
+                if d < depths.get(cid, 0)} - completed_set
+
     remaining_mandatory = sorted(mandatory_all - completed_set)
     ready_mandatory = [c for c in remaining_mandatory if eligible(c)]
-    locked_mandatory = [c for c in remaining_mandatory if not eligible(c)]
     remaining_optional = sorted((optional_all - completed_set)
                                 | ({c.id for c in scenario.courses}
                                    - roadmap_courses - completed_set))
     ready_optional = [c for c in remaining_optional if c not in depths or eligible(c)]
+    ready_set = set(ready_mandatory) | set(ready_optional)
+    # Co-enrollment: a course whose only unfinished earlier courses are
+    # themselves takeable this term can be co-taken with its gating course.
+    co_ready = [c for c in remaining_mandatory + remaining_optional
+                if c not in ready_set and blockers(c) and blockers(c) <= ready_set]
+    locked_mandatory = [c for c in remaining_mandatory
+                        if not eligible(c) and c not in co_ready]
 
     progress = StudentProgress(
         source=source, program_id=program.id, program_name=program.name,
@@ -139,6 +149,8 @@ def suggest_student_plan(
         pct_complete=round(100 * len(mandatory_all & completed_set)
                            / max(1, len(mandatory_all))),
         mandatory_ready=[scenario.course_code(c) for c in ready_mandatory],
+        mandatory_co_ready=[scenario.course_code(c) for c in co_ready
+                            if c in mandatory_all],
         mandatory_locked=[scenario.course_code(c) for c in locked_mandatory],
         optional_remaining=len(remaining_optional))
 
@@ -166,11 +178,10 @@ def suggest_student_plan(
             notes.append(f"{scenario.course_code(cid)} is already on your record — "
                          f"no need to take it again.")
         elif cid in locked_mandatory:
-            blockers = [scenario.course_code(o) for o, d in depths.items()
-                        if d < depths.get(cid, 0) and o not in completed_set]
+            missing = [scenario.course_code(o) for o in blockers(cid)]
             notes.append(f"{scenario.course_code(cid)} is still locked: "
-                         f"{', '.join(blockers)} must be completed first.")
-        elif cid not in ready_mandatory and cid not in ready_optional:
+                         f"{', '.join(missing)} must be completed first.")
+        elif cid not in ready_set and cid not in co_ready:
             notes.append(f"{scenario.course_code(cid)} is not part of the "
                          f"{program.name} degree map.")
         else:
@@ -197,7 +208,7 @@ def suggest_student_plan(
     forbidden = {(d, p) for d in constraints.avoid_days for p in range(4)} | \
                 {(d, p) for d in range(5) for p in constraints.avoid_periods}
 
-    eligible_courses = ready_mandatory + ready_optional
+    eligible_courses = ready_mandatory + ready_optional + co_ready
     candidates: dict[str, list] = {}
     for cid in eligible_courses:
         sections = [pl for pl in by_course.get(cid, [])
@@ -216,7 +227,7 @@ def suggest_student_plan(
     order = sorted(
         candidates,
         key=lambda cid: (cid not in must, cid not in ready_mandatory,
-                         depths.get(cid, 99),
+                         cid not in ready_set, depths.get(cid, 99),
                          -_section_score(candidates[cid][0].period, constraints), cid))
 
     # Exact branch-and-bound: maximize (must taken, mandatory taken, courses
@@ -229,6 +240,12 @@ def suggest_student_plan(
         if nodes[0] > _MAX_NODES:
             return
         if idx == len(order):
+            chosen_ids = {pl.course_id for pl in chosen}
+            # Co-enrollment rule: a co-ready course counts only if every
+            # gating course is completed or itself in this plan.
+            if any(not blockers(cid) <= (completed_set | chosen_ids)
+                   for cid in chosen_ids):
+                return
             key = (sum(1 for pl in chosen if pl.course_id in must),
                    sum(1 for pl in chosen if pl.course_id in ready_mandatory),
                    min(len(chosen), target),
@@ -265,12 +282,14 @@ def suggest_student_plan(
 
     # Independent verification of the finished plan — not the search's word.
     cells_seen: set = set()
+    chosen_ids = {pl.course_id for pl in chosen}
     verified = True
     for pl in chosen:
         cells = placement_intervals(pl)
         if cells & cells_seen or cells & forbidden \
                 or pl.course_id not in eligible_courses \
-                or pl.course_id in completed_set:
+                or pl.course_id in completed_set \
+                or not blockers(pl.course_id) <= (completed_set | chosen_ids):
             verified = False
         cells_seen |= cells
     trace.append(AgentStep(

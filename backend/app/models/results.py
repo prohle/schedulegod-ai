@@ -157,6 +157,7 @@ class StudentProgress(BaseModel):
     required_completed: int = 0
     pct_complete: int = 0
     mandatory_ready: list[str] = []   # course codes: remaining + eligible now
+    mandatory_co_ready: list[str] = []  # eligible if a gating course is co-taken
     mandatory_locked: list[str] = []  # course codes: earlier courses unfinished
     optional_remaining: int = 0
 

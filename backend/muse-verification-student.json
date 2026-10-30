@@ -1,49 +1,65 @@
 {
  "verified": "2026-10-30",
  "endpoint": "POST /student/plan",
- "cohort": "cs2025",
- "message": "I work Tuesdays and Thursdays at a campus job. I need CS 201 this term, please no 8 AM classes, and I would like 4 courses total.",
+ "message": "I have completed CS 101 and CS 201 already. I work Tuesdays and Thursdays, and I want 4 courses toward my degree.",
  "parser_mode": "muse-spark",
  "model": "muse-spark-1.3-contributor",
- "parser_latency_ms": 12232,
+ "parser_latency_ms": 10944,
  "constraints": {
-  "summary": "Needs cs201, avoids Tue/Thu and 8 AMs, targets 4 courses.",
-  "must_course_ids": [
+  "summary": "Completed CS 101 and CS 201; unavailable Tue/Thu; wants 4 courses.",
+  "must_course_ids": [],
+  "completed_course_ids": [
+   "cs101",
    "cs201"
   ],
   "avoid_days": [
    1,
    3
   ],
-  "avoid_periods": [
-   0
-  ],
+  "avoid_periods": [],
   "prefer_morning": false,
   "prefer_afternoon": false,
   "target_courses": 4
  },
+ "progress": {
+  "source": "study record you provided",
+  "program_id": "bscs",
+  "program_name": "BSc Computer Science",
+  "completed_course_ids": [
+   "cs101",
+   "cs201"
+  ],
+  "required_total": 7,
+  "required_completed": 2,
+  "pct_complete": 29,
+  "mandatory_ready": [
+   "MATH 201"
+  ],
+  "mandatory_co_ready": [
+   "CS 210",
+   "CS 301"
+  ],
+  "mandatory_locked": [
+   "CS 310",
+   "CS 401"
+  ],
+  "optional_remaining": 1
+ },
  "courses": [
   [
+   "CS 350",
+   false
+  ],
+  [
    "CS 301",
-   [
-    0,
-    2,
-    4
-   ],
-   "9:30"
+   true
   ],
   [
    "MATH 201",
-   [
-    0,
-    2,
-    4
-   ],
-   "12:30"
+   true
   ]
  ],
- "target_met": false,
  "notes": [
-  "CS 201 has no section outside your unavailable times \u2014 taking it this term would clash with what you told us. Talk to your coordinator about a swap."
+  "Only 3 non-conflicting courses fit your availability and progress (target 4). Loosening a work block or accepting an early slot would open more of your degree map."
  ]
 }
