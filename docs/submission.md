@@ -66,7 +66,8 @@ changes. To fix this for the Meta Hackathon, we built ScheduleGod AI.
 
 Here is how it works. You point the tool at messy institutional files in any
 format — PDF catalogs, Word degree maps, Excel room sheets, or plain text.
-Muse Spark autocleans and organizes them into cleaned structured data
+Muse Spark — Meta's model family, and the intelligence layer behind
+ScheduleGod AI — autocleans and organizes them into cleaned structured data
 representing the entire institution: for each degree roadmap, current
 student bodies, current faculty load requirements, faculty preference and
 availability, each cohort based on real map and lab facility availability,
@@ -84,7 +85,11 @@ and walk-time matrices — both engines return a mathematically proven,
 conflict-free institutional timetable in milliseconds. The engines are
 ranked from their outputs alone, and Muse Spark presents that verdict to
 users. Users can request a re-run after keeping or refining the current
-schedule. What happens when reality breaks mid-flight?
+schedule. And the same engines scale: on our full-university stress
+benchmark — 198 instructors, 361 sections, 100 cohorts, roughly twelve
+thousand students — the native solver still proves the optimum in about
+three seconds, a scale where CP-SAT exceeds its time budget. What happens
+when reality breaks mid-flight?
 
 When Professor Chen will no longer teach this term — a change that lasts
 through the end of the semester — the system doesn't collapse into panic.
@@ -148,9 +153,9 @@ judges can click every beat offline.
 
 | Criterion (weight) | Evidence a judge can check in <5 min |
 |---|---|
-| Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at university scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps), 3 programs / 12 cohorts |
+| Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at university scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps) at three measured scales — department (26 instructors), university (38), and a full-university stress instance (198 instructors · 361 sections · 100 cohorts · ~12,000 students) |
 | Use of Meta AI tooling (25%) | 4 runtime Muse Spark roles (ingest, parse, explain, tighten) + Muse Voice Transcribe endpoint, live badges (model + latency) on screen, `muse-verification.json` + `muse-verification-open.json`, agent trace names Muse at every proposing step |
-| Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum 3–8× faster** at every scale (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests, per-professor structured intake grid + term closures), 47 passing tests, CI |
+| Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum faster** at every demo scale and the only engine to complete the **full-university stress instance (198 instructors · 361 sections · 100 cohorts · ~12,000 students; CP-SAT reports `unknown` inside its budget there)** (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit (100/100 at stress scale), **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests, per-professor structured intake grid + term closures), 48 passing tests, CI |
 | Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple term change, solver-verified resolutions, department-scale solve in the Build step |
 
 ## What was built during the hackathon (Oct 27 – Nov 4)
@@ -162,7 +167,7 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 
 - [x] All work committed and pushed; repo public and cloneable
 - [x] `docker compose up --build` boots cleanly (db Postgres 18 → backend → frontend; verified Oct 30 with port overrides — UI 200, proxied scenario, both engines `optimal` penalty −6 inside the containers, native binary built in-image)
-- [x] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 47 tests, verified Oct 30)
+- [x] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 48 tests, verified Oct 30, incl. full-university stress scale)
 - [x] Frontend production build passes (`cd frontend && npm run build`, verified Oct 30)
 - [x] Video ≤ 3:00 (2:51), recorded live Oct 30 on the current interface — frame-checked: every badge says `muse-spark`, never `MOCK`
 - [x] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/TXT/XLSX/MD) → Patel intake applied to the term → **dual-engine compare at department scale, Rank 1 / Rank 2 from outputs (native solver first)** → university scale (38/41/20, asserted on screen) + publish → Chen change request approved and re-published → term change with agent trace + ranked verified reassignment → Diaz impossible override (conflict core + verified repairs) → capacity what-ifs + end card

@@ -151,7 +151,7 @@ export interface Timetable {
 }
 
 export interface SolveResult {
-  status: "optimal" | "feasible" | "infeasible";
+  status: "optimal" | "feasible" | "infeasible" | "unknown";
   timetable?: Timetable;
   objective?: number;
   objective_name?: string;

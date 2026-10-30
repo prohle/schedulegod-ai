@@ -512,12 +512,14 @@ def solve_home(sc: Scenario, request_ops: Optional[list[Operation]] = None,
                     explanation=f"These requests cannot hold together (with the base rules): {named}.",
                     suggestion="Drop or relax one of the conflicting requests and re-solve."),
                 solve_time_ms=int((time.perf_counter() - t0) * 1000))
+    if search.timed_out:
+        # Budget expired with no incumbent and no proof: "unknown",
+        # never a fabricated infeasibility claim.
+        return SolveResult(status="unknown", solve_time_ms=elapsed_ms)
     return SolveResult(
         status="infeasible",
         conflicts=ConflictReport(
             conflicting_operation_indices=[],
-            explanation=("Infeasible against the base scenario (no request could fix this)."
-                         if not search.timed_out else
-                         "Home solver found no feasible timetable within its time limit."),
+            explanation="Infeasible against the base scenario (no request could fix this).",
             suggestion="Relax room inventory, loads, or hard unavailability."),
         solve_time_ms=elapsed_ms)

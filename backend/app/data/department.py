@@ -310,6 +310,129 @@ def build_university_scenario(seed: Scenario) -> Scenario:
     return sc
 
 
+# --- Full-university stress scale -------------------------------------------
+# The demo "University" above (38 instructors / 41 sections) is a single
+# term slice a judge can click through. A real university runs hundreds of
+# sections across dozens of degree programs at once, so this tier adds 20
+# further programs (16 courses each), 3 more campus buildings with large
+# lecture halls, and cohorts sized like real intakes. Deterministic, same
+# builder style as the wings above:
+#
+#   198 instructors · 361 courses/sections · 61 rooms · 7 buildings
+#   25 degree programs · 100 cohorts · ~12,000 students (cohort sizes)
+#
+# Measured behaviour (scripts/benchmark.py): the domain-specialized native
+# solver proves the optimum at this scale in seconds; CP-SAT (single
+# worker, 10 s budget) does not find a feasible timetable and honestly
+# reports "unknown". It is a stress benchmark, not the demo path.
+
+_FULL_SUBJECTS = [
+    ("BIO", "Biology"), ("CHEM", "Chemistry"), ("PHYS", "Physics"),
+    ("PSY", "Psychology"), ("SOC", "Sociology"), ("GEO", "Geography"),
+    ("LAW", "Law"), ("ENV", "Environmental Science"),
+    ("ARC", "Architecture"), ("COM", "Communication"),
+    ("LIN", "Linguistics"), ("ANT", "Anthropology"),
+    ("AST", "Astronomy"), ("GEOL", "Geology"), ("KIN", "Kinesiology"),
+    ("RBT", "Robotics"), ("MUS", "Music"), ("ART", "Art & Design"),
+    ("PHL", "Philosophy"), ("ECN", "Economics"),
+]
+
+_FULL_TITLES = [
+    "Foundations", "Principles", "Methods", "Theory", "Systems", "Analysis",
+    "Advanced Topics", "Seminar", "Laboratory", "Fieldwork", "Design Studio",
+    "Research Methods", "Applied Practice", "History & Context", "Capstone",
+    "Colloquium",
+]
+
+_FULL_SURNAMES = [
+    "Adams", "Baker", "Clark", "Davis", "Evans", "Frost", "Green", "Hall",
+    "Irwin", "Jones", "Klein", "Meyer", "Ngata", "Owens", "Price", "Quayle",
+    "Reed", "Stone", "Tran", "Upton", "Vidal", "Ward", "Xu", "Young",
+    "Zhang", "Ames", "Boone", "Cross", "Drake", "Ellery", "Farrow", "Grady",
+    "Hobbs", "Innes", "Jasper", "Keane", "Larkin", "Monroe", "Nash", "Orton",
+]
+
+
+def build_full_university_scenario(seed: Scenario) -> Scenario:
+    """University + 20 more programs: a full-university stress instance."""
+    sc = build_university_scenario(seed)
+    sc.name = "Full University — Autumn Term (25 programs, campus-wide)"
+
+    for bid, bname in [("N", "North Campus"), ("W", "West Campus"),
+                       ("T", "Tech Quarter")]:
+        sc.buildings.append(Building(id=bid, name=bname))
+    new_ids = ["N", "W", "T"]
+    for bid in new_ids:
+        sc.distances[bid] = {}
+        for other in [b.id for b in sc.buildings]:
+            sc.distances[bid][other] = 0 if other == bid else 9
+            if other != bid:
+                sc.distances.setdefault(other, {})[bid] = 9
+    for bid in new_ids:
+        for suffix, name, cap, rtype, equip in [
+            ("hall250", "Grand Hall 250", 240, "lecture", ["projector", "mic", "lecture-capture"]),
+            ("hall250b", "Grand Hall 250 B", 240, "lecture", ["projector", "mic", "lecture-capture"]),
+            ("hall250c", "Grand Hall 250 C", 240, "lecture", ["projector", "mic", "lecture-capture"]),
+            ("hall180a", "Hall 180 A", 180, "lecture", ["projector", "mic"]),
+            ("hall180b", "Hall 180 B", 180, "lecture", ["projector", "mic"]),
+            ("hall120", "Hall 120", 120, "lecture", ["projector", "mic", "lecture-capture"]),
+            ("hall120b", "Hall 120 B", 120, "lecture", ["projector", "mic"]),
+            ("lec80", "Lecture 80", 80, "lecture", ["projector"]),
+            ("lec45a", "Lecture 45 A", 45, "lecture", ["projector", "whiteboard"]),
+            ("lec45b", "Lecture 45 B", 45, "lecture", ["projector", "whiteboard"]),
+            ("lec30", "Lecture 30", 30, "lecture", ["projector", "whiteboard"]),
+            ("sem25a", "Seminar 25 A", 25, "seminar", ["video-conf", "whiteboard"]),
+            ("sem25b", "Seminar 25 B", 25, "seminar", ["video-conf", "whiteboard"]),
+            ("lab35a", "Lab 35 A", 35, "lab", ["computers"]),
+            ("lab35b", "Lab 35 B", 35, "lab", ["computers"]),
+        ]:
+            sc.rooms.append(Room(id=f"{bid.lower()}-{suffix}", name=f"{bid} {name}",
+                                 building_id=bid, capacity=cap,
+                                 room_type=rtype, equipment=equip))
+
+    cohort_sizes = [180, 160, 140, 120]
+    for si, (code, name) in enumerate(_FULL_SUBJECTS):
+        pid = f"p-{code.lower()}"
+        courses: list[Course] = []
+        for k in range(16):
+            num = 101 + (k // 2) * 100 + (k % 2) * 10
+            if k < 8:  # offered to a live cohort this term: cohort-sized lectures
+                pattern = "MWF" if k % 2 == 0 else "TTh"
+                rtype, seats = "lecture", cohort_sizes[k // 2]
+                equip = ["projector"]
+            else:
+                pattern = "block" if k % 8 == 6 else ("MWF" if k % 2 == 0 else "TTh")
+                rtype = "lab" if pattern == "block" else ("seminar" if k == 15 else "lecture")
+                seats = 28 if rtype == "lab" else 22 if rtype == "seminar" else 30
+                equip = (["computers"] if rtype == "lab"
+                         else ["video-conf"] if rtype == "seminar" else ["projector"])
+            courses.append(Course(
+                id=f"{code.lower()}{num}", code=f"{code} {num}",
+                title=f"{name}: {_FULL_TITLES[k]}", pattern=pattern,
+                room_type=rtype, seats=seats, equipment=equip,
+                duration=3.0 if pattern == "block" else 1.5))
+        sc.courses.extend(courses)
+        sc.sections.extend(Section(id=f"sec-{c.id}", course_id=c.id) for c in courses)
+        sc.programs.append(Program(id=pid, name=f"BSc {name}", roadmap={
+            str(term): [_req(courses[ti * 2].id), _req(courses[ti * 2 + 1].id)]
+            for ti, term in enumerate([1, 3, 5, 7])
+        }))
+        for ci, size in enumerate(cohort_sizes):
+            sc.cohorts.append(Cohort(
+                id=f"{code.lower()}{2026 - ci}", program_id=pid,
+                name=f"{name} {2026 - ci} cohort",
+                admission_year=2026 - ci, graduation_year=2030 - ci,
+                current_term=1 + ci * 2, size=size))
+        for fi in range(8):
+            sc.instructors.append(Instructor(
+                id=f"{code.lower()}-f{fi}",
+                name=f"Prof. {_FULL_SURNAMES[(si * 8 + fi) % len(_FULL_SURNAMES)]}",
+                qualified_courses=[courses[fi].id, courses[fi + 8].id,
+                                   courses[(fi + 4) % 16].id],
+                max_sections=3, max_preps=3))
+    return sc
+
+
 def build_department_scenario(seed: Scenario) -> Scenario:
     """Expand the story seed to department scale (see module docstring)."""
     sc = seed.model_copy(deep=True)

@@ -6,7 +6,11 @@ optimally, keeps the C39 four-course guarantee for every cohort, preserves
 every demo beat, and exposes the autonomous agent loop as a trace.
 """
 
-from app.data.department import build_department_scenario, build_university_scenario
+from app.data.department import (
+    build_department_scenario,
+    build_full_university_scenario,
+    build_university_scenario,
+)
 from app.intelligence.matrices import compute_margins
 from app.main import load_seed_scenario
 from app.models.scenario import Operation
@@ -94,3 +98,30 @@ def test_agent_trace_exposes_the_loop():
     esteps = [s.step for s in term_change.agent_trace]
     assert esteps[0] == "parse" and "impact" in esteps and "probe" in esteps
     assert "choose" in esteps and "re-solve" in esteps and esteps[-1] == "audit"
+
+
+def test_full_university_stress_scale():
+    """The realistic tier: hundreds of sections, ~12k students. The native
+    solver proves the optimum; CP-SAT honestly cannot complete this scale
+    inside its budget (it must say "unknown", never fake "infeasible")."""
+    sc = build_full_university_scenario(load_seed_scenario())
+    assert len(sc.instructors) == 198
+    assert len(sc.sections) == 361
+    assert len(sc.cohorts) == 100
+    assert len(sc.programs) == 25
+    assert sum(c.size for c in sc.cohorts) >= 11000
+
+    ours = solve(sc, engine="ours")
+    assert ours.status == "optimal"
+    assert ours.timetable is not None
+    assert len(ours.timetable.placements) == len(sc.sections)
+    # Verified independently from the placements, not the search's word.
+    from test_home_solver import assert_hard_constraints_hold
+    assert_hard_constraints_hold(sc, ours)
+    margins = compute_margins(sc, ours.timetable, 4)
+    assert margins.all_ok
+
+    cpsat = solve(sc)
+    assert cpsat.status in ("optimal", "feasible", "unknown")
+    if cpsat.status == "unknown":
+        assert cpsat.conflicts is None

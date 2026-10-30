@@ -326,17 +326,22 @@ export function WizardView({ onToast }: WizardViewProps) {
     }
   };
 
-  const loadScale = async (kind: "department" | "university" | "reset") => {
+  const loadScale = async (kind: "department" | "university" | "full-university" | "reset") => {
     setScaleBusy(true);
     try {
       const sc = await post(`/api/scenario/${kind}`, {});
       await reload();
       await refetchScenario();
-      solveWith(engine);
+      // Full-university is the native solver's scale: CP-SAT does not
+      // complete it inside its budget, so solve with ours directly.
+      if (kind === "full-university") setEngine("ours");
+      solveWith(kind === "full-university" ? "ours" : engine);
+      const label = kind === "full-university" ? "Full University"
+        : kind === "university" ? "University" : "Department";
       onToast(
         kind === "reset"
           ? "Back to the story seed — solving…"
-          : `${kind === "university" ? "University" : "Department"} scale loaded — ${sc.instructors?.length ?? "?"} instructors, ${sc.sections?.length ?? "?"} sections, ${sc.cohorts?.length ?? "?"} cohorts. Solving…`,
+          : `${label} scale loaded — ${sc.instructors?.length ?? "?"} instructors, ${sc.sections?.length ?? "?"} sections, ${sc.cohorts?.length ?? "?"} cohorts. Solving…`,
         "success",
       );
     } finally {
@@ -791,7 +796,7 @@ export function WizardView({ onToast }: WizardViewProps) {
               <div className="mt-4 border-t border-emerald-200 pt-3">
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="text-xs font-semibold text-emerald-900">Try it at scale</span>
-                  <InfoTip text="The demo story is one CS department slice. Department = 26 instructors · 25 sections · 12 cohorts. University = 38 instructors · 41 sections · 20 cohorts · 5 programs, all sharing the same rooms and slots. Same engine, solved live." />
+                  <InfoTip text="The demo story is one CS department slice. Department = 26 instructors · 25 sections · 12 cohorts. University = 38 instructors · 41 sections · 20 cohorts · 5 programs. Full University = 198 instructors · 361 sections · 100 cohorts · 25 programs · ~12,000 students — the stress scale the native solver completes (CP-SAT exceeds its budget there). Same engines, solved live." />
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <Button variant="outline" size="sm" onClick={() => loadScale("department")} disabled={scaleBusy} className="flex items-center gap-1.5">
@@ -801,6 +806,10 @@ export function WizardView({ onToast }: WizardViewProps) {
                   <Button variant="outline" size="sm" onClick={() => loadScale("university")} disabled={scaleBusy} className="flex items-center gap-1.5">
                     {scaleBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
                     University
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => loadScale("full-university")} disabled={scaleBusy} className="flex items-center gap-1.5">
+                    {scaleBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
+                    Full University
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => loadScale("reset")} disabled={scaleBusy}>
                     Story seed

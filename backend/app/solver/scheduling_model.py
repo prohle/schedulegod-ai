@@ -176,34 +176,58 @@ def solve(
             [a[(s.id, *o)] for o in opts[s.id]]
         ) == 1)
 
+    # Index the assignment vars once. At full-university scale the model
+    # carries tens of thousands of vars, and rescanning all of them per
+    # constraint family (with linear section/room lookups inside) made
+    # model construction, not solving, the bottleneck.
+    sec_course = {s.id: s.course_id for s in sc.sections}
+    sec_pattern = {s.id: sc.course(sec_course[s.id]).pattern for s in sc.sections}
+    room_building = {r.id: r.building_id for r in sc.rooms}
+    room_capacity = {r.id: r.capacity for r in sc.rooms}
+    vars_by_section: dict[str, list] = {}
+    vars_by_instructor: dict[str, list] = {}
+    vars_by_room: dict[str, list] = {}
+    inst_cell: dict[tuple[str, int, int], list] = {}
+    room_cell: dict[tuple[str, int, int], list] = {}
+    for k, v in a.items():
+        vars_by_section.setdefault(k[0], []).append((k, v))
+        vars_by_instructor.setdefault(k[1], []).append((k, v))
+        vars_by_room.setdefault(k[3], []).append((k, v))
+        pat = sec_pattern[k[0]]
+        cells = [(d, k[2]) for d in PATTERN_DAYS[pat]] if pat in ("MWF", "TTh") \
+            else [(k[2], p) for p in BLOCK_PERIODS]
+        for cell in cells:
+            inst_cell.setdefault((k[1], *cell), []).append(v)
+            room_cell.setdefault((k[3], *cell), []).append(v)
+
     def vars_of(section_id: str):
-        return [(k, v) for k, v in a.items() if k[0] == section_id]
+        return vars_by_section.get(section_id, [])
 
     # C15 instructor load
     for i in sc.instructors:
-        covering = [v for k, v in a.items() if k[1] == i.id]
+        covering = [v for _, v in vars_by_instructor.get(i.id, [])]
         if covering:
             m.Add(cp_model.LinearExpr.Sum(covering) <= i.max_sections)
 
     # C16 prep caps
     t: dict[tuple[str, str], cp_model.BoolVar] = {}
     for i in sc.instructors:
-        courses = {sc.section_by_id(k[0]).course_id for k, v in a.items() if k[1] == i.id}
-        for cid in sorted(courses):  # sorted: deterministic constraint order
+        by_course: dict[str, list] = {}
+        for k, v in vars_by_instructor.get(i.id, []):
+            by_course.setdefault(sec_course[k[0]], []).append(v)
+        for cid in sorted(by_course):  # sorted: deterministic constraint order
             tv = m.NewBoolVar(f"t_{i.id}_{cid}")
             t[(i.id, cid)] = tv
-            for k, v in a.items():
-                if k[1] == i.id and sc.section_by_id(k[0]).course_id == cid:
-                    m.Add(tv >= v)
-        if courses:
-            m.Add(cp_model.LinearExpr.Sum([t[(i.id, c)] for c in sorted(courses)]) <= i.max_preps)
+            for v in by_course[cid]:
+                m.Add(tv >= v)
+        if by_course:
+            m.Add(cp_model.LinearExpr.Sum([t[(i.id, c)] for c in sorted(by_course)]) <= i.max_preps)
 
     # C17 instructor busy: one thing at a time per (day, period)
     for i in sc.instructors:
         for d in range(5):
             for p in range(4):
-                covering = [v for k, v in a.items()
-                            if k[1] == i.id and _covers(sc, k[0], k[2], d, p)]
+                covering = inst_cell.get((i.id, d, p), [])
                 if len(covering) > 1:
                     m.Add(cp_model.LinearExpr.Sum(covering) <= 1)
 
@@ -211,34 +235,33 @@ def solve(
     for r in sc.rooms:
         for d in range(5):
             for p in range(4):
-                covering = [v for k, v in a.items()
-                            if k[3] == r.id and _covers(sc, k[0], k[2], d, p)]
+                covering = room_cell.get((r.id, d, p), [])
                 if len(covering) > 1:
                     m.Add(cp_model.LinearExpr.Sum(covering) <= 1)
 
     # C7 same-cohort sections never overlap
     for (sa, sb) in sc.demanded_section_pairs():
-        pa, pb = _pattern_of(sc, sa.id), _pattern_of(sc, sb.id)
+        pa, pb = sec_pattern[sa.id], sec_pattern[sb.id]
         if pa == "block" and pb in ("MWF", "TTh"):  # normalize: one-period first
             sa, sb, pa, pb = sb, sa, pb, pa
         if pa in ("MWF", "TTh") and pb in ("MWF", "TTh"):
             if set(PATTERN_DAYS[pa]) & set(PATTERN_DAYS[pb]):
                 for p in range(4):
-                    qa = [v for k, v in a.items() if k[0] == sa.id and k[2] == p]
-                    qb = [v for k, v in a.items() if k[0] == sb.id and k[2] == p]
+                    qa = [v for k, v in vars_by_section[sa.id] if k[2] == p]
+                    qb = [v for k, v in vars_by_section[sb.id] if k[2] == p]
                     if qa and qb:
                         m.Add(cp_model.LinearExpr.Sum(qa + qb) <= 1)
         elif pa in ("MWF", "TTh") and pb == "block":
             for d in sorted(set(PATTERN_DAYS[pa]) & set(BLOCK_DAYS)):
                 for p in BLOCK_PERIODS:
-                    qa = [v for k, v in a.items() if k[0] == sa.id and k[2] == p]
-                    qbd = [v for k, v in a.items() if k[0] == sb.id and k[2] == d]
+                    qa = [v for k, v in vars_by_section[sa.id] if k[2] == p]
+                    qbd = [v for k, v in vars_by_section[sb.id] if k[2] == d]
                     if qa and qbd:
                         m.Add(cp_model.LinearExpr.Sum(qa + qbd) <= 1)
         elif pa == "block" and pb == "block":
             for d in BLOCK_DAYS:
-                qda = [v for k, v in a.items() if k[0] == sa.id and k[2] == d]
-                qdb = [v for k, v in a.items() if k[0] == sb.id and k[2] == d]
+                qda = [v for k, v in vars_by_section[sa.id] if k[2] == d]
+                qdb = [v for k, v in vars_by_section[sb.id] if k[2] == d]
                 if qda and qdb:
                     m.Add(cp_model.LinearExpr.Sum(qda + qdb) <= 1)
 
@@ -248,12 +271,12 @@ def solve(
         for d in range(5):
             covering = []
             for sid in sorted(sids):  # sorted: deterministic constraint order
-                pattern = _pattern_of(sc, sid)
+                pattern = sec_pattern[sid]
                 if pattern in ("MWF", "TTh"):
                     if d in PATTERN_DAYS[pattern]:
-                        covering += [v for k, v in a.items() if k[0] == sid]
+                        covering += [v for _, v in vars_by_section[sid]]
                 else:
-                    covering += [v for k, v in a.items() if k[0] == sid and k[2] == d]
+                    covering += [v for k, v in vars_by_section[sid] if k[2] == d]
             if len(covering) > 2:
                 m.Add(cp_model.LinearExpr.Sum(covering) <= 2)
 
@@ -261,7 +284,7 @@ def solve(
     bl: dict[tuple[str, str], cp_model.BoolVar] = {}
     for s in sc.sections:
         for b in sc.buildings:
-            terms = [v for k, v in a.items() if k[0] == s.id and sc.room(k[3]).building_id == b.id]
+            terms = [v for k, v in vars_by_section[s.id] if room_building[k[3]] == b.id]
             bv = m.NewBoolVar(f"bl_{s.id}_{b.id}")
             bl[(s.id, b.id)] = bv
             if terms:
@@ -269,14 +292,14 @@ def solve(
             else:
                 m.Add(bv == 0)
     for (sa, sb) in sc.demanded_section_pairs():
-        pa, pb = _pattern_of(sc, sa.id), _pattern_of(sc, sb.id)
+        pa, pb = sec_pattern[sa.id], sec_pattern[sb.id]
         if pa == pb and pa in ("MWF", "TTh"):
             for p in range(3):
                 for b1 in sc.buildings:
                     for b2 in sc.buildings:
                         if sc.distances[b1.id][b2.id] > sc.walk_limit_min:
-                            qa = [v for k, v in a.items() if k[0] == sa.id and k[2] == p]
-                            qb = [v for k, v in a.items() if k[0] == sb.id and k[2] == p + 1]
+                            qa = [v for k, v in vars_by_section[sa.id] if k[2] == p]
+                            qb = [v for k, v in vars_by_section[sb.id] if k[2] == p + 1]
                             if qa and qb:
                                 m.Add(cp_model.LinearExpr.Sum(qa) + bl[(sa.id, b1.id)] + bl[(sb.id, b2.id)] <= 2)
                                 m.Add(cp_model.LinearExpr.Sum(qb) + bl[(sb.id, b1.id)] + bl[(sa.id, b2.id)] <= 2)
@@ -297,24 +320,23 @@ def solve(
     for sid, iid in merged_instructor_pins.items():
         if sid in exact_sections or sid in op_instructor_sections:
             continue
-        terms = [v for k, v in a.items() if k[0] == sid and k[1] == iid]
+        terms = [v for k, v in vars_by_section.get(sid, []) if k[1] == iid]
         if terms:
             m.Add(cp_model.LinearExpr.Sum(terms) == 1)
 
     for sid, rid in sc.room_pins.items():
         if sid in exact_sections or sid in op_room_sections:
             continue
-        for k, v in a.items():
-            if k[0] == sid and k[3] != rid:
+        for k, v in vars_by_section.get(sid, []):
+            if k[3] != rid:
                 m.Add(v == 0)
 
     # spectral warm start (intelligence layer): color-derived period hints on
     # cohort-conflicting sections. Hints only guide the search — they can
     # never make a feasible model infeasible.
     for sid, key in (slot_hints or {}).items():
-        for k, v in a.items():
-            if k[0] == sid:
-                m.AddHint(v, 1 if k[2] == key else 0)
+        for k, v in vars_by_section.get(sid, []):
+            m.AddHint(v, 1 if k[2] == key else 0)
 
     # ---- request operations behind assumption literals ----------------------
     lit_to_op: dict[int, int] = {}
@@ -323,12 +345,12 @@ def solve(
         m.AddAssumption(lit)
         lit_to_op[lit.Index()] = idx
         if op.op == "add_instructor_unavailability":
-            for k, v in a.items():
-                if k[1] == op.instructor_id and _covers(sc, k[0], k[2], op.day, op.period):
+            for k, v in vars_by_instructor.get(op.instructor_id or "", []):
+                if _covers(sc, k[0], k[2], op.day, op.period):
                     m.Add(v == 0).OnlyEnforceIf(lit)
         elif op.op == "add_room_unavailability":
-            for k, v in a.items():
-                if k[3] == op.room_id and _covers(sc, k[0], k[2], op.day, op.period):
+            for k, v in vars_by_room.get(op.room_id or "", []):
+                if _covers(sc, k[0], k[2], op.day, op.period):
                     m.Add(v == 0).OnlyEnforceIf(lit)
         elif op.op == "add_term_closure":
             # Holiday / campus closure: nobody teaches into a closed slot.
@@ -336,13 +358,13 @@ def solve(
                 if _covers(sc, k[0], k[2], op.day, op.period):
                     m.Add(v == 0).OnlyEnforceIf(lit)
         elif op.op == "set_section_instructor":
-            terms = [v for k, v in a.items() if k[0] == op.section_id and k[1] == op.instructor_id]
+            terms = [v for k, v in vars_by_section.get(op.section_id or "", []) if k[1] == op.instructor_id]
             if terms:
                 m.Add(cp_model.LinearExpr.Sum(terms) == 1).OnlyEnforceIf(lit)
             else:
                 m.Add(lit == 0)  # impossible ask -> surfaces as conflict on this op
         elif op.op == "set_section_room" and op.section_id and op.room_id:
-            terms = [v for k, v in a.items() if k[0] == op.section_id and k[3] == op.room_id]
+            terms = [v for k, v in vars_by_section.get(op.section_id or "", []) if k[3] == op.room_id]
             if terms:
                 m.Add(cp_model.LinearExpr.Sum(terms) == 1).OnlyEnforceIf(lit)
             else:
@@ -351,25 +373,23 @@ def solve(
             # An instructor out for the term cannot hold any section. The
             # solver either re-homes every section or proves the request
             # infeasible and returns this op in the conflict core.
-            for k, v in a.items():
-                if k[1] == op.instructor_id:
-                    m.Add(v == 0).OnlyEnforceIf(lit)
+            for k, v in vars_by_instructor.get(op.instructor_id, []):
+                m.Add(v == 0).OnlyEnforceIf(lit)
         elif op.op == "set_load_cap" and op.instructor_id and op.value is not None:
-            covering = [v for k, v in a.items() if k[1] == op.instructor_id]
+            covering = [v for _, v in vars_by_instructor.get(op.instructor_id, [])]
             if covering:
                 m.Add(cp_model.LinearExpr.Sum(covering) <= op.value).OnlyEnforceIf(lit)
         elif op.op == "set_prep_cap" and op.instructor_id and op.value is not None:
             terms = [t[(op.instructor_id, c)] for c in sorted(
-                {sc.section_by_id(k[0]).course_id for k, v in a.items()
-                 if k[1] == op.instructor_id})
+                {sec_course[k[0]] for k, _ in vars_by_instructor.get(op.instructor_id, [])})
                 if (op.instructor_id, c) in t]
             if terms:
                 m.Add(cp_model.LinearExpr.Sum(terms) <= op.value).OnlyEnforceIf(lit)
         elif op.op == "update_enrollment" and op.section_id and op.value:
             # C37: active enrollment re-triggers the capacity check (C24):
             # every too-small room for this section is blocked while the op holds.
-            for k, v in a.items():
-                if k[0] == op.section_id and sc.room(k[3]).capacity < (op.value or 0):
+            for k, v in vars_by_section.get(op.section_id, []):
+                if room_capacity[k[3]] < (op.value or 0):
                     m.Add(v == 0).OnlyEnforceIf(lit)
 
     # ---- objective (selectable: a few schedule options for the reviewer) -------
@@ -378,17 +398,16 @@ def solve(
         # minimize the heaviest instructor load -> even spread across faculty
         max_load = m.NewIntVar(0, sum(i.max_sections for i in sc.instructors), "max_load")
         for i in sc.instructors:
-            covering = [v for k, v in a.items() if k[1] == i.id]
+            covering = [v for _, v in vars_by_instructor.get(i.id, [])]
             if covering:
                 m.Add(max_load >= cp_model.LinearExpr.Sum(covering))
         m.Minimize(max_load)
     elif objective == "room_fit":
         # prefer the tightest room that fits each section (least wasted space)
+        enroll_by_section = {s.id: sc.enrollment_for_section(s) for s in sc.sections}
         terms = []
         for (sid, _iid, _key, rid), v in a.items():
-            room = sc.room(rid)
-            enroll = sc.enrollment_for_section(sc.section_by_id(sid))
-            terms.append((room.capacity - enroll) * v)
+            terms.append((room_capacity[rid] - enroll_by_section[sid]) * v)
         m.Minimize(cp_model.LinearExpr.Sum(terms))
     else:  # "preference" (default)
         prefs: list[tuple[str, InstructorPreference]] = []
@@ -402,21 +421,22 @@ def solve(
                     course_id=op.course_id, weight=op.weight or 10)))
 
         for iid, p in prefs:
+            inst_vars = vars_by_instructor.get(iid, [])
             if p.period is not None:
-                covering = [v for k, v in a.items() if k[1] == iid and _covers(sc, k[0], k[2], None, p.period)]
+                covering = [v for k, v in inst_vars if _covers(sc, k[0], k[2], None, p.period)]
                 if covering:
                     iv = m.NewIntVar(0, 4, f"ip_{iid}_{p.period}")
                     m.Add(cp_model.LinearExpr.Sum(covering) == iv)
                     obj_terms.append(p.weight * iv if p.kind == "avoid" else -p.weight * iv)
             elif p.day is not None:
-                covering = [v for k, v in a.items() if k[1] == iid and _covers(sc, k[0], k[2], p.day, None)]
+                covering = [v for k, v in inst_vars if _covers(sc, k[0], k[2], p.day, None)]
                 if covering:
                     dv = m.NewIntVar(0, 5, f"id_{iid}_{p.day}")
                     m.Add(cp_model.LinearExpr.Sum(covering) == dv)
                     obj_terms.append(p.weight * dv if p.kind == "avoid" else -p.weight * dv)
             if p.course_id is not None:
-                covering = [v for k, v in a.items()
-                            if k[1] == iid and sc.section_by_id(k[0]).course_id == p.course_id]
+                covering = [v for k, v in inst_vars
+                            if sec_course[k[0]] == p.course_id]
                 if covering:
                     cv = m.NewIntVar(0, len(covering), f"ic_{iid}_{p.course_id}")
                     m.Add(cp_model.LinearExpr.Sum(covering) == cv)
@@ -431,13 +451,20 @@ def solve(
     status = solver.Solve(m)
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
 
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE, cp_model.INFEASIBLE):
+        # UNKNOWN / MODEL_INVALID: the budget expired without an
+        # incumbent and without a proof. That is "unknown", never
+        # "infeasible": reporting a timeout as a proven impossibility
+        # would fabricate a conflict core.
+        return SolveResult(status="unknown", solve_time_ms=elapsed_ms)
+
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         placements = []
         counts: dict[str, int] = {}
         for s in sc.sections:
-            (sid, iid, key, rid) = next(k for k, v in a.items()
-                                         if k[0] == s.id and solver.Value(v))
-            course = sc.course(sc.section_by_id(sid).course_id)
+            (sid, iid, key, rid) = next(k for k, v in vars_by_section[s.id]
+                                         if solver.Value(v))
+            course = sc.course(sec_course[sid])
             inst = sc.instructor(iid)
             room = sc.room(rid)
             if course.pattern in ("MWF", "TTh"):

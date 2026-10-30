@@ -35,12 +35,22 @@ with the `g++` already present in every build image we use.
 
 | Scenario | CP-SAT | Ours (native C++) | Ours (Python ref) |
 |---|---|---|---|
-| Story seed (8 sections) | optimal · −6 · 16 ms | **optimal · −6 · 5 ms** | optimal · −6 · 47 ms |
-| Department (25 sections) | optimal · −40 · 164 ms | **optimal · −40 · 22 ms** | feasible · −40 · 5013 ms |
-| University (41 sections) | optimal · −40 · 258 ms | **optimal · −40 · 31 ms** | feasible · −40 · 5000 ms |
+| Story seed (8 sections) | optimal · −6 · 79 ms | **optimal · −6 · 6 ms** | optimal · −6 · 45 ms |
+| Department (25 sections) | optimal · −40 · 80 ms | **optimal · −40 · 19 ms** | feasible · −40 · 5011 ms |
+| University (41 sections) | optimal · −40 · 153 ms | **optimal · −40 · 29 ms** | feasible · −40 · 5025 ms |
+| Full University — stress (361 sections, 198 instructors, 100 cohorts, ~12,000 students) | unknown (10 s budget) · ~11.8 s | **optimal · −40 · 3,285 ms** | unknown (budget) |
 
-Same proven objective at every scale; the native core proves it
-3–8× faster than CP-SAT on this problem class. Placement agreement with
+Same proven objective at every demo scale; the native core proves it
+faster than CP-SAT on this problem class (about 4–13× on the rows
+above). At the full-university stress scale the comparison changes
+kind: CP-SAT (single worker, 10 s budget) finds no feasible timetable
+and reports `unknown` — a timeout is never dressed up as a proven
+infeasibility, in any engine — while the native core still proves the
+optimum, independently verified from its placements
+(`test_full_university_stress_scale`). CP-SAT model construction was
+also re-indexed (assignment vars grouped by section/instructor/room
+cell instead of rescanned per constraint family), which roughly halved
+CP-SAT's wall time on the demo scales. Placement agreement with
 CP-SAT is low (37% / 12% / 2%) — expected: these instances have many
 tied optima and the engines break ties differently. Agreement is *not*
 the equivalence claim; the proven objective + independent hard-constraint
@@ -83,9 +93,12 @@ return identical placements (tested).
 
 ## Honest limits
 
-- CP-SAT is a general solver; ours is specialized. On adversarial or
-  much larger instances CP-SAT's clause learning will win, and the UI
-  says so — the compare view ranks engines from outputs only.
+- CP-SAT is a general solver; ours is specialized. On adversarial
+  instances CP-SAT's clause learning will win, and the UI says so —
+  the compare view ranks engines from outputs only. The stress row
+  above is the honest boundary in the other direction: a loose,
+  wide, real-world-shaped instance where domain specialization
+  completes and the general search does not (inside its budget).
 - Term Change coverage probes (`propose_candidates`) still run on CP-SAT;
   the engines share the contract, so this is a configuration choice,
   not a limitation of the native core.

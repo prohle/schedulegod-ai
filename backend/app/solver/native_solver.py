@@ -137,7 +137,13 @@ def solve_native(sc: Scenario, request_ops: Optional[list[Operation]] = None,
                  _core: bool = True) -> SolveResult:
     t0 = time.perf_counter()
     ops = list(request_ops or [])
-    deadline = _deadline or (t0 + config.HOME_SOLVER_TIME_LIMIT_S)
+    # The search budget scales with instance size: 5 s is generous at
+    # demo scale, but a 361-section proof on a small cloud CPU needs
+    # more. (Conflict-core trials pass an explicit deadline and are
+    # unaffected.)
+    budget_s = config.HOME_SOLVER_TIME_LIMIT_S * (
+        4 if len(sc.sections) > 200 else 2 if len(sc.sections) > 80 else 1)
+    deadline = _deadline or (t0 + budget_s)
     prep = _prepare(sc, ops, pins_exact, instructor_pins, objective)
     search = _Search(sc, prep, objective, slot_hints, deadline)
     limit_ms = max(1, int((deadline - time.perf_counter()) * 1000))
@@ -168,12 +174,14 @@ def solve_native(sc: Scenario, request_ops: Optional[list[Operation]] = None,
                     explanation=f"These requests cannot hold together (with the base rules): {named}.",
                     suggestion="Drop or relax one of the conflicting requests and re-solve."),
                 solve_time_ms=int((time.perf_counter() - t0) * 1000))
+    if out.get("timed_out"):
+        # Budget expired with no incumbent and no proof: "unknown",
+        # never a fabricated infeasibility claim.
+        return SolveResult(status="unknown", solve_time_ms=elapsed_ms)
     return SolveResult(
         status="infeasible",
         conflicts=ConflictReport(
             conflicting_operation_indices=[],
-            explanation=("Infeasible against the base scenario (no request could fix this)."
-                         if not out.get("timed_out") else
-                         "Native solver found no feasible timetable within its time limit."),
+            explanation="Infeasible against the base scenario (no request could fix this).",
             suggestion="Relax room inventory, loads, or hard unavailability."),
         solve_time_ms=elapsed_ms)

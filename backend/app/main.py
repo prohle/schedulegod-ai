@@ -225,6 +225,23 @@ def university_scenario() -> Scenario:
     return _current_scenario
 
 
+@app.post("/scenario/full-university", response_model=Scenario)
+def full_university_scenario() -> Scenario:
+    """Load the full-university stress scenario (198 instructors, 361
+    sections, 25 programs, 100 cohorts, ~12,000 students). The native
+    solver is the engine that completes this scale; see
+    scripts/benchmark.py for the measured comparison."""
+    global _current_scenario
+    from app.data.department import build_full_university_scenario
+    _current_scenario = build_full_university_scenario(load_seed_scenario())
+    audit.record_event(
+        "scenario", "Loaded full-university scenario "
+        f"({len(_current_scenario.instructors)} instructors, "
+        f"{len(_current_scenario.sections)} sections, "
+        f"{len(_current_scenario.cohorts)} cohorts)", {})
+    return _current_scenario
+
+
 @app.post("/apply", response_model=Scenario)
 def apply_request(req: ApplyOpsRequest) -> Scenario:
     """Commit a verified co-pilot/term-change proposal to the current term.

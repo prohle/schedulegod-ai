@@ -47,8 +47,9 @@ our word for it. Scoped claims are stronger than broad ones.
 ## Solvers
 
 - **The native solver's speed claim is scoped to this problem class.**
-  It proves CP-SAT's optimum 3–8× faster on the measured seed /
-  department / university instances (`docs/solver_evidence.md`,
+  It proves CP-SAT's optimum faster on the measured seed /
+  department / university instances, and is the only engine to
+  complete the full-university stress instance (361 sections) (`docs/solver_evidence.md`,
   `backend/scripts/benchmark.py`). CP-SAT remains the better
   general-purpose solver and still powers the term change feasibility
   probes; we claim no general superiority.
@@ -59,8 +60,13 @@ our word for it. Scoped claims are stronger than broad ones.
   binary is unbuilt, the system transparently falls back to the Python
   reference (`backend/app/solver/native_solver.py`).
 - **Solve budget.** CP-SAT runs under `SOLVER_TIME_LIMIT_S` (default
-  10 s). Instances far beyond the measured university scale (38
-  instructors / 41 sections / 20 cohorts) are unmeasured, not claimed.
+  10 s). Measured envelope: CP-SAT proves the demo scales (up to
+  38 instructors / 41 sections); at the full-university stress scale
+  (198 instructors / 361 sections / 100 cohorts) it finds no feasible
+  timetable inside the budget and reports `unknown` — as do all
+  engines on timeout, never a fabricated "infeasible". The native
+  solver proves that instance optimal in ~3.3 s. Instances beyond
+  the stress scale are unmeasured, not claimed.
 - **The story seed intentionally fails the four-course guarantee**
   (2/4 cohorts) — it is the tightener's demo world. Department and
   university scales hold 12/12 and 20/20 (README benchmark table).
