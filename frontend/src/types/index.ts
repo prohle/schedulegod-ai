@@ -256,6 +256,43 @@ export interface TermChangeResponse {
   agent_trace?: AgentStep[];
 }
 
+export interface StudentPlanCourse {
+  course_id: string;
+  course_code: string;
+  title: string;
+  section_id: string;
+  instructor_name: string;
+  days: number[];
+  period?: number | null;
+  start_time: string;
+  end_time: string;
+  room_name: string;
+  required: boolean;
+  reason: string;
+}
+
+export interface StudentPlanResponse {
+  cohort_id: string;
+  cohort_name: string;
+  constraints: {
+    summary: string;
+    must_course_ids: string[];
+    avoid_days: number[];
+    avoid_periods: number[];
+    prefer_morning: boolean;
+    prefer_afternoon: boolean;
+    target_courses: number;
+  };
+  courses: StudentPlanCourse[];
+  target_courses: number;
+  target_met: boolean;
+  notes: string[];
+  parser_mode: "muse-spark" | "mock";
+  model?: string;
+  parser_latency_ms?: number;
+  agent_trace?: AgentStep[];
+}
+
 // --- Audit trail (constraint provenance + change log) ---
 
 export interface AuditSubmission {

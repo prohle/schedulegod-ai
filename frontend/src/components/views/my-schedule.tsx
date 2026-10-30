@@ -10,13 +10,13 @@
 //   the decision queue with each requester's current load vs cap.
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { CalendarDays, Check, Minus, Plus, Send, X } from "lucide-react";
+import { CalendarDays, Check, GraduationCap, Loader2, Minus, Plus, Send, Sparkles, X } from "lucide-react";
 import { authFetch, type AuthUser } from "@/lib/auth";
 import { TimetableGrid } from "@/components/timetable-grid";
 import { InfoTip } from "@/components/ui/tip";
 import { useScenario } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
-import { DAY_NAMES, PERIOD_NAMES, type IntakeOperation, type Placement, type TermClosure } from "@/types";
+import { DAY_NAMES, PERIOD_NAMES, type IntakeOperation, type Placement, type StudentPlanResponse, type TermClosure } from "@/types";
 
 interface InstructorLoad {
   current: number;
@@ -295,6 +295,125 @@ function ClosuresCard({ onToast }: {
   );
 }
 
+/* ---------------- student: suggest my schedule ---------------- */
+
+function StudentPlanPanel({ user, onToast }: {
+  user: AuthUser;
+  onToast: (message: string, type?: "info" | "success" | "warning" | "error") => void;
+}) {
+  const { scenario } = useScenario();
+  const [cohortId, setCohortId] = useState(user.cohort_id ?? "");
+  const [message, setMessage] = useState("I work Tuesdays and Thursdays. I need CS 201 this term, and I'd like 4 courses.");
+  const [busy, setBusy] = useState(false);
+  const [plan, setPlan] = useState<StudentPlanResponse | null>(null);
+
+  useEffect(() => {
+    if (!cohortId && scenario?.cohorts?.length) setCohortId(scenario.cohorts[0].id);
+  }, [scenario, cohortId]);
+
+  async function suggest() {
+    if (!cohortId || !message.trim()) return;
+    setBusy(true);
+    try {
+      const res = await authFetch("/api/student/plan", {
+        method: "POST",
+        body: JSON.stringify({ cohort_id: cohortId, message: message.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.error || "Suggestion failed");
+      setPlan(data as StudentPlanResponse);
+      onToast(
+        data.target_met ? "Suggested plan meets your target — verified conflict-free"
+          : "Suggested the best fitting plan — see the notes",
+        data.target_met ? "success" : "warning");
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : "Suggestion failed", "error");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center gap-1.5">
+        <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide uppercase">
+          <GraduationCap className="h-4 w-4 text-primary" /> Suggest my schedule
+        </h3>
+        <InfoTip text="Describe your life — work days, courses you must take, times you can't do. Muse Spark parses it into constraints; an exact selector then builds a plan from the published timetable and re-verifies it: no overlaps, nothing on your work days, required degree courses first. If a must-take course can't fit, it tells you instead of quietly delaying your degree." />
+        {plan && (
+          <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${plan.target_met ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+            {plan.courses.length}/{plan.target_courses} courses · {plan.target_met ? "target met" : "target not met"}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-[11px] font-semibold text-muted-foreground" htmlFor="plan-cohort">Cohort</label>
+        <select id="plan-cohort" value={cohortId} onChange={(e) => setCohortId(e.target.value)}
+          className="min-h-10 rounded-xl border border-border bg-background px-2 text-xs font-semibold">
+          {(scenario?.cohorts ?? []).map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${plan?.parser_mode === "muse-spark" ? "bg-sky-100 text-sky-800" : "bg-muted text-muted-foreground"}`}>
+          {plan ? plan.parser_mode : "muse spark"}
+        </span>
+        {plan?.model && <span className="font-mono text-[10px] text-muted-foreground">{plan.model}</span>}
+      </div>
+
+      <textarea
+        className="min-h-16 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+        value={message} onChange={(e) => setMessage(e.target.value)}
+        placeholder='e.g. "I work Tue/Thu, I need CS 201, no 8:00 classes, 4 courses please."'
+      />
+      <button disabled={busy || !cohortId || !message.trim()} onClick={suggest}
+        className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/25 transition-all active:scale-[0.98] disabled:opacity-50">
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+        Suggest a verified schedule
+      </button>
+
+      {plan && plan.notes.length > 0 && (
+        <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          {plan.notes.map((n, i) => <p key={i}>{n}</p>)}
+        </div>
+      )}
+
+      {plan && plan.courses.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {plan.courses.map((c) => (
+            <div key={c.section_id} className="rounded-xl border border-border bg-background p-3">
+              <p className="flex items-center gap-2 text-sm font-extrabold">
+                {c.course_code}
+                {c.required && (
+                  <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800">required</span>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">{c.title}</p>
+              <p className="mt-1 text-xs font-semibold">
+                {c.days.map((d) => DAY_NAMES[d].slice(0, 3)).join("/")} · {c.start_time}–{c.end_time} · {c.room_name}
+              </p>
+              <p className="text-[11px] text-muted-foreground">{c.instructor_name}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{c.reason}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {plan?.agent_trace && plan.agent_trace.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer font-semibold text-muted-foreground">How this plan was proven</summary>
+          <ol className="mt-2 space-y-1.5">
+            {plan.agent_trace.map((s, i) => (
+              <li key={i} className="flex gap-2">
+                <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${s.status === "blocked" ? "bg-red-500" : "bg-emerald-500"}`} />
+                <span><strong>{s.actor}:</strong> <span className="text-muted-foreground">{s.detail}</span></span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+    </div>
+  );
+}
+
 export function MyScheduleView({ user, onToast }: {
   user: AuthUser;
   onToast: (message: string, type?: "info" | "success" | "warning" | "error") => void;
@@ -415,6 +534,8 @@ export function MyScheduleView({ user, onToast }: {
       {(user.role === "instructor") && (
         <IntakePanel user={user} load={mine?.load} busy={busy} onSend={sendIntake} />
       )}
+
+      {user.role === "student" && <StudentPlanPanel user={user} onToast={onToast} />}
 
       {requests.length > 0 && (
         <div className="space-y-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
