@@ -32,12 +32,20 @@ from app.models.intelligence import (
     UtilizationReport,
     WhatIfReport,
 )
-from app.models.results import AgentStep, CompareResult, CopilotResponse, TermChangeResponse, SolveResult
+from app.models.results import (
+    AgentStep,
+    CompareResult,
+    CopilotResponse,
+    StudentPlanResponse,
+    TermChangeResponse,
+    SolveResult,
+)
 from app.models.scenario import Operation, ParsedRequest, Scenario, TermClosure
 from app.parsing.parser import ConstraintParser, validate_operations
 from app.services import audit
 from app.services.apply import apply_operations
 from app.services.copilot import run_copilot
+from app.services.student_plan import suggest_student_plan
 from app.services.term_change import run_term_change
 from app.services.voice import transcribe_wav
 from app.solver.scheduling_model import solve
@@ -77,6 +85,13 @@ class MessageRequest(BaseModel):
     message: str
     scenario: Optional[Scenario] = None
     speaker_id: Optional[str] = None  # intake window: who is speaking
+
+
+class StudentPlanRequest(BaseModel):
+    cohort_id: str
+    message: str
+    target_courses: Optional[int] = None
+    scenario: Optional[Scenario] = None
 
 
 class ApplyOpsRequest(BaseModel):
@@ -376,23 +391,50 @@ def copilot(req: MessageRequest) -> CopilotResponse:
     return run_copilot(scenario, req.message, speaker_id=req.speaker_id)
 
 
+@app.post("/student/plan", response_model=StudentPlanResponse)
+def student_plan(req: StudentPlanRequest) -> StudentPlanResponse:
+    """Suggest a student's personal schedule: Muse Spark parses their life
+    constraints; an exact selector proves a conflict-free plan against the
+    placed timetable (see services/student_plan.py)."""
+    scenario = req.scenario or get_current_scenario()
+    try:
+        return suggest_student_plan(
+            scenario, req.cohort_id, req.message,
+            target_override=req.target_courses)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/term-change", response_model=TermChangeResponse)
 def term_change(req: MessageRequest) -> TermChangeResponse:
     scenario = req.scenario or get_current_scenario()
     return run_term_change(scenario, req.message)
 
 
-@app.post("/term-change/audio", response_model=TermChangeResponse)
-async def term_change_audio(file: UploadFile = File(...)) -> TermChangeResponse:
-    """Voice report: Muse Voice Transcribe -> the same verified term-change flow."""
+class TranscriptDraft(BaseModel):
+    """A voice note, transcribed to a draft — and nothing more.
+
+    Identity comes from the signed-in session, never from a voice: anyone
+    can sound like Prof. Chen on a recording, so a transcript is treated as
+    untrusted text until a signed-in coordinator reviews, edits, and submits
+    it through the normal (verified) term-change flow.
+    """
+
+    transcript: str
+    detail: str = ("Draft only — voice never changes the term by itself. "
+                   "Review and submit this text as a typed request.")
+
+
+@app.post("/term-change/audio", response_model=TranscriptDraft)
+async def term_change_audio(file: UploadFile = File(...)) -> TranscriptDraft:
+    """Voice note -> Muse Voice Transcribe -> a reviewable text draft.
+
+    Deliberately does NOT run the term change: speaker identity cannot be
+    established from audio, so the transcript enters the same human-reviewed
+    path as typed text (see TranscriptDraft)."""
     audio = await file.read()
     transcript = transcribe_wav(audio, file.filename or "voice-note.wav")
-    response = run_term_change(get_current_scenario(), transcript)
-    response.transcript = transcript
-    response.agent_trace.insert(0, AgentStep(
-        step="transcribe", actor="Muse Voice Transcribe · muse-voice-transcribe-1.0",
-        detail=f"Transcribed the voice note: \"{transcript}\""))
-    return response
+    return TranscriptDraft(transcript=transcript)
 
 
 # --- multi-user: accounts, published schedules, instructor change requests ---

@@ -1,8 +1,10 @@
-"""Muse Voice Transcribe: a voice note becomes a scheduling request.
+"""Muse Voice Transcribe: a voice note becomes a *draft* scheduling request.
 
 The file endpoint is a single multipart POST. We keep the audio in memory
-(capped at 32 MB) and return only the transcript; the caller runs the normal
-parse -> solve -> verify pipeline on it.
+(capped at 32 MB) and return only the transcript. A transcript is untrusted
+input — speaker identity cannot be established from audio — so nothing is
+parsed, solved, or applied until a signed-in coordinator reviews the text
+and submits it through the normal parse -> solve -> verify pipeline.
 """
 
 from __future__ import annotations

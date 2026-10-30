@@ -129,6 +129,55 @@ class TermChangeResponse(BaseModel):
     agent_trace: list[AgentStep] = []
 
 
+class StudentConstraints(BaseModel):
+    """Structured-output contract for the Muse Spark student-request parse.
+
+    A student describes their life ("I work Tue/Thu, I need CS 201, no 8 AMs")
+    and gets back typed constraints a selector can prove against.
+    """
+
+    summary: str = ""
+    must_course_ids: list[str] = []
+    avoid_days: list[int] = []      # days the student cannot attend at all
+    avoid_periods: list[int] = []   # periods (0-3) the student cannot attend
+    prefer_morning: bool = False
+    prefer_afternoon: bool = False
+    target_courses: int = 4
+
+
+class StudentPlanCourse(BaseModel):
+    """One suggested course: a concrete section that fits the student's life."""
+
+    course_id: str
+    course_code: str
+    title: str
+    section_id: str
+    instructor_name: str
+    days: list[int]
+    period: Optional[int] = None
+    start_time: str = ""
+    end_time: str = ""
+    room_name: str = ""
+    required: bool = False          # on this term's degree-roadmap plan
+    reason: str = ""
+
+
+class StudentPlanResponse(BaseModel):
+    """A suggested personal schedule, verified conflict-free before shown."""
+
+    cohort_id: str
+    cohort_name: str
+    constraints: StudentConstraints
+    courses: list[StudentPlanCourse] = []
+    target_courses: int = 4
+    target_met: bool = False
+    notes: list[str] = []
+    parser_mode: Literal["muse-spark", "mock"]
+    model: Optional[str] = None
+    parser_latency_ms: Optional[int] = None
+    agent_trace: list[AgentStep] = []
+
+
 class CopilotResponse(BaseModel):
     summary: str
     operations: list = []
