@@ -72,7 +72,7 @@ along each cohort is.
 | ID | Constraint | Type | v1 |
 |---|---|---|---|
 | C13 | Instructor may only teach courses in their qualification set | Hard | ✓ |
-| C14 | Instructor **hard unavailability** (committee, clinical, research days) | Hard | ✓ |
+| C14 | Instructor **hard unavailability** (committee, research, service days) | Hard | ✓ |
 | C15 | Teaching load cap (courses / contact hours per term) | Hard | ✓ |
 | C16 | Preparation cap (distinct courses per term) | Hard | ✓ |
 | C17 | No overlapping assignments for one instructor | Hard | ✓ |

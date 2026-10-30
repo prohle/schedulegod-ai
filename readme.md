@@ -22,6 +22,8 @@ A department's instructors — twenty-six in the loadable department-scale scena
 
 Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* track. This is the problem we know firsthand.
 
+> **▶ Live demo (no account, no API key needed):** backend API + interactive docs at **https://prohle--schedulegod-ai-api.us-east.modal.run/docs** (`/health`, `/engines`, live solve + emergency endpoints; scale-to-zero, so the first request may take a few seconds). Judges can also run the full UI locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
+
 ![Build: visual timetable grid](docs/screenshot-build.png)
 
 ![Emergency: before/after with CP-SAT-verified coverage](docs/screenshot-emergency.png)

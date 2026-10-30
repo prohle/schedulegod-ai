@@ -45,7 +45,7 @@ every step is in the audit trail.
 |---|---|---|
 | Ingestion autoclean → typed scenario | Muse Spark `muse-spark-1.3-contributor` | `backend/app/ingestion/parser.py` |
 | Constraint parsing → typed operations | Muse Spark `muse-spark-1.3-contributor` | `backend/app/parsing/parser.py` |
-| Self-heal explanation → ranked resolutions | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/explanation.py` |
+| Self-heal explanation → ranked resolutions | Muse Spark `muse-spark-1.3-contributor` | `backend/app/agent/explainer.py` |
 | Intelligence tightening → typed repair moves | Muse Spark `muse-spark-1.3-contributor` | `backend/app/intelligence/tightener.py` |
 
 Live captured proof: `backend/muse-verification.json` (all structured roles,
@@ -83,7 +83,7 @@ judges can click every beat offline.
 | Criterion (weight) | Evidence a judge can check in <5 min |
 |---|---|
 | Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at department scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps), 3 programs / 12 cohorts |
-| Use of Meta AI tooling (25%) | 5 runtime Muse roles, live badges (model + latency) on screen, `muse-verification.json`, agent trace names Muse at every proposing step |
+| Use of Meta AI tooling (25%) | 4 runtime Muse Spark roles (ingest, parse, explain, tighten) + Muse Voice Transcribe endpoint, live badges (model + latency) on screen, `muse-verification.json` + `muse-verification-open.json`, agent trace names Muse at every proposing step |
 | Technical depth & execution (20%) | CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, 31 passing tests, CI |
 | Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple emergency, solver-verified resolutions, department-scale solve in the Build step |
 
