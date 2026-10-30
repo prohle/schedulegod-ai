@@ -59,6 +59,8 @@ class CompareResult(BaseModel):
     differing_sections: list[str] = []
     objective_delta: Optional[int] = None   # ours - cpsat (preference penalty)
     speed_ratio: Optional[float] = None     # ours_ms / cpsat_ms (>1 = CP-SAT faster)
+    winner: Optional[str] = None            # engine id ranked first, or "tie"
+    verdict: Optional[str] = None           # why, from outputs only
 
 
 class CandidateProposal(BaseModel):

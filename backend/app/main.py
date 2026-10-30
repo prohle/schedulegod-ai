@@ -297,6 +297,8 @@ def solve_compare(req: CompareRequest) -> CompareResult:
              for p in ours.timetable.placements}
         differing = sorted(sid for sid in a if a[sid] != b.get(sid))
         agreement = round(100.0 * (len(a) - len(differing)) / max(1, len(a)), 1)
+    from app.solver.engine import rank_results
+    winner, verdict = rank_results([("cpsat", cpsat), ("ours", ours)])
     return CompareResult(
         cpsat=cpsat, ours=ours,
         same_status=cpsat.status == ours.status,
@@ -306,6 +308,7 @@ def solve_compare(req: CompareRequest) -> CompareResult:
         if cpsat.objective is not None and ours.objective is not None else None,
         speed_ratio=round(ours.solve_time_ms / cpsat.solve_time_ms, 2)
         if cpsat.solve_time_ms else None,
+        winner=winner, verdict=verdict,
     )
 
 

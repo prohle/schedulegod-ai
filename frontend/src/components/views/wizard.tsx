@@ -698,14 +698,27 @@ export function WizardView({ onToast }: WizardViewProps) {
               </Button>
               {compare && (
                 <div className="mt-4 border-t border-emerald-200 pt-3">
+                  {compare.verdict && (
+                    <div className="bg-emerald-700 text-white rounded p-2.5 text-xs font-semibold mb-3">
+                      Ranked on output — status, then penalty, then speed: {compare.verdict}
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs mb-3">
                     <div className="bg-white border rounded p-2">
                       <div className="font-bold">{compare.cpsat.status} · {compare.cpsat.solve_time_ms} ms</div>
                       <div className="text-muted-foreground">CP-SAT · penalty {compare.cpsat.objective ?? "—"}</div>
+                      <div className={cn("mt-1 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
+                        compare.winner === "cpsat" ? "bg-emerald-100 text-emerald-800" : compare.winner === "tie" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
+                        {compare.winner === "cpsat" ? "Rank 1" : compare.winner === "tie" ? "Tied 1st" : "Rank 2"}
+                      </div>
                     </div>
                     <div className="bg-white border rounded p-2">
                       <div className="font-bold">{compare.ours.status} · {compare.ours.solve_time_ms} ms</div>
                       <div className="text-muted-foreground">Ours · penalty {compare.ours.objective ?? "—"}</div>
+                      <div className={cn("mt-1 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
+                        compare.winner === "ours" ? "bg-emerald-100 text-emerald-800" : compare.winner === "tie" ? "bg-sky-100 text-sky-800" : "bg-muted")}>
+                        {compare.winner === "ours" ? "Rank 1" : compare.winner === "tie" ? "Tied 1st" : "Rank 2"}
+                      </div>
                     </div>
                     <div className="bg-white border rounded p-2">
                       <div className="font-bold">{compare.agreement_pct != null ? `${compare.agreement_pct}%` : "—"}</div>

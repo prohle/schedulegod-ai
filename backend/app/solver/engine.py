@@ -61,6 +61,41 @@ def list_engines() -> list[dict]:
     return [asdict(e) for e in ENGINES]
 
 
+_STATUS_RANK = {"optimal": 0, "feasible": 1, "infeasible": 2}
+
+
+def rank_results(named: list[tuple[str, SolveResult]]) -> tuple[str, str]:
+    """Rank engines by what they actually spit out, best first.
+
+    Order of evidence: (1) proven status — optimal beats feasible beats
+    infeasible; (2) preference penalty (lower wins); (3) runtime (faster
+    wins). Returns (winner_id_or_"tie", plain-English verdict). Ranking is
+    computed from outputs only — no engine gets a head start.
+    """
+    def key(item: tuple[str, SolveResult]):
+        _, r = item
+        obj = r.objective if r.objective is not None else float("inf")
+        return (_STATUS_RANK.get(r.status, 3), obj, r.solve_time_ms)
+
+    ordered = sorted(named, key=key)
+    (win_id, win), (los_id, los) = ordered[0], ordered[1]
+    if key(ordered[0]) == key(ordered[1]):
+        return "tie", (f"Dead heat: both engines returned {win.status} at penalty "
+                       f"{win.objective} in {win.solve_time_ms} ms.")
+    reasons = []
+    if _STATUS_RANK.get(win.status, 3) != _STATUS_RANK.get(los.status, 3):
+        reasons.append(f"{win.status} beats {los.status}")
+    elif win.objective != los.objective:
+        reasons.append(f"lower preference penalty ({win.objective} vs {los.objective})")
+    if not reasons:
+        reasons.append(f"same {win.status} at penalty {win.objective}, "
+                       f"but faster ({win.solve_time_ms} ms vs {los.solve_time_ms} ms)")
+    elif win.solve_time_ms != los.solve_time_ms:
+        reasons.append(f"{win.solve_time_ms} ms vs {los.solve_time_ms} ms")
+    labels = {e.id: e.label for e in ENGINES}
+    return win_id, f"{labels.get(win_id, win_id)} ranks first: " + "; ".join(reasons) + "."
+
+
 def solve_with(engine: str, sc: Scenario,
                request_ops: Optional[list[Operation]] = None,
                pins_exact: Optional[dict] = None,

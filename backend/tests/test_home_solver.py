@@ -94,6 +94,19 @@ def test_engines_are_plug_and_play():
     assert greedy.objective >= solve(sc, engine="ours").objective
 
 
+def test_ranking_comes_from_outputs_only():
+    from app.models.results import SolveResult
+    from app.solver.engine import rank_results
+    fast = SolveResult(status="optimal", objective=-6, solve_time_ms=10)
+    slow = SolveResult(status="optimal", objective=-6, solve_time_ms=90)
+    winner, verdict = rank_results([("cpsat", slow), ("ours", fast)])
+    assert winner == "ours" and "faster" in verdict
+    proven = SolveResult(status="optimal", objective=0, solve_time_ms=500)
+    unproven = SolveResult(status="feasible", objective=-99, solve_time_ms=1)
+    winner, _ = rank_results([("cpsat", proven), ("ours", unproven)])
+    assert winner == "cpsat"  # proof of optimality outranks a better raw penalty
+
+
 def test_home_solver_honors_request_ops_and_is_deterministic():
     sc = load_seed_scenario()
     ops = [Operation(op="add_instructor_unavailability", instructor_id="patel",

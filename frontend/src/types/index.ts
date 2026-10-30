@@ -178,6 +178,8 @@ export interface CompareResult {
   differing_sections: string[];
   objective_delta?: number;
   speed_ratio?: number;
+  winner?: string;
+  verdict?: string;
 }
 
 export interface AgentStep {
