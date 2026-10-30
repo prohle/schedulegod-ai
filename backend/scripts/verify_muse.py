@@ -110,7 +110,8 @@ def main() -> None:
         base_url=config.MUSE_BASE_URL, api_key=config.MUSE_API_KEY,
         timeout=config.MUSE_TIMEOUT_S,
     )
-    out: dict = {"parse": [], "explanation": [], "tighten": [], "ingestion": []}
+    out: dict = {"model": config.MUSE_MODEL, "base_url": config.MUSE_BASE_URL,
+                 "parse": [], "explanation": [], "tighten": [], "ingestion": []}
 
     def muse_parse(msg: str, speaker_id: str | None = None) -> dict:
         t = time.time()
@@ -201,9 +202,11 @@ def main() -> None:
               f"trigger={r.trigger} moves={len(r.moves)} "
               f"verified={sum(1 for m in r.moves if m.verified)}", flush=True)
 
-    with open("muse-verification.json", "w") as f:
+    import os
+    out_path = os.getenv("VERIFY_OUT", "muse-verification.json")
+    with open(out_path, "w") as f:
         json.dump(out, f, indent=2, default=str)
-    print("\nSaved muse-verification.json", flush=True)
+    print(f"\nSaved {out_path}", flush=True)
 
 
 if __name__ == "__main__":

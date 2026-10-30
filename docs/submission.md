@@ -66,12 +66,15 @@ judges can click every beat offline.
   time, not after judging starts.
 - **Community Vote ($10K) — automatic.** Project appears in the public
   gallery; winner announced Nov 16. Share the gallery link with the X post.
-- **Best Build on Meta Open Weight Models ($10K) — ONLY IF VERIFIED FIRST.**
-  Do not claim on the hosted API alone. If Baseten/Modal/vLLM serving of
-  `meta-models/muse-spark-open-1026` is wired, run
-  `backend/scripts/verify_muse.py` against it, save the capture, then flag
-  it — the partner verifies the model actually runs. Client support is
-  already endpoint-agnostic (`MUSE_BASE_URL`/`MUSE_MODEL`, see `.env.example`).
+- **Best Build on Meta Open Weight Models ($10K) — CLAIM (verified Oct 29).**
+  All four structured roles run on **Muse Spark Open**
+  (`meta-models/muse-spark-open-1026`) served by Baseten ($100 hackathon
+  credit, 2M TPM). Live captured proof: `backend/muse-verification-open.json`
+  — 18/18 calls (12 parse, 3 explanation, 2 tighten, 1 ingestion) against
+  `https://inference.baseten.co/v1`, real structured outputs + latencies.
+  The swap is env-only (`MUSE_BASE_URL` + `MUSE_MODEL` + the Baseten key as
+  `MODEL_API_KEY`); recording with it makes the on-screen badge read
+  `muse-spark · meta-models/muse-spark-open-1026`.
 - **Best Creative Build ($5K) — do not claim** (no Muse Image/Wonder surface;
   a false flag wastes reviewer attention).
 

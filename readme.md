@@ -124,7 +124,7 @@ docker compose up --build   # live Muse Spark
 
 *All four structured roles run on the contributor model because the data is synthetic; a real institution would use standard mode (`muse-spark-1.3`) so no staff data ever trains Meta's models. Dev-time coding tools are unrestricted by the hackathon and touch nothing at runtime.*
 
-**Open-weights path:** the client is endpoint-agnostic (`MUSE_BASE_URL` + `MUSE_MODEL`), so the same roles can run on self-hosted **Muse Spark Open** — e.g. Baseten `meta-models/muse-spark-open-1026`, Modal, or a local vLLM server — wherever structured output is served. Point the env vars at it and prove the swap with `backend/scripts/verify_muse.py` before claiming it; the committed verification above is against the Meta Model API.
+**Open-weights path — verified live:** the client is endpoint-agnostic (`MUSE_BASE_URL` + `MUSE_MODEL`), and all four structured roles are verified running on **Muse Spark Open** (`meta-models/muse-spark-open-1026`) served by Baseten: `backend/muse-verification-open.json` captures 18/18 live calls (12 parse, 3 explanation, 2 tighten, 1 ingestion) with real structured outputs and latencies. To run the whole app on open weights, set `MUSE_BASE_URL=https://inference.baseten.co/v1`, `MUSE_MODEL=meta-models/muse-spark-open-1026`, and the Baseten key as `MODEL_API_KEY` — no code changes.
 
 ## Intelligence layer (scipy sparse + spectral + AI)
 
