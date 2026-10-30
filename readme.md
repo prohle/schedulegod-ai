@@ -121,6 +121,22 @@ At department scale every cohort still gets its four-course guarantee, every cou
 
 **Coordinator-time impact:** the manual baseline this replaces is roughly a coordinator-week per term (~30–40 hours of email, spreadsheets, and rework, plus hours per mid-term disruption). ScheduleGod AI's measured loop is: one Muse parse (~8–25 s live), one CP-SAT solve (~0.15 s at department scale), and — per disruption — a probe-verified coverage decision in seconds. The honest claim is not "AI schedules for you"; it is that a week of constraint-wrangling compresses into an auditable review of solver-proven options.
 
+## What we built vs. what we rent
+
+Honest accounting — the rented parts are named, not hidden:
+
+| Ours (written this hackathon) | Rented (named, not claimed) |
+|---|---|
+| **Native C++ solver** (522 lines, `backend/native/schedulergod_solver.cpp`) + Python reference (`home_solver.py`) — MRV search, unit propagation, pairwise-conflict admissible bound; proves CP-SAT's optimum 3–8× faster on this problem class | OR-Tools CP-SAT (Google) — general solver, emergency probes |
+| CP-SAT timetable model with assumption-literal minimal conflict cores (`scheduling_model.py`, 516 lines) | Muse Spark / Spark Open / Voice Transcribe (Meta) — propose, never decide |
+| Spectral engine: Laplacian/Fiedler/Hoffman/exact max-clique → warm-start hints + deadlock radar (`intelligence/spectral.py`) | Next.js, FastAPI, scipy/numpy, Postgres |
+| Self-healing loop: minimal core → explanation → **every resolution re-solved before it can be shown** → least-disruptive auto-apply (`services/copilot.py`) | Modal hosting, Baseten inference for the open-weights path |
+| Emergency probe-and-rank over every qualified instructor; C39 four-course audit; typed tightener with closed move grammar | |
+| Any-format ingestion (PDF/DOCX/XLSX/CSV/JSON/TXT/MD/ZIP → typed scenario) + deterministic completeness check | |
+| Multi-user product: role-filtered schedules, verified change requests, Express/Full UI, audit ledger | |
+
+Boundaries we don't cross are listed just as plainly: [docs/limitations.md](./docs/limitations.md).
+
 ## Meta AI tooling at runtime
 
 **Every model this project calls at runtime is a Meta model**, via the Meta Model API. The deterministic core (the solver engines) is not a model — the LLM proposes, the solver proves. When no API key is present, all model roles degrade to deterministic templates (dev/tests cost zero credits).
@@ -197,6 +213,15 @@ Without a key the model roles degrade to a deterministic mock parser, so every b
 **Multi-user, role-based:** the app opens on a login. One-click demo accounts (password `demo1234`, seeded from the scenario itself — no signup needed): `coordinator@schedulegod.demo` runs the term (Express, publish, approves changes); `chen@schedulegod.demo` (any `<instructor-id>@…`) sees **only their own sections** in **Schedule** and submits plain-language change requests; `cs2025@schedulegod.demo` (any `<cohort-id>@…`) sees **only their cohort's courses**. The coordinator publishes the solved timetable (**Publish**); instructors' grids update only when an approved change is re-proven by the solver and re-published — an infeasible request comes back rejected with the solver-backed explanation. You can also register your own account and link it to any instructor/cohort.
 
 **Hosted demo (live now):** UI at **https://prohle--schedulegod-ai-ui-web.us-east.modal.run** and backend at https://prohle--schedulegod-ai-api.us-east.modal.run (`/status`, `/docs`, `/engines`; both scale-to-zero on Modal, warm them with one request). Deploy your own from [docs/deploy_modal.md](./docs/deploy_modal.md). The local one-command path is below.
+
+**For judges — verify any claim in under 5 minutes (live demo, one-tap Coordinator login):**
+1. **Any-format autoclean** — Express → Import: the six sample files are preloaded as pasted text; or drop any registrar file and watch the 6/6 completeness check.
+2. **One sentence, proven ripple** — Intake: "Prof. Patel can't teach Mondays" → typed ops, agent trace, applied to the term.
+3. **Two engines, ranked from outputs** — Build → Solve → **Compare engines**: Rank 1 / Rank 2 from status → penalty → speed alone.
+4. **Scale** — Build → **University**: 38 instructors, 41 sections, 20 cohorts solved as one institution; KPI strip shows the proof time.
+5. **Emergency** — Emergency → Handle Emergency: ranked zero-ripple coverage, only CS 301 + CS 310 move in the After grid.
+6. **The advanced workspace** — Full → Radar (spectral health), Planning (20% growth what-if, re-solved first), Audit (every step above, with `muse-spark` provenance).
+Nothing here needs an API key or an account beyond the one-tap demo logins.
 
 **Full stack (one command):**
 

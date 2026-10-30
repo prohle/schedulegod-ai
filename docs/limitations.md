@@ -1,0 +1,88 @@
+# Honest limitations
+
+What ScheduleGod AI does **not** do, stated plainly. Each item names the
+code that bounds it, so a judge can verify the boundary instead of taking
+our word for it. Scoped claims are stronger than broad ones.
+
+## Input
+
+- **No OCR.** Image files (`.png/.jpg/.webp/.gif/.bmp/.tiff`) are marked
+  "no text layer to extract" and contribute an `[unreadable]` note; a
+  scanned PDF whose pages carry no text layer extracts to nothing
+  (`backend/app/ingestion/extract.py`). The completeness check then tells
+  the coordinator exactly which of the six requirements still needs a
+  readable copy — it never guesses the missing content.
+- **Autoclean quality is bounded by the source.** Muse Spark structures
+  what the files say; if the catalog omits a course's equipment or a
+  faculty sheet omits a qualification, the model has neither, and the
+  solve is only as complete as the input. The Import review step (keep /
+  remove per entity) is the human correction point before anything is
+  applied (`POST /ingest/apply` builds only from what was kept).
+- **One institution, one current scenario.** There is a single current
+  scenario per deployment (plus its audit ledger). Multi-term versioning,
+  concurrent coordinators editing the same term, and cross-institution
+  federation are not modeled.
+
+## Models
+
+- **Without a key, model roles degrade — visibly, not silently.** Ingest,
+  parse, explain, and tighten fall back to a deterministic mock/template
+  path, and every response carries `parser_mode` / `muse_mode` plus the
+  model name when live. A `MOCK` badge in the UI always means exactly
+  that; the demo video was recorded live and shows `muse-spark` badges.
+- **Live latency is real.** Muse Spark parse/explain calls measure
+  ~3–42 s (`backend/muse-verification.json`); the UI shows the latency
+  badge rather than hiding the wait. Every model call has a hard timeout
+  (`MUSE_TIMEOUT_S`, default 120 s) after which the deterministic
+  fallback takes over.
+- **First-person requests need a speaker.** "I can't teach Fridays" is
+  ambiguous without identity, so the intake requires the speaker picker
+  (or a signed-in instructor identity) for first-person messages.
+- **Contributor-mode caveat.** The shipped configuration uses
+  `muse-spark-1.3-contributor` because all data here is synthetic. A real
+  institution must switch to standard mode (`muse-spark-1.3`) so staff
+  data never trains future models — it is a one-line env change
+  (`MUSE_MODEL`), documented in `backend/app/config.py`.
+
+## Solvers
+
+- **The native solver's speed claim is scoped to this problem class.**
+  It proves CP-SAT's optimum 3–8× faster on the measured seed /
+  department / university instances (`docs/solver_evidence.md`,
+  `backend/scripts/benchmark.py`). CP-SAT remains the better
+  general-purpose solver and still powers the emergency feasibility
+  probes; we claim no general superiority.
+- **The Python reference search cannot prove optimality at scale.** It
+  reaches the same penalty but exhausts its 5 s budget unproven at
+  department/university scale (`HOME_SOLVER_TIME_LIMIT_S`) — that
+  measured gap is why the search core is native C++. If the native
+  binary is unbuilt, the system transparently falls back to the Python
+  reference (`backend/app/solver/native_solver.py`).
+- **Solve budget.** CP-SAT runs under `SOLVER_TIME_LIMIT_S` (default
+  10 s). Instances far beyond the measured university scale (38
+  instructors / 41 sections / 20 cohorts) are unmeasured, not claimed.
+- **The story seed intentionally fails the four-course guarantee**
+  (2/4 cohorts) — it is the tightener's demo world. Department and
+  university scales hold 12/12 and 20/20 (README benchmark table).
+
+## Voice
+
+- **Upload format is 24 kHz mono WAV** (`POST /emergency/audio`,
+  `audioEncoding: WAV`). Spelled-out titles from speech recognition
+  ("Doctor Chen") are normalized deterministically before parsing
+  (`backend/app/services/voice.py`); free-form dictation in other
+  formats is not accepted yet.
+
+## Platform
+
+- **Demo-grade auth.** PBKDF2 password hashes + hashed bearer sessions,
+  sized for a hackathon demo and a single coordinator office — not an
+  institutional SSO story. Demo accounts ship with password `demo1234`
+  and are labeled as such on the login screen.
+- **Persistence is SQLite (Modal volume) or Postgres 18 (Compose).**
+  The audit ledger is append-only by design; resetting a scenario
+  returns the term to seed but keeps the provenance history.
+- **The audit trail records submissions and change events**, not
+  keystrokes or rejected drafts; infeasible instructor requests return
+  with the solver-backed explanation and are visible to the coordinator
+  in the change-request queue.

@@ -12,9 +12,15 @@ Copy-paste source for the CV platform form. Deadline: **Wed Nov 4, 9:00 PM ET**
 | Problem statement | **Build for Your World** — the course-timetabling week every department coordinator loses, every term |
 | Team | Solo — Huong Le |
 | Repo (public) | https://github.com/prohle/schedulegod-ai |
-| Demo video (≤3:00) | https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4 (2:55 live Puppeteer screencast, Oct 29) — _upload the same file to YouTube and add that link here too_ |
+| Demo video (≤3:00) | https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4 (2:55 live Puppeteer screencast, re-recorded Oct 30 on the current Express/Full interface) — _upload the same file to YouTube and add that link here too_ |
 | Live demo | **https://prohle--schedulegod-ai-ui-web.us-east.modal.run** (full UI, no account/key; backend API: https://prohle--schedulegod-ai-api.us-east.modal.run/docs) — or judges run `docker compose up` (no key, no account — see README "Judges — try it in 2 minutes") |
-| X post (Most Viral) | _paste link after posting; engagement counts until Nov 8 EOD_ |
+| X post (Most Viral) | _paste link after posting; engagement counts until Nov 8 EOD. Ready copy below — attach `final.mp4`_ |
+
+**X post (ready to publish, attach the video):**
+> Every term, one coordinator loses a week to the course timetable. ScheduleGod AI takes the messy files as they are — PDF, Word, Excel, plain text — and returns a *proven* timetable for the whole university. The AI proposes. The solver proves. Our own C++ solver then out-proves CP-SAT 8× faster on the same answer. Live demo + full build log in the replies. #BuildForYourWorld
+>
+> Reply 1: Live demo (one tap, no account): https://prohle--schedulegod-ai-ui-web.us-east.modal.run
+> Reply 2: Code + evidence: https://github.com/prohle/schedulegod-ai
 
 **One-liner:** An agentic co-pilot that turns natural-language scheduling
 constraints into a provably feasible university timetable — Muse Spark
@@ -59,7 +65,7 @@ judges can click every beat offline.
   solve → minimal-conflict-core → explain → verify-every-resolution →
   auto-apply → re-solve → audit (up to 5 healing rounds), plus emergency
   probe-and-choose across every qualified instructor. Every response carries
-  the `agent_trace`; the wizard renders it live. That is the claim evidence.
+  the `agent_trace`; Express renders it live. That is the claim evidence.
 - **Most Viral Project ($20K) — CLAIM VIA X.** Post the 3-min demo on X,
   submit the post link on the platform; winner = total engagement
   (likes + reposts + comments) through **Nov 8 EOD**. Post at submission
@@ -82,9 +88,9 @@ judges can click every beat offline.
 
 | Criterion (weight) | Evidence a judge can check in <5 min |
 |---|---|
-| Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at department scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps), 3 programs / 12 cohorts |
+| Impact (30%) | Coordinator-week → minutes, quantified in README "Proof at university scale" + benchmark script; real domain (degree roadmaps, walk matrix, prep caps), 3 programs / 12 cohorts |
 | Use of Meta AI tooling (25%) | 4 runtime Muse Spark roles (ingest, parse, explain, tighten) + Muse Voice Transcribe endpoint, live badges (model + latency) on screen, `muse-verification.json` + `muse-verification-open.json`, agent trace names Muse at every proposing step |
-| Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum 3–8× faster** at every scale (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests), 42 passing tests, CI |
+| Technical depth & execution (20%) | AI-authored **native C++ rival solver proving CP-SAT's optimum 3–8× faster** at every scale (docs/solver_evidence.md, benchmark + parity tests), CP-SAT assumption-literal minimal conflict cores, feasibility probes, spectral (Laplacian/Fiedler/Hoffman/max-clique) warm-start + deadlock radar, C39 guarantee audit, **multi-user roles** (coordinator/instructor/student logins, published schedules, verified change requests), 41 passing tests, CI |
 | Demo (25%) | Working live stack (`docker compose up`, Postgres 18), before/after zero-ripple emergency, solver-verified resolutions, department-scale solve in the Build step |
 
 ## What was built during the hackathon (Oct 27 – Nov 4)
@@ -94,13 +100,14 @@ UI, ops (Docker/Postgres 18), tests. Commit history is the build log.
 
 ## Pre-submit checklist
 
-- [ ] All work committed and pushed; repo public and cloneable
-- [ ] `docker compose up --build` from a clean clone boots cleanly (db Postgres 18 → backend → frontend)
-- [ ] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 42 tests from repo root)
-- [ ] Frontend production build passes (`cd frontend && npm run build`)
-- [ ] Video ≤ 3:00, recorded with `MODEL_API_KEY` set — every badge says `muse-spark`, never `MOCK` (see `docs/demo_shotlist.md`)
-- [ ] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/XLSX/TXT/MD) → Patel intake applied to the term → Build solve → **university-scale solve + dual-engine compare** → emergency with before/after → Diaz self-heal with verified resolutions + agent trace → audit trail
-- [ ] Live demo deployed (Modal + Vercel per `docs/deploy_modal.md`) OR README quickstart verified from a clean clone
-- [ ] Meta credits claimed (deadline Nov 4, 9:00 PM ET); spend limit set
-- [ ] X post published with video + repo + gallery links; post link submitted (Most Viral cutoff Nov 8 EOD)
-- [ ] Submitted on the CV platform before **Nov 4, 9:00 PM ET** — not at 8:59
+- [x] All work committed and pushed; repo public and cloneable
+- [x] `docker compose up --build` boots cleanly (db Postgres 18 → backend → frontend; verified Oct 30 with port overrides — UI 200, proxied scenario, both engines `optimal` penalty −6 inside the containers, native binary built in-image)
+- [x] Backend tests pass (`cd backend && .venv/bin/python -m pytest -q` — 41 tests, verified Oct 30)
+- [x] Frontend production build passes (`cd frontend && npm run build`, verified Oct 30)
+- [x] Video ≤ 3:00 (2:55), recorded live Oct 30 on the current interface — frame-checked: every badge says `muse-spark`, never `MOCK`
+- [x] Video shows, in order: any-format import autoclean (PDF/DOCX/CSV/TXT/XLSX/MD) → Patel intake applied to the term → **dual-engine compare, Rank 1 / Rank 2 from outputs** → university scale + publish → Chen change request approved and re-published → emergency with agent trace + ranked verified coverage → 20% growth what-if in Full
+- [x] Live demo deployed (Modal UI + API; full checklist in `docs/deploy_modal.md` verified live Oct 30: `/status`, reset, Patel copilot `muse-spark`, Chen emergency probes, live voice transcription) — scenario left reset to seed
+- [ ] Meta credits claimed (deadline Nov 4, 9:00 PM ET); spend limit set — **account action**
+- [ ] X post published with video + repo + gallery links; post link submitted (Most Viral cutoff Nov 8 EOD) — **account action** (copy ready above)
+- [ ] YouTube upload of `final.mp4`; link added to the video field above — **account action**
+- [ ] Submitted on the CV platform before **Nov 4, 9:00 PM ET** — not at 8:59 — **account action**

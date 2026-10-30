@@ -55,10 +55,13 @@ Modal directly.
 
 ## 3. Demo-day checklist
 
-- [ ] `GET /status` returns `ok`.
-- [ ] `POST /scenario/reset` returns the seed.
-- [ ] `POST /copilot` with the Patel sentence returns `muse-spark`.
-- [ ] `POST /emergency` with the Chen sentence returns verified proposals.
-- [ ] `POST /emergency/audio` accepts a 24 kHz mono WAV and returns a transcript.
-- [ ] The Vercel UI loads the wizard and the Audit Trail tab.
-- [ ] Meta + Modal spend limits are set.
+Verified live **Oct 30** against the deployed Modal stack (UI redeployed
+with the Express/Full interface the same day):
+
+- [x] `GET /status` returns `ok`.
+- [x] `POST /scenario/reset` returns the seed (left reset for judges).
+- [x] `POST /copilot` with the Patel sentence returns `muse-spark`.
+- [x] `POST /emergency` with the Chen sentence returns verified proposals.
+- [x] `POST /emergency/audio` accepts a 24 kHz mono WAV and returns a transcript.
+- [x] The Modal UI loads Express and the Full → Audit trail.
+- [ ] Meta + Modal spend limits are set — account action.
