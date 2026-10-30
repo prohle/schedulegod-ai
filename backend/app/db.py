@@ -31,6 +31,7 @@ def init_db() -> None:
     """Create tables. Best-effort: importing `audit` registers the models, and
     a down database must never take the solver with it."""
     from app.models import audit  # noqa: F401  (register models)
+    from app.models import auth  # noqa: F401  (users / schedules / requests)
 
     try:
         Base.metadata.create_all(bind=engine)

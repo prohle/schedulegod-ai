@@ -13,7 +13,7 @@ import json
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app import config
@@ -46,6 +46,11 @@ from app.solver.scheduling_model import solve
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()  # create provenance tables if they don't exist (best-effort)
+    try:
+        from app.services.auth import seed_demo_users
+        seed_demo_users(load_seed_scenario())
+    except Exception:  # noqa: BLE001 — auth seeding must never block solving
+        pass
     yield
 
 
@@ -371,6 +376,282 @@ async def emergency_audio(file: UploadFile = File(...)) -> EmergencyResponse:
         step="transcribe", actor="Muse Voice Transcribe · muse-voice-transcribe-1.0",
         detail=f"Transcribed the voice note: \"{transcript}\""))
     return response
+
+
+# --- multi-user: accounts, published schedules, instructor change requests ---
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    role: str = "instructor"  # coordinator | instructor | student
+    display_name: str = ""
+    instructor_id: Optional[str] = None
+    cohort_id: Optional[str] = None
+
+
+class PublishRequest(BaseModel):
+    engine: str = "cpsat"
+
+
+class ChangeRequestIn(BaseModel):
+    message: str
+
+
+class DecideRequest(BaseModel):
+    action: str = "apply"  # apply | reject
+
+
+def _current_user(authorization: Optional[str] = Header(None)):
+    from app.services.auth import user_for_token
+    token = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization[7:]
+    user = user_for_token(token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Login required.")
+    return user
+
+
+def _require_role(user, *roles: str):
+    if user.role not in roles:
+        raise HTTPException(status_code=403,
+                            detail=f"This action needs role: {' or '.join(roles)}.")
+
+
+@app.post("/auth/register")
+def auth_register(req: RegisterRequest) -> dict:
+    from app.services.auth import create_session, create_user, find_user, public_user
+    init_db()
+    if req.role not in ("coordinator", "instructor", "student"):
+        raise HTTPException(status_code=400, detail="Unknown role.")
+    if find_user(req.email):
+        raise HTTPException(status_code=409, detail="Email already registered.")
+    scenario = get_current_scenario()
+    if req.role == "instructor" and req.instructor_id:
+        if req.instructor_id not in {i.id for i in scenario.instructors}:
+            raise HTTPException(status_code=400, detail="Unknown instructor_id.")
+    if req.role == "student" and req.cohort_id:
+        if req.cohort_id not in {c.id for c in scenario.cohorts}:
+            raise HTTPException(status_code=400, detail="Unknown cohort_id.")
+    user = create_user(req.email, req.password, req.role, req.display_name,
+                       instructor_id=req.instructor_id, cohort_id=req.cohort_id)
+    return {"token": create_session(user.id), "user": public_user(user)}
+
+
+@app.post("/auth/login")
+def auth_login(req: LoginRequest) -> dict:
+    from app.services.auth import create_session, find_user, public_user, verify_password
+    init_db()
+    user = find_user(req.email)
+    if user is None and req.email.lower().endswith("@schedulegod.demo"):
+        from app.services.auth import seed_demo_users
+        seed_demo_users(get_current_scenario())
+        user = find_user(req.email)
+    if user is None or not verify_password(req.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    return {"token": create_session(user.id), "user": public_user(user)}
+
+
+@app.get("/auth/me")
+def auth_me(authorization: Optional[str] = Header(None)) -> dict:
+    from app.services.auth import public_user
+    return {"user": public_user(_current_user(authorization))}
+
+
+@app.post("/auth/logout")
+def auth_logout(authorization: Optional[str] = Header(None)) -> dict:
+    from app.services.auth import delete_session
+    if authorization and authorization.lower().startswith("bearer "):
+        delete_session(authorization[7:])
+    return {"ok": True}
+
+
+def _latest_published():
+    from app.db import SessionLocal
+    from app.models.auth import PublishedSchedule
+    with SessionLocal() as session:
+        row = session.query(PublishedSchedule).order_by(
+            PublishedSchedule.id.desc()).first()
+        if row:
+            session.expunge(row)
+        return row
+
+
+def _publish_current(engine: str, created_by: str) -> dict:
+    from app.db import SessionLocal
+    from app.models.auth import PublishedSchedule
+    scenario = get_current_scenario()
+    result = solve(scenario, engine=engine)
+    if result.timetable is None:
+        raise HTTPException(status_code=422,
+                            detail=f"Current scenario solves as {result.status}; nothing to publish.")
+    with SessionLocal() as session:
+        row = PublishedSchedule(
+            scenario_json=scenario.model_dump_json(),
+            timetable_json=result.timetable.model_dump_json(),
+            engine=engine, objective=result.objective, status=result.status,
+            created_by=created_by)
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        published_id = row.id
+    return {"id": published_id, "engine": engine, "status": result.status,
+            "objective": result.objective,
+            "sections": len(result.timetable.placements)}
+
+
+@app.post("/schedule/publish")
+def schedule_publish(req: PublishRequest,
+                     authorization: Optional[str] = Header(None)) -> dict:
+    user = _current_user(authorization)
+    _require_role(user, "coordinator")
+    return _publish_current(req.engine, user.email)
+
+
+@app.get("/schedule/current")
+def schedule_current(authorization: Optional[str] = Header(None)) -> dict:
+    _current_user(authorization)
+    row = _latest_published()
+    if row is None:
+        raise HTTPException(status_code=404, detail="No schedule published yet.")
+    return {"id": row.id, "engine": row.engine, "status": row.status,
+            "objective": row.objective, "created_by": row.created_by,
+            "timetable": json.loads(row.timetable_json)}
+
+
+@app.get("/schedule/mine")
+def schedule_mine(authorization: Optional[str] = Header(None)) -> dict:
+    """The caller's personal timetable, filtered from the published one."""
+    user = _current_user(authorization)
+    row = _latest_published()
+    if row is None:
+        raise HTTPException(status_code=404, detail="No schedule published yet.")
+    timetable = json.loads(row.timetable_json)
+    placements = timetable["placements"]
+    scenario = Scenario.model_validate_json(row.scenario_json)
+    if user.role == "instructor":
+        placements = [p for p in placements
+                      if p["instructor_id"] == user.instructor_id]
+        scope = f"Sections taught by {user.display_name}"
+    elif user.role == "student":
+        cohort = next((c for c in scenario.cohorts if c.id == user.cohort_id), None)
+        course_ids = set(scenario.cohort_term_courses(cohort)) if cohort else set()
+        placements = [p for p in placements if p["course_id"] in course_ids]
+        scope = f"Courses for cohort {(user.cohort_id or '').upper()} this term"
+    else:
+        scope = "Full institutional timetable (coordinator)"
+    return {"id": row.id, "role": user.role, "scope": scope,
+            "status": row.status, "objective": row.objective,
+            "placements": placements}
+
+
+@app.post("/me/change-requests")
+def create_change_request(req: ChangeRequestIn,
+                          authorization: Optional[str] = Header(None)) -> dict:
+    user = _current_user(authorization)
+    _require_role(user, "instructor", "coordinator")
+    from app.db import SessionLocal
+    from app.models.auth import ChangeRequest
+    with SessionLocal() as session:
+        row = ChangeRequest(user_id=user.id, instructor_id=user.instructor_id,
+                            message=req.message)
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        request_id = row.id
+    audit.record_event("change-request",
+                       f"{user.display_name} requested: {req.message[:120]}",
+                       {"request_id": request_id})
+    return {"id": request_id, "status": "pending"}
+
+
+def _change_request_dict(row, requester_email: str = "") -> dict:
+    return {"id": row.id, "instructor_id": row.instructor_id,
+            "requester": requester_email, "message": row.message,
+            "status": row.status, "result_summary": row.result_summary,
+            "created_at": row.created_at.isoformat() if row.created_at else None}
+
+
+@app.get("/me/change-requests")
+def my_change_requests(authorization: Optional[str] = Header(None)) -> dict:
+    user = _current_user(authorization)
+    from app.db import SessionLocal
+    from app.models.auth import ChangeRequest
+    with SessionLocal() as session:
+        rows = session.query(ChangeRequest).filter(
+            ChangeRequest.user_id == user.id).order_by(
+            ChangeRequest.id.desc()).all()
+        return {"requests": [_change_request_dict(r, user.email) for r in rows]}
+
+
+@app.get("/change-requests")
+def all_change_requests(authorization: Optional[str] = Header(None)) -> dict:
+    user = _current_user(authorization)
+    _require_role(user, "coordinator")
+    from app.db import SessionLocal
+    from app.models.auth import ChangeRequest, User
+    with SessionLocal() as session:
+        rows = session.query(ChangeRequest).order_by(
+            ChangeRequest.id.desc()).all()
+        emails = {u.id: u.email for u in session.query(User).all()}
+        return {"requests": [_change_request_dict(r, emails.get(r.user_id, ""))
+                              for r in rows]}
+
+
+@app.post("/change-requests/{request_id}/decide")
+def decide_change_request(request_id: int, req: DecideRequest,
+                          authorization: Optional[str] = Header(None)) -> dict:
+    """Coordinator decision. 'apply' runs the verified co-pilot loop on the
+    instructor's message; only solver-proven changes are committed, then the
+    schedule is re-published so the instructor sees the result."""
+    global _current_scenario
+    user = _current_user(authorization)
+    _require_role(user, "coordinator")
+    from datetime import datetime, timezone
+    from app.db import SessionLocal
+    from app.models.auth import ChangeRequest
+    with SessionLocal() as session:
+        row = session.query(ChangeRequest).filter(
+            ChangeRequest.id == request_id).first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Change request not found.")
+        if row.status != "pending":
+            raise HTTPException(status_code=409, detail="Already decided.")
+        message, instructor_id = row.message, row.instructor_id
+        if req.action == "reject":
+            row.status = "rejected"
+            row.result_summary = "Rejected by coordinator."
+            row.decided_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            session.commit()
+            return _change_request_dict(row)
+        response = run_copilot(get_current_scenario(), message,
+                               speaker_id=instructor_id)
+        if response.result is not None and response.applied_operations:
+            ops, _notes = validate_operations(
+                [Operation.model_validate(o) if isinstance(o, dict) else o
+                 for o in response.applied_operations], get_current_scenario())
+            _current_scenario = apply_operations(get_current_scenario(), ops)
+            published = _publish_current("cpsat", user.email)
+            row.status = "applied"
+            row.result_summary = (
+                f"{response.summary} Re-solved {published['status']} "
+                f"(penalty {published['objective']}) and re-published as "
+                f"schedule #{published['id']}.")
+        else:
+            row.status = "rejected"
+            row.result_summary = (
+                response.explanation or
+                "The solver could not prove this change; nothing was applied. "
+                + " ".join(response.healing_notes))
+        row.decided_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        session.commit()
+        session.refresh(row)
+        return _change_request_dict(row)
 
 
 # --- intelligence services: sparse matrices, spectral radar, AI tightening ----
