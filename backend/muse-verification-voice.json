@@ -1,0 +1,13 @@
+{
+  "verified": "2026-10-29",
+  "endpoint": "POST /emergency/audio",
+  "asr_model": "muse-voice-transcribe-1.0",
+  "audio_file": "demo voice note (Chen emergency call-in)",
+  "transcript": "Doctor Chen is out all week. Who could cover her sections?",
+  "downstream_parser": {
+    "model": "muse-spark-1.3-contributor",
+    "parser_mode": "muse-spark",
+    "parser_latency_ms": 9250,
+    "note": "Transcript feeds the same parse -> probe -> verify emergency pipeline as typed input (POST /emergency)."
+  }
+}

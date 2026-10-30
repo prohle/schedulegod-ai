@@ -23,6 +23,8 @@ A department's instructors — twenty-six in the loadable department-scale scena
 Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* track. This is the problem we know firsthand.
 
 > **▶ Live demo (no account, no API key needed): https://prohle--schedulegod-ai-ui-web.us-east.modal.run** — the full wizard UI (Import → Intake → Build → Emergency → Intelligence), proxied to the backend API at https://prohle--schedulegod-ai-api.us-east.modal.run (`/docs`, `/health`, `/engines`). Both are scale-to-zero on Modal, so the first request may take a few seconds. Judges can also run everything locally in 2 minutes with `docker compose up` — see [Run it](#run-it).
+>
+> **▶ Demo video (84 seconds, recorded live with Muse Spark): https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4** — any-format import autoclean → Build solve → university scale + dual-engine compare → emergency with solver-verified coverage + agent trace → self-heal → audit trail.
 
 ![Build: visual timetable grid](docs/screenshot-build.png)
 
