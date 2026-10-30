@@ -410,7 +410,7 @@ export function WizardView({ onToast }: WizardViewProps) {
     <div className="w-full">
       {/* Step header: tappable steps (desc on hover/tap) + live KPI chips */}
       <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
-        <div className="no-scrollbar -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5" role="tablist" aria-label="Wizard steps">
+        <div className="no-scrollbar -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5" role="tablist" aria-label="Express steps">
           {STEPS.map((s, idx) => {
             const done = idx < currentIndex;
             const active = idx === currentIndex;

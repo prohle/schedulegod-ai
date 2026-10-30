@@ -12,9 +12,9 @@ export type ActiveView = "wizard" | "intelligence" | "schedule";
 const VIEWS = [
   {
     id: "wizard" as const,
-    label: "Wizard",
+    label: "Express",
     icon: Zap,
-    desc: "Step-by-step: Import → Intake → Build → Review → Emergency",
+    desc: "Guided — step by step: Import → Intake → Build → Review → Emergency",
   },
   {
     id: "schedule" as const,
@@ -24,9 +24,9 @@ const VIEWS = [
   },
   {
     id: "intelligence" as const,
-    label: "Insights",
+    label: "Full",
     icon: Brain,
-    desc: "Spectral radar · 4-course audit · solver · verified tightening",
+    desc: "Advanced — spectral radar · 4-course audit · solver · verified tightening",
   },
 ];
 
@@ -65,14 +65,6 @@ export function Sidebar({ activeView, setActiveView }: NavProps) {
           );
         })}
       </nav>
-      <div className="shrink-0 p-2">
-        <Tip label="Live backend · Postgres 18 · every answer solver-verified" side="right" className="w-full">
-          <div className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-            <span className="text-[10px] font-bold">Live</span>
-          </div>
-        </Tip>
-      </div>
     </aside>
   );
 }

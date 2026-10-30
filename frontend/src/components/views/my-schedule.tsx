@@ -114,7 +114,7 @@ export function MyScheduleView({ user, onToast }: {
               {mine ? `${mine.scope} · ${mine.status} · penalty ${mine.objective}` : "Nothing published yet"}
             </p>
           </div>
-          <InfoTip text="The coordinator builds the term in the Wizard, then publishes it here. You only see your own sections (instructor) or your cohort's courses (student)." />
+          <InfoTip text="The coordinator builds the term in Express, then publishes it here. You only see your own sections (instructor) or your cohort's courses (student)." />
         </div>
         {user.role === "coordinator" && (
           <button disabled={busy} onClick={publish}
@@ -127,7 +127,7 @@ export function MyScheduleView({ user, onToast }: {
       {unpublished && (
         <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           No schedule published yet.
-          {user.role === "coordinator" ? " Build it in the Wizard, then publish here." : " Ask your coordinator to publish it."}
+          {user.role === "coordinator" ? " Build it in Express, then publish here." : " Ask your coordinator to publish it."}
         </div>
       )}
 

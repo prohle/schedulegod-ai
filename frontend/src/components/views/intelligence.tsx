@@ -162,8 +162,8 @@ export function IntelligenceView({ onToast }: IntelligenceViewProps) {
       <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 sm:px-4">
         <div className="flex items-center gap-2">
           <span className="rounded-xl bg-primary/10 p-2 text-primary"><Network className="h-4 w-4" /></span>
-          <h2 className="font-extrabold text-foreground">Insights</h2>
-          <InfoTip text="Live from the backend: spectral radar, 4-course audit, utilization, solver, and AI-proposed fixes the solver verifies first." />
+          <h2 className="font-extrabold text-foreground">Full</h2>
+          <InfoTip text="Advanced workspace: spectral radar, 4-course audit, utilization, solver, and AI-proposed fixes the solver verifies first." />
         </div>
         <div className="flex items-center gap-2">
           <Button variant="primary" size="sm" onClick={() => { runSolve(); onToast("Running CP-SAT solve…", "info"); }} disabled={busy !== null} className="flex items-center gap-1.5">

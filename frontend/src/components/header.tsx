@@ -45,13 +45,6 @@ export function Header({ user, onLogout }: { user?: AuthUser | null; onLogout?: 
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <Tip label="Backend connected — data below is live" side="bottom">
-            <span className="inline-flex h-8 cursor-help items-center gap-1.5 rounded-full bg-emerald-50 px-2 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200/70">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              <span className="hidden sm:inline">Live</span>
-            </span>
-          </Tip>
-
           {sc && (
             <Tip label={`${sc.name} — ${sc.instructors.length} instructors · ${sc.sections.length} sections · ${sc.cohorts.length} cohorts · ${sc.programs?.length ?? 1} programs · ${sc.rooms.length} rooms`} side="bottom">
               <span className="hidden h-8 cursor-help items-center rounded-full bg-muted px-2.5 text-[11px] font-medium text-foreground ring-1 ring-border md:inline-flex">
