@@ -2,7 +2,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](./backend)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg)](./frontend)
-[![Tests](https://img.shields.io/badge/tests-30%20passing-brightgreen.svg)](#run-it)
+[![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen.svg)](#run-it)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](./docker-compose.yml)
 
 # ScheduleGod AI — Agentic Constraint Solver & Timetable Infrastructure

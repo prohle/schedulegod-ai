@@ -138,10 +138,10 @@ function Section({ title, icon, children, tone = "default" }: {
     sky: "bg-sky-50 border-sky-200",
   };
   return (
-    <section className={cn("border rounded-lg p-4", tones[tone])}>
-      <div className="flex items-center gap-2 mb-3">
-        {icon}
-        <h3 className="font-bold text-sm text-foreground">{title}</h3>
+    <section className={cn("border rounded-xl p-4 shadow-sm", tones[tone])}>
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className="p-1.5 rounded-lg bg-white/80 border border-black/5 shadow-sm">{icon}</span>
+        <h3 className="font-extrabold text-sm text-foreground tracking-tight">{title}</h3>
       </div>
       {children}
     </section>
@@ -178,10 +178,10 @@ export function WizardView({ onToast }: WizardViewProps) {
   const { margins, spectral, solveResult, setSolveResult, busy, error, runSolve, reload } = useIntelligence();
   const [engine, setEngine] = useState<string>("cpsat");
   const [lastEngine, setLastEngine] = useState<string>("cpsat");
-  const [engineList, setEngineList] = useState<{ id: string; label: string; description: string }[]>([
-    { id: "cpsat", label: "OR-Tools CP-SAT", description: "" },
-    { id: "ours", label: "ScheduleGod solver (ours)", description: "" },
-    { id: "greedy", label: "Greedy descent (ours, fast)", description: "" },
+  const [engineList, setEngineList] = useState<{ id: string; label: string; kind?: string; description: string }[]>([
+    { id: "cpsat", label: "OR-Tools CP-SAT", kind: "industrial", description: "Google's C++ constraint solver — proven optima in milliseconds." },
+    { id: "ours", label: "ScheduleGod solver (ours)", kind: "ai-crafted", description: "From-scratch pure-Python solver built for this problem." },
+    { id: "greedy", label: "Greedy descent (ours, fast)", kind: "ai-crafted", description: "First descent only — shows what the optimization phases buy." },
   ]);
   useEffect(() => {
     fetch("/api/engines")
@@ -191,7 +191,7 @@ export function WizardView({ onToast }: WizardViewProps) {
   }, []);
   const [compare, setCompare] = useState<CompareResult | null>(null);
   const [compareBusy, setCompareBusy] = useState(false);
-  const { scenario: currentScenario } = useScenario();
+  const { scenario: currentScenario, refetch: refetchScenario } = useScenario();
   const [step, setStep] = useState<StepId>("import");
   const [importText, setImportText] = useState(SAMPLE_DUMP);
   const [files, setFiles] = useState<File[]>([]);
@@ -302,6 +302,7 @@ export function WizardView({ onToast }: WizardViewProps) {
         // The intelligence panel must reflect the world we just imported,
         // not the seed it loaded when the wizard mounted.
         await reload();
+        await refetchScenario();
       } finally {
         setIngestBusy(false);
       }
@@ -329,6 +330,7 @@ export function WizardView({ onToast }: WizardViewProps) {
     try {
       const sc = await post(`/api/scenario/${kind}`, {});
       await reload();
+      await refetchScenario();
       solveWith(engine);
       onToast(
         kind === "reset"
@@ -432,6 +434,39 @@ export function WizardView({ onToast }: WizardViewProps) {
         </div>
         <div className="text-sm text-muted-foreground">
           <span className="font-medium">Step {currentIndex + 1} of {STEPS.length}</span> — {STEPS.find((s) => s.id === step)?.desc}
+        </div>
+        {/* Command strip: the institution, the engine, the proof, the guarantee */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
+          {[
+            {
+              label: "Institution",
+              value: currentScenario
+                ? `${currentScenario.instructors.length} instructors · ${currentScenario.sections.length} sections`
+                : "—",
+              sub: currentScenario ? `${currentScenario.cohorts.length} cohorts · ${currentScenario.programs.length} programs · ${currentScenario.rooms.length} rooms` : "loading…",
+            },
+            {
+              label: "Solver engine",
+              value: engineList.find((e) => e.id === engine)?.label ?? engine,
+              sub: `${engineList.length} registered · plug-and-play`,
+            },
+            {
+              label: "Last proof",
+              value: solveResult ? `${solveResult.status.toUpperCase()} · ${solveResult.solve_time_ms} ms` : "not solved yet",
+              sub: solveResult ? `preference penalty ${solveResult.objective ?? "—"} · ${engineList.find((e) => e.id === lastEngine)?.label ?? lastEngine}` : "run a solve in Build",
+            },
+            {
+              label: "Four-course guarantee",
+              value: margins ? `${margins.cohorts.filter((c) => c.ok).length}/${margins.cohorts.length} cohorts` : "—",
+              sub: margins ? (margins.all_ok ? "C39 holds for every cohort" : "shortfall — tightener can repair") : "audited in Review",
+            },
+          ].map((kpi) => (
+            <div key={kpi.label} className="rounded-xl border border-border bg-gradient-to-br from-white to-slate-50 px-3 py-2 shadow-sm">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{kpi.label}</div>
+              <div className="text-[13px] font-extrabold text-foreground leading-tight mt-0.5 truncate" title={kpi.value}>{kpi.value}</div>
+              <div className="text-[10px] text-muted-foreground truncate" title={kpi.sub}>{kpi.sub}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -674,23 +709,36 @@ export function WizardView({ onToast }: WizardViewProps) {
                 The OR-Tools CP-SAT solver assigns every section an instructor, timeslot set, and room under all
                 hard constraints — capacity, loads, cohort conflicts, equipment, walk distances.
               </p>
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="text-xs font-semibold text-emerald-900">Engine:</span>
-                {engineList.map((e) => (
-                  <button
-                    key={e.id}
-                    onClick={() => setEngine(e.id)}
-                    title={e.description}
-                    className={cn("px-2.5 py-1 rounded-full text-xs font-semibold border",
-                      engine === e.id ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-emerald-200 text-emerald-800")}
-                  >
-                    {e.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-semibold text-emerald-900">Engine — plug-and-play, one contract:</span>
                 <Button variant="outline" size="sm" onClick={runCompare} disabled={compareBusy} className="ml-auto flex items-center gap-1.5">
                   {compareBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                   Compare side by side
                 </Button>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-2 mb-3">
+                {engineList.map((e) => (
+                  <button
+                    key={e.id}
+                    onClick={() => setEngine(e.id)}
+                    className={cn("text-left rounded-xl border p-3 transition-all",
+                      engine === e.id
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/25"
+                        : "bg-white border-emerald-200 hover:border-emerald-400 hover:shadow-sm")}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-extrabold leading-tight">{e.label}</span>
+                      <span className={cn("text-[8px] font-bold uppercase tracking-wide px-1 py-0.5 rounded",
+                        engine === e.id ? "bg-white/25" : "bg-muted text-muted-foreground")}>
+                        {e.kind ?? "engine"}
+                      </span>
+                    </span>
+                    <span className={cn("block text-[10px] leading-snug mt-1",
+                      engine === e.id ? "text-emerald-50" : "text-muted-foreground")}>
+                      {e.description}
+                    </span>
+                  </button>
+                ))}
               </div>
               <Button variant="primary" size="md" onClick={() => { solveWith(engine); onToast(engine === "ours" ? "Running ScheduleGod solver…" : "Running CP-SAT…", "info"); }} disabled={busy !== null} className="flex items-center gap-2">
                 {busy === "solve" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}

@@ -35,8 +35,8 @@ function Block({ placement, changed, compact }: {
   return (
     <div
       className={cn(
-        "h-full w-full rounded-md border px-1.5 py-1 flex flex-col justify-between overflow-hidden transition-all",
-        changed && "ring-2 ring-amber-400 ring-offset-1"
+        "h-full w-full rounded-md border px-1.5 py-1 flex flex-col justify-between overflow-hidden transition-all duration-150 hover:shadow-md hover:-translate-y-px hover:brightness-[1.03]",
+        changed && "ring-2 ring-amber-400 ring-offset-1 shadow-md"
       )}
       style={colors(placement.course_id)}
       title={`${placement.course_code} · ${placement.instructor_name} · ${placement.room_name}`}
@@ -95,19 +95,19 @@ export function TimetableGrid({ placements, changed, compact }: {
 
   return (
     <div className="space-y-2">
-      <div className="overflow-x-auto border border-border rounded-lg bg-card">
+      <div className="overflow-x-auto border border-border rounded-xl bg-card shadow-sm">
         <div
-          className="min-w-[520px] grid gap-px bg-border p-px"
+          className="min-w-[520px] grid gap-px bg-border p-px rounded-xl overflow-hidden"
           style={{
             gridTemplateColumns: "56px repeat(5, minmax(0, 1fr))",
-            gridTemplateRows: `24px repeat(4, ${compact ? "62px" : "78px"})`,
+            gridTemplateRows: `26px repeat(4, ${compact ? "62px" : "78px"})`,
           }}
         >
-          <div className="bg-muted/60" style={{ gridColumn: 1, gridRow: 1 }} />
+          <div className="bg-slate-100" style={{ gridColumn: 1, gridRow: 1 }} />
           {DAY_NAMES.map((day, i) => (
             <div
               key={day}
-              className="bg-muted/60 flex items-center justify-center text-[11px] font-bold text-muted-foreground"
+              className="bg-slate-100 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-widest text-slate-500"
               style={{ gridColumn: i + 2, gridRow: 1 }}
             >
               {day}

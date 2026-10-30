@@ -51,10 +51,10 @@ export function Sidebar({ activeView, setActiveView }: SidebarProps) {
               key={view.id}
               onClick={() => setActiveView(view.id)}
               className={cn(
-                "w-full justify-start text-xs gap-2 px-2 py-2.5 rounded-lg transition-colors flex",
+                "w-full justify-start text-xs gap-2 px-2 py-2.5 rounded-lg transition-all flex border-l-4",
                 isActive
-                  ? "bg-primary/10 text-primary border border-primary/30 shadow-sm"
-                  : "hover:bg-muted text-foreground"
+                  ? "bg-gradient-to-r from-sky-50 to-indigo-50 text-primary border border-primary/30 border-l-primary shadow-sm"
+                  : "hover:bg-muted text-foreground border-transparent"
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -72,8 +72,12 @@ export function Sidebar({ activeView, setActiveView }: SidebarProps) {
         })}
       </nav>
 
-      <div className="p-3 border-t border-border text-[10px] text-muted-foreground shrink-0">
-        Guided (simple) vs Intelligence (advanced) — both CP-SAT-verified, live from the backend.
+      <div className="p-3 border-t border-border text-[10px] text-muted-foreground shrink-0 space-y-1.5">
+        <div className="flex items-center gap-1.5 font-semibold text-emerald-700">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          Live backend · Postgres 18
+        </div>
+        <p>Guided (simple) vs Intelligence (advanced) — both solver-verified, live from the backend.</p>
       </div>
     </aside>
   );
