@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CalendarDays, Check, Send, X } from "lucide-react";
 import { authFetch, type AuthUser } from "@/lib/auth";
 import { TimetableGrid } from "@/components/timetable-grid";
+import { InfoTip } from "@/components/ui/tip";
 import type { Placement } from "@/types";
 
 interface MineResponse {
@@ -99,70 +100,68 @@ export function MyScheduleView({ user, onToast }: {
   }
 
   return (
-    <div className="space-y-4 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-sm font-extrabold flex items-center gap-2">
-            <CalendarDays className="w-4 h-4" />
-            {user.role === "student" ? "My Cohort Timetable"
-              : user.role === "instructor" ? "My Teaching Schedule"
-              : "Published Timetable & Requests"}
-          </h2>
-          <p className="text-[11px] text-muted-foreground">
-            {mine ? `${mine.scope} · solve ${mine.status} · penalty ${mine.objective}`
-                  : "The coordinator builds the term, then publishes it here."}
-          </p>
+    <div className="mx-auto w-full space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-extrabold tracking-tight">
+              <CalendarDays className="w-4 h-4 text-primary" />
+              {user.role === "student" ? "My Cohort Timetable"
+                : user.role === "instructor" ? "My Teaching Schedule"
+                : "Published Timetable"}
+            </h2>
+            <p className="text-[11px] text-muted-foreground">
+              {mine ? `${mine.scope} · ${mine.status} · penalty ${mine.objective}` : "Nothing published yet"}
+            </p>
+          </div>
+          <InfoTip text="The coordinator builds the term in the Wizard, then publishes it here. You only see your own sections (instructor) or your cohort's courses (student)." />
         </div>
         {user.role === "coordinator" && (
           <button disabled={busy} onClick={publish}
-                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50">
-            <Send className="w-3.5 h-3.5" /> Publish current schedule
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/25 transition-all active:scale-[0.98] disabled:opacity-50">
+            <Send className="w-3.5 h-3.5" /> Publish
           </button>
         )}
       </div>
 
       {unpublished && (
-        <div className="border border-amber-300 bg-amber-50 text-amber-900 rounded-xl p-4 text-sm">
-          No schedule has been published yet.
-          {user.role === "coordinator"
-            ? " Use the Guided Wizard to build the term, then publish it from here."
-            : " Ask your coordinator to build and publish the term schedule."}
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          No schedule published yet.
+          {user.role === "coordinator" ? " Build it in the Wizard, then publish here." : " Ask your coordinator to publish it."}
         </div>
       )}
 
       {mine && mine.placements.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-3">
+        <div className="rounded-2xl border border-border bg-card p-2.5 shadow-sm sm:p-3">
           <TimetableGrid placements={mine.placements} />
         </div>
       )}
       {mine && mine.placements.length === 0 && (
-        <div className="border border-border bg-card rounded-xl p-4 text-sm">
+        <div className="rounded-2xl border border-border bg-card p-4 text-sm shadow-sm">
           Nothing assigned to you in the published schedule yet.
         </div>
       )}
 
       {(user.role === "instructor") && (
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wide">Request a change</h3>
-          <p className="text-[11px] text-muted-foreground">
-            Plain language, like you would email it. The coordinator reviews it;
-            applying it re-runs the solver-verified co-pilot and re-publishes —
-            your grid above updates only if the change is proven feasible.
-          </p>
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-xs font-bold tracking-wide uppercase">Request a change</h3>
+            <InfoTip text="Plain language, like you'd email it. The coordinator reviews it; applying re-runs the verified solver and re-publishes — your grid updates only if the change is proven feasible." />
+          </div>
           <textarea
-            className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background min-h-20"
-            placeholder='e.g. "I can&apos;t teach Fridays next term." or "I&apos;d prefer morning sections."'
+            className="min-h-20 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            placeholder='e.g. "I can&apos;t teach Fridays."'
             value={message} onChange={(e) => setMessage(e.target.value)}
           />
           <button disabled={busy || !message.trim()} onClick={sendRequest}
-                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50">
-            <Send className="w-3.5 h-3.5" /> Send to coordinator
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/25 transition-all active:scale-[0.98] disabled:opacity-50">
+            <Send className="w-3.5 h-3.5" /> Send
           </button>
         </div>
       )}
 
       {requests.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+        <div className="space-y-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h3 className="text-xs font-bold uppercase tracking-wide">
             {user.role === "coordinator" ? "Change requests" : "My change requests"}
           </h3>
@@ -184,11 +183,11 @@ export function MyScheduleView({ user, onToast }: {
               {user.role === "coordinator" && r.status === "pending" && (
                 <div className="flex gap-1 shrink-0">
                   <button disabled={busy} onClick={() => decide(r.id, "apply")}
-                          className="inline-flex items-center gap-1 bg-emerald-600 text-white rounded px-2 py-1 text-[11px] font-semibold disabled:opacity-50">
+                          className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-all active:scale-[0.97] disabled:opacity-50">
                     <Check className="w-3 h-3" /> Apply (verified)
                   </button>
                   <button disabled={busy} onClick={() => decide(r.id, "reject")}
-                          className="inline-flex items-center gap-1 bg-muted rounded px-2 py-1 text-[11px] font-semibold disabled:opacity-50">
+                          className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-muted px-2.5 py-1.5 text-[11px] font-semibold transition-all active:scale-[0.97] disabled:opacity-50">
                     <X className="w-3 h-3" /> Reject
                   </button>
                 </div>

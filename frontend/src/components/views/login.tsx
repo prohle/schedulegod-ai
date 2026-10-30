@@ -46,40 +46,41 @@ export function LoginView({ onLogin, onToast }: {
   }
 
   return (
-    <div className="min-h-screen w-full bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-4">
-        <div className="text-center space-y-2">
-          <div className="inline-flex p-3 bg-gradient-to-tr from-sky-500 to-indigo-600 rounded-2xl text-white shadow-lg">
+    <div className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-background p-4">
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_30rem_at_50%_-10%,rgba(99,102,241,0.16),transparent),radial-gradient(40rem_24rem_at_90%_110%,rgba(14,165,233,0.12),transparent)]" />
+      <div className="animate-rise relative w-full max-w-md space-y-4">
+        <div className="space-y-2 text-center">
+          <div className="inline-flex rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 p-3 text-white shadow-lg shadow-indigo-500/25">
             <GraduationCap className="w-7 h-7" />
           </div>
-          <h1 className="text-xl font-extrabold">ScheduleGod AI</h1>
-          <p className="text-xs text-muted-foreground">
-            Sign in to your timetable. Every schedule here is solver-proven.
+          <h1 className="text-xl font-extrabold tracking-tight">ScheduleGod AI</h1>
+          <p className="text-xs text-muted-foreground" title="Every schedule here is solver-proven — the AI proposes, the solver verifies.">
+            Solver-proven timetables
           </p>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3 shadow-sm">
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-xl shadow-slate-900/5">
           <div className="space-y-2">
             <input
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
-              placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+              className="min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)}
             />
             <input
               type="password"
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
-              placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
+              className="min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Password" autoComplete={registering ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)}
             />
             {registering && (
               <div className="flex gap-2">
-                <select className="border border-border rounded-lg px-2 py-2 text-sm bg-background"
+                <select className="min-h-11 rounded-xl border border-border bg-background px-2 py-2 text-sm"
                         value={role} onChange={(e) => setRole(e.target.value)}>
                   <option value="instructor">Instructor</option>
                   <option value="student">Student</option>
                   <option value="coordinator">Coordinator</option>
                 </select>
                 <input
-                  className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-background"
-                  placeholder={role === "student" ? "Cohort id (e.g. cs2025)" : "Instructor id (e.g. chen)"}
+                  className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  placeholder={role === "student" ? "Cohort id (cs2025)" : "Instructor id (chen)"}
                   value={linkId} onChange={(e) => setLinkId(e.target.value)}
                 />
               </div>
@@ -94,27 +95,30 @@ export function LoginView({ onLogin, onToast }: {
                   cohort_id: role === "student" ? linkId || undefined : undefined,
                 })
               : submit("/api/auth/login", { email, password })}
-            className="w-full inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/25 transition-all active:scale-[0.99] disabled:opacity-50"
           >
             {registering ? <UserPlus className="w-4 h-4" /> : <KeyRound className="w-4 h-4" />}
             {registering ? "Create account" : "Sign in"}
           </button>
           <button onClick={() => setRegistering(!registering)}
-                  className="w-full text-[11px] text-muted-foreground underline">
+                  className="min-h-9 w-full text-[11px] text-muted-foreground underline underline-offset-2">
             {registering ? "Already have an account? Sign in" : "New here? Create an account"}
           </button>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-4 space-y-2 shadow-sm">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            One-click demo accounts (password: demo1234)
+        <div className="space-y-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+            Demo — one tap, no password
           </p>
           {DEMO.map((d) => (
-            <button key={d.email} disabled={busy}
+            <button key={d.email} disabled={busy} title={d.hint}
                     onClick={() => submit("/api/auth/login", { email: d.email, password: "demo1234" })}
-                    className="w-full text-left border border-border rounded-lg px-3 py-2 hover:bg-muted disabled:opacity-50">
-              <span className="block text-sm font-semibold">{d.label}</span>
-              <span className="block text-[11px] text-muted-foreground">{d.hint}</span>
+                    className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-border px-3 py-2 text-left transition-all hover:border-primary/40 hover:bg-accent active:scale-[0.99] disabled:opacity-50">
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{d.label}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{d.hint}</span>
+              </span>
+              <span className="shrink-0 text-muted-foreground">→</span>
             </button>
           ))}
         </div>

@@ -17,10 +17,10 @@ const icons = {
 };
 
 const colors = {
-  info: "bg-slate-900 text-white border-slate-700",
-  success: "bg-green-900 text-white border-green-700",
-  warning: "bg-amber-900 text-white border-amber-700",
-  error: "bg-red-900 text-white border-red-700",
+  info: "bg-slate-900 text-white ring-white/10",
+  success: "bg-emerald-950 text-white ring-emerald-400/20",
+  warning: "bg-amber-950 text-white ring-amber-400/20",
+  error: "bg-red-950 text-white ring-red-400/20",
 };
 
 const iconColors = {
@@ -35,19 +35,22 @@ export function Toast({ message, type = "info", onClose }: ToastProps) {
   return (
     <div
       className={cn(
-        "fixed bottom-10 right-5 px-3 py-2 rounded-lg shadow-xl border text-xs font-medium transform transition-all duration-300 pointer-events-none z-50 flex items-center space-x-2",
+        // Above the mobile tab bar; bottom-right sheet on larger screens.
+        "fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-[80] animate-pop",
+        "sm:inset-x-auto sm:right-5 sm:bottom-5 sm:max-w-sm",
+        "flex items-center gap-2 rounded-2xl px-3.5 py-2.5 text-[13px] font-medium shadow-2xl ring-1",
         colors[type]
       )}
       role="alert"
     >
-      <Icon className={cn("w-4 h-4 flex-shrink-0", iconColors[type])} />
-      <span>{message}</span>
+      <Icon className={cn("h-4 w-4 shrink-0", iconColors[type])} />
+      <span className="flex-1 leading-snug">{message}</span>
       <button
         onClick={onClose}
-        className="ml-2 p-0.5 rounded hover:bg-white/10 transition-colors"
+        className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
         aria-label="Dismiss"
       >
-        <X className="w-3 h-3" />
+        <X className="h-3.5 w-3.5" />
       </button>
     </div>
   );

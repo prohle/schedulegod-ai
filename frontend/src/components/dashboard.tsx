@@ -1,38 +1,18 @@
 "use client";
 
-// Dashboard shell: login gate + role-aware interfaces. The Guided wizard
-// (coordinator), Intelligence view, and My Schedule (per-role published
-// timetable) all drive the Python backend — no in-browser solver, no fake
-// data anywhere in this tree.
+// App shell: login gate + role-aware views.
+// Desktop gets an icon rail; mobile gets a bottom tab bar. No banner copy —
+// each view carries its own compact header.
 
 import { useEffect, useState } from "react";
-import { Zap, Brain, CalendarDays } from "lucide-react";
 import { Toast } from "@/components/ui/toast";
 import { Header } from "./header";
-import { Sidebar, type ActiveView } from "./sidebar";
+import { Sidebar, MobileNav, type ActiveView } from "./sidebar";
 import { WizardView } from "./views/wizard";
 import { IntelligenceView } from "./views/intelligence";
 import { LoginView } from "./views/login";
 import { MyScheduleView } from "./views/my-schedule";
 import { authFetch, clearSession, getStoredUser, type AuthUser } from "@/lib/auth";
-
-const VIEW_META: Record<ActiveView, { label: string; desc: string; icon: typeof Zap }> = {
-  wizard: {
-    label: "Guided Wizard",
-    icon: Zap,
-    desc: "Step-by-step: Import → Intake → Build → Review → Emergency",
-  },
-  schedule: {
-    label: "My Schedule",
-    icon: CalendarDays,
-    desc: "Published timetable for your role · change requests",
-  },
-  intelligence: {
-    label: "Intelligence",
-    icon: Brain,
-    desc: "Spectral radar · C39 audit · CP-SAT · verified tightening",
-  },
-};
 
 export function Dashboard() {
   const [activeView, setActiveView] = useState<ActiveView>("wizard");
@@ -78,7 +58,12 @@ export function Dashboard() {
   }
 
   if (!authReady) {
-    return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
+    return (
+      <div className="flex min-h-dvh items-center justify-center gap-2 text-sm text-muted-foreground">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Loading…
+      </div>
+    );
   }
   if (!user) {
     return (
@@ -89,27 +74,23 @@ export function Dashboard() {
     );
   }
 
-  const meta = VIEW_META[activeView];
-  const Icon = meta.icon;
-
   return (
-    <div className="h-screen w-screen bg-background font-sans text-foreground flex flex-col overflow-hidden no-select">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-background font-sans text-foreground no-select">
       <Header user={user} onLogout={handleLogout} />
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <Sidebar activeView={activeView} setActiveView={setActiveView} />
-        <main className="flex-1 min-h-0 bg-muted/30 flex flex-col relative overflow-hidden">
-          <div className="bg-muted/30 border-b border-border px-4 py-2 shrink-0 flex items-center gap-2 text-xs">
-            <Icon className="w-4 h-4 text-primary" />
-            <span className="font-bold text-foreground">{meta.label}</span>
-            <span className="text-muted-foreground hidden sm:inline">{meta.desc}</span>
-          </div>
-          <div className="flex-1 min-h-0 bg-background p-3 overflow-y-auto custom-scrollbar">
-            {activeView === "wizard" && <WizardView onToast={showToast} />}
-            {activeView === "schedule" && <MyScheduleView user={user} onToast={showToast} />}
-            {activeView === "intelligence" && <IntelligenceView onToast={showToast} />}
+        <main className="relative min-w-0 flex-1 overflow-hidden bg-muted/30">
+          {/* Clearance for the fixed mobile tab bar (removed on lg). */}
+          <div className="custom-scrollbar h-full overflow-y-auto p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4">
+            <div key={activeView} className="animate-rise mx-auto w-full max-w-6xl">
+              {activeView === "wizard" && <WizardView onToast={showToast} />}
+              {activeView === "schedule" && <MyScheduleView user={user} onToast={showToast} />}
+              {activeView === "intelligence" && <IntelligenceView onToast={showToast} />}
+            </div>
           </div>
         </main>
       </div>
+      <MobileNav activeView={activeView} setActiveView={setActiveView} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );

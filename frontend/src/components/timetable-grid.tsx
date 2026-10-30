@@ -95,22 +95,23 @@ export function TimetableGrid({ placements, changed, compact }: {
 
   return (
     <div className="space-y-2">
-      <div className="overflow-x-auto border border-border rounded-xl bg-card shadow-sm">
+      <div className="custom-scrollbar overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
         <div
-          className="min-w-[520px] grid gap-px bg-border p-px rounded-xl overflow-hidden"
+          className="grid min-w-[430px] gap-px overflow-hidden rounded-2xl bg-border p-px sm:min-w-[520px]"
           style={{
-            gridTemplateColumns: "56px repeat(5, minmax(0, 1fr))",
-            gridTemplateRows: `26px repeat(4, ${compact ? "62px" : "78px"})`,
+            gridTemplateColumns: "44px repeat(5, minmax(0, 1fr))",
+            gridTemplateRows: `26px repeat(4, ${compact ? "60px" : "76px"})`,
           }}
         >
           <div className="bg-slate-100" style={{ gridColumn: 1, gridRow: 1 }} />
           {DAY_NAMES.map((day, i) => (
             <div
               key={day}
-              className="bg-slate-100 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-widest text-slate-500"
+              className="flex items-center justify-center bg-slate-100 px-0.5 text-[10px] font-extrabold tracking-widest text-slate-500 uppercase"
               style={{ gridColumn: i + 2, gridRow: 1 }}
             >
-              {day}
+              <span className="sm:hidden">{day.slice(0, 3)}</span>
+              <span className="hidden sm:inline">{day}</span>
             </div>
           ))}
 

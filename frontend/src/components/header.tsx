@@ -1,12 +1,12 @@
 "use client";
 
-// Command header: brand + live institution scale. Polls the backend's
-// current scenario so the strip always reflects the world being scheduled
-// (story seed, department, university, or an ingested institution).
+// Compact glass header: brand, live scale, user. Detail hides in tooltips.
+
 import { useEffect, useState } from "react";
 import { GraduationCap, LogOut } from "lucide-react";
 import type { Scenario } from "@/types";
 import type { AuthUser } from "@/lib/auth";
+import { Tip } from "@/components/ui/tip";
 
 export function Header({ user, onLogout }: { user?: AuthUser | null; onLogout?: () => void }) {
   const [sc, setSc] = useState<Scenario | null>(null);
@@ -23,47 +23,62 @@ export function Header({ user, onLogout }: { user?: AuthUser | null; onLogout?: 
   }, []);
 
   return (
-    <header className="bg-card/90 backdrop-blur border-b border-border px-4 py-2 flex items-center justify-between shrink-0 text-xs shadow-sm">
-      <div className="flex items-center space-x-3">
-        <div className="p-2 bg-gradient-to-tr from-sky-500 via-indigo-600 to-violet-600 rounded-lg text-white shadow-md shadow-indigo-500/25">
-          <GraduationCap className="w-4 h-4" />
+    <header className="glass sticky top-0 z-40 shrink-0 border-b border-border">
+      <div className="flex min-h-14 items-center justify-between gap-2 px-3 py-2 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="shrink-0 rounded-xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-violet-600 p-2 text-white shadow-md shadow-indigo-500/25">
+            <GraduationCap className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 leading-tight">
+            <h1 className="flex items-center gap-1.5 truncate text-sm font-extrabold tracking-tight text-foreground">
+              ScheduleGod AI
+              <Tip label="Every schedule is solver-proven — the AI proposes, the solver verifies. No guesswork." side="bottom">
+                <span className="hidden cursor-help rounded-md bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700 ring-1 ring-indigo-200/70 min-[420px]:inline-block">
+                  solver-proven
+                </span>
+              </Tip>
+            </h1>
+            <p className="hidden truncate text-[10px] text-muted-foreground sm:block">
+              Scheduling co-pilot
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-extrabold text-sm text-foreground tracking-tight flex items-center gap-2">
-            ScheduleGod AI
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-700 border border-sky-200">
-              solver-proven
+
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <Tip label="Backend connected — data below is live" side="bottom">
+            <span className="inline-flex h-8 cursor-help items-center gap-1.5 rounded-full bg-emerald-50 px-2 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200/70">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span className="hidden sm:inline">Live</span>
             </span>
-          </h1>
-          <p className="text-[10px] text-muted-foreground">
-            Agentic scheduling co-pilot · Meta AI constraint parsing, solver-verified timetables
-          </p>
+          </Tip>
+
+          {sc && (
+            <Tip label={`${sc.name} — ${sc.instructors.length} instructors · ${sc.sections.length} sections · ${sc.cohorts.length} cohorts · ${sc.programs?.length ?? 1} programs · ${sc.rooms.length} rooms`} side="bottom">
+              <span className="hidden h-8 cursor-help items-center rounded-full bg-muted px-2.5 text-[11px] font-medium text-foreground ring-1 ring-border md:inline-flex">
+                {sc.instructors.length} faculty · {sc.sections.length} sections
+              </span>
+            </Tip>
+          )}
+
+          {user && (
+            <>
+              <Tip label={`${user.email} · ${user.role}`} side="bottom">
+                <span className="flex h-8 w-8 cursor-help items-center justify-center rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-[11px] font-extrabold text-white shadow-sm">
+                  {(user.display_name || user.email).slice(0, 1).toUpperCase()}
+                </span>
+              </Tip>
+              <Tip label="Sign out" side="bottom">
+                <button
+                  onClick={onLogout}
+                  aria-label="Sign out"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground ring-1 ring-border transition-all hover:bg-accent hover:text-accent-foreground active:scale-95"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </Tip>
+            </>
+          )}
         </div>
-      </div>
-      <div className="hidden md:flex items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          Live backend
-        </span>
-        {sc && (
-          <span className="px-2 py-1 rounded-full bg-muted border border-border font-medium text-foreground" title={sc.name}>
-            {sc.instructors.length} instructors · {sc.sections.length} sections · {sc.cohorts.length} cohorts · {sc.programs?.length ?? 1} programs
-          </span>
-        )}
-        <span className="text-[10px] text-muted-foreground hidden lg:block">
-          Every answer is solver-proven — no guesswork
-        </span>
-        {user && (
-          <span className="inline-flex items-center gap-2">
-            <span className="px-2 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold" title={user.email}>
-              {user.display_name} · {user.role}
-            </span>
-            <button onClick={onLogout} title="Sign out"
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border font-semibold hover:bg-accent">
-              <LogOut className="w-3 h-3" /> Sign out
-            </button>
-          </span>
-        )}
       </div>
     </header>
   );

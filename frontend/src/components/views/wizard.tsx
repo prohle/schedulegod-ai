@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { InfoTip, Tip } from "@/components/ui/tip";
 import { TimetableGrid, changedSections } from "@/components/timetable-grid";
 import { useIntelligence, useScenario } from "@/hooks/use-api";
 import {
@@ -101,8 +102,8 @@ function placementSlot(p: Placement): string {
 
 function PlacementsTable({ placements, dense }: { placements: Placement[]; dense?: boolean }) {
   return (
-    <div className="overflow-x-auto border border-border rounded-lg">
-      <table className="w-full text-xs">
+    <div className="overflow-x-auto border border-border rounded-xl">
+      <table className="w-full min-w-[540px] text-xs">
         <thead className="bg-muted text-muted-foreground">
           <tr>
             <th className="text-left px-3 py-1.5 font-semibold">Course</th>
@@ -128,8 +129,8 @@ function PlacementsTable({ placements, dense }: { placements: Placement[]; dense
   );
 }
 
-function Section({ title, icon, children, tone = "default" }: {
-  title: string; icon: React.ReactNode; children: React.ReactNode;
+function Section({ title, icon, hint, children, tone = "default" }: {
+  title: string; icon: React.ReactNode; hint?: string; children: React.ReactNode;
   tone?: "default" | "primary" | "emerald" | "amber" | "sky";
 }) {
   const tones = {
@@ -138,10 +139,11 @@ function Section({ title, icon, children, tone = "default" }: {
     sky: "bg-sky-50 border-sky-200",
   };
   return (
-    <section className={cn("border rounded-xl p-4 shadow-sm", tones[tone])}>
-      <div className="flex items-center gap-2.5 mb-3">
-        <span className="p-1.5 rounded-lg bg-white/80 border border-black/5 shadow-sm">{icon}</span>
-        <h3 className="font-extrabold text-sm text-foreground tracking-tight">{title}</h3>
+    <section className={cn("rounded-2xl border p-3.5 shadow-sm sm:p-4", tones[tone])}>
+      <div className="mb-3 flex items-center gap-2">
+        <span className="shrink-0 rounded-lg border border-black/5 bg-white/80 p-1.5 shadow-sm">{icon}</span>
+        <h3 className="min-w-0 flex-1 truncate font-extrabold text-sm tracking-tight text-foreground">{title}</h3>
+        {hint && <InfoTip text={hint} />}
       </div>
       {children}
     </section>
@@ -151,7 +153,7 @@ function Section({ title, icon, children, tone = "default" }: {
 function AgentTrace({ steps }: { steps?: AgentStep[] }) {
   if (!steps || steps.length === 0) return null;
   return (
-    <Section title="Agent trace — parse → verify → apply" icon={<ListChecks className="w-5 h-5 text-sky-600" />} tone="sky">
+    <Section title="Agent trace" hint="Parse → verify → apply. The model proposes at every step; the solver proves each move before it stands." icon={<ListChecks className="w-5 h-5 text-sky-600" />} tone="sky">
       <ol className="space-y-1.5">
         {steps.map((s, i) => (
           <li key={i} className="flex items-start gap-2 text-xs">
@@ -167,9 +169,6 @@ function AgentTrace({ steps }: { steps?: AgentStep[] }) {
           </li>
         ))}
       </ol>
-      <p className="text-[11px] text-sky-800 mt-2">
-        The model proposes at every step; CP-SAT proves each move before it can stand. No step is a guess.
-      </p>
     </Section>
   );
 }
@@ -290,11 +289,11 @@ export function WizardView({ onToast }: WizardViewProps) {
     });
   };
 
-  const handleNext = async () => {
-    if (currentIndex >= stepOrder.length - 1) return;
-    // Leaving Import: finalize the reviewed (keep/changed) data so the solver
-    // builds from exactly what the user kept.
-    if (step === "import" && edited) {
+  // Leaving Import: finalize the reviewed (keep/changed) data so the solver
+  // builds from exactly what the user kept.
+  const goToStep = async (idx: number) => {
+    if (idx === currentIndex || idx < 0 || idx >= stepOrder.length) return;
+    if (step === "import" && idx > currentIndex && edited) {
       setIngestBusy(true);
       try {
         const r: IngestResponse = await post("/api/ingest/apply", { data: edited });
@@ -307,8 +306,10 @@ export function WizardView({ onToast }: WizardViewProps) {
         setIngestBusy(false);
       }
     }
-    setStep(stepOrder[currentIndex + 1]);
+    setStep(stepOrder[idx]);
   };
+
+  const handleNext = () => goToStep(currentIndex + 1);
 
   const solveWith = async (eng: string) => {
     setLastEngine(eng);
@@ -406,71 +407,82 @@ export function WizardView({ onToast }: WizardViewProps) {
     : undefined;
 
   return (
-    <div className="h-full w-full flex flex-col">
-      {/* Step header */}
-      <div className="bg-card border-b border-border px-4 py-3 shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="font-extrabold text-lg text-foreground">Guided Wizard</h2>
-            <p className="text-sm text-muted-foreground">Intake → Build → Review → Emergency (live backend)</p>
-          </div>
-          <div className="flex items-center space-x-1">
-            {STEPS.map((s, idx) => (
-              <div key={s.id} className="flex items-center">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all",
-                  idx < currentIndex ? "bg-emerald-500 text-white" :
-                  idx === currentIndex ? "bg-primary text-white ring-2 ring-primary ring-offset-2" :
-                  "bg-muted text-muted-foreground"
-                )}>
-                  {idx < currentIndex ? <CheckCircle2 className="w-4 h-4" /> : <span>{idx + 1}</span>}
-                </div>
+    <div className="w-full">
+      {/* Step header: tappable steps (desc on hover/tap) + live KPI chips */}
+      <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
+        <div className="no-scrollbar -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5" role="tablist" aria-label="Wizard steps">
+          {STEPS.map((s, idx) => {
+            const done = idx < currentIndex;
+            const active = idx === currentIndex;
+            return (
+              <div key={s.id} className="flex shrink-0 items-center gap-1">
+                <Tip label={s.desc} side="bottom">
+                  <button
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => goToStep(idx)}
+                    className={cn(
+                      "flex min-h-10 items-center gap-2 rounded-full py-1.5 pr-3 pl-1.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 active:scale-[0.97]",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                        : done
+                          ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100"
+                          : "bg-muted/60 text-muted-foreground ring-1 ring-transparent hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <span className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold",
+                      active ? "bg-white/20" : done ? "bg-emerald-500 text-white" : "bg-white ring-1 ring-border"
+                    )}>
+                      {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : idx + 1}
+                    </span>
+                    <span className={cn(!active && "hidden min-[420px]:inline")}>{s.label}</span>
+                  </button>
+                </Tip>
                 {idx < STEPS.length - 1 && (
-                  <div className={cn("w-14 h-1 mx-1 rounded", idx < currentIndex ? "bg-emerald-500" : "bg-muted")} />
+                  <div className={cn("h-0.5 w-3 shrink-0 rounded-full sm:w-5", done ? "bg-emerald-400" : "bg-border")} />
                 )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-        <div className="text-sm text-muted-foreground">
-          <span className="font-medium">Step {currentIndex + 1} of {STEPS.length}</span> — {STEPS.find((s) => s.id === step)?.desc}
-        </div>
+
         {/* Command strip: the institution, the engine, the proof, the guarantee */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
+        <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
           {[
             {
               label: "Institution",
               value: currentScenario
-                ? `${currentScenario.instructors.length} instructors · ${currentScenario.sections.length} sections`
+                ? `${currentScenario.instructors.length} faculty · ${currentScenario.sections.length} sections`
                 : "—",
               sub: currentScenario ? `${currentScenario.cohorts.length} cohorts · ${currentScenario.programs.length} programs · ${currentScenario.rooms.length} rooms` : "loading…",
             },
             {
-              label: "Solver engine",
+              label: "Engine",
               value: engineList.find((e) => e.id === engine)?.label ?? engine,
               sub: `${engineList.length} registered · plug-and-play`,
             },
             {
               label: "Last proof",
-              value: solveResult ? `${solveResult.status.toUpperCase()} · ${solveResult.solve_time_ms} ms` : "not solved yet",
-              sub: solveResult ? `preference penalty ${solveResult.objective ?? "—"} · ${engineList.find((e) => e.id === lastEngine)?.label ?? lastEngine}` : "run a solve in Build",
+              value: solveResult ? `${solveResult.status.toUpperCase()} · ${solveResult.solve_time_ms} ms` : "Not solved",
+              sub: solveResult ? `penalty ${solveResult.objective ?? "—"} · ${engineList.find((e) => e.id === lastEngine)?.label ?? lastEngine}` : "run a solve in Build",
             },
             {
-              label: "Four-course guarantee",
+              label: "4-course guarantee",
               value: margins ? `${margins.cohorts.filter((c) => c.ok).length}/${margins.cohorts.length} cohorts` : "—",
-              sub: margins ? (margins.all_ok ? "C39 holds for every cohort" : "shortfall — tightener can repair") : "audited in Review",
+              sub: margins ? (margins.all_ok ? "holds for every cohort" : "shortfall — tightener can repair") : "audited in Review",
             },
           ].map((kpi) => (
-            <div key={kpi.label} className="rounded-xl border border-border bg-gradient-to-br from-white to-slate-50 px-3 py-2 shadow-sm">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{kpi.label}</div>
-              <div className="text-[13px] font-extrabold text-foreground leading-tight mt-0.5 truncate" title={kpi.value}>{kpi.value}</div>
-              <div className="text-[10px] text-muted-foreground truncate" title={kpi.sub}>{kpi.sub}</div>
+            <div key={kpi.label} title={`${kpi.value} — ${kpi.sub}`} className="min-w-0 rounded-xl border border-border bg-gradient-to-br from-white to-slate-50 px-2.5 py-2 shadow-sm">
+              <div className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase">{kpi.label}</div>
+              <div className="mt-0.5 truncate text-[13px] leading-tight font-extrabold text-foreground">{kpi.value}</div>
+              <div className="truncate text-[10px] text-muted-foreground">{kpi.sub}</div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="mt-4 space-y-4">
         {error && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
             Backend not reachable — the wizard needs the Python service. Start it with{" "}
@@ -481,15 +493,7 @@ export function WizardView({ onToast }: WizardViewProps) {
 
         {step === "import" && (
           <div className="space-y-4 max-w-3xl mx-auto">
-            <Section title="Drop your scheduling data" icon={<Database className="w-5 h-5 text-primary" />} tone="primary">
-              <p className="text-sm text-muted-foreground mb-3">
-                Drop messy institutional files in <strong>any format</strong> — a PDF catalog, an Excel room
-                sheet, a Word memo, CSV exports, plain-text emails, or a zip of all of them. If the files
-                answer the six requirements (catalog, degree maps, cohorts, faculty, rooms, campus map),
-                Muse Spark autocleans them into one model and the solver recommends a schedule for the
-                entire institution.
-              </p>
-
+            <Section title="Your scheduling data" hint="Any format — PDF catalog, Excel rooms, Word memo, CSV, plain text, or a zip. Muse autocleans files covering all six needs (catalog, degree maps, cohorts, faculty, rooms, campus map) into one model of the institution." icon={<Database className="w-5 h-5 text-primary" />} tone="primary">
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
@@ -501,8 +505,8 @@ export function WizardView({ onToast }: WizardViewProps) {
                 )}
               >
                 <UploadCloud className="w-6 h-6 mx-auto text-muted-foreground" />
-                <p className="text-sm font-medium mt-2">Drag &amp; drop files here, or click to browse</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Any format: .pdf · .docx · .xlsx · .csv · .json · .txt · .md · .zip — one at a time or all at once</p>
+                <p className="text-sm font-medium mt-2">Drop files, or tap to browse</p>
+                <p className="text-[11px] text-muted-foreground mt-1">PDF · DOCX · XLSX · CSV · JSON · TXT · ZIP</p>
                 <input id="file-input" type="file" multiple className="hidden"
                   accept=".pdf,.docx,.xlsx,.csv,.tsv,.json,.txt,.md,.html,.zip"
                   onChange={(e) => e.target.files && addFiles(e.target.files)} />
@@ -566,11 +570,10 @@ export function WizardView({ onToast }: WizardViewProps) {
                   </div>
                 </div>
 
-                <Section title="Review & adjust what to keep" icon={<ListChecks className="w-5 h-5 text-primary" />} tone="default">
-                  <div className="flex items-center gap-2 mb-3">
+                <Section title="Keep what looks right" hint="The solver builds only from what you keep. Tap ✕ on any row to drop it." icon={<ListChecks className="w-5 h-5 text-primary" />} tone="default">
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
                     <Button variant="outline" size="sm" onClick={keepAll}>Keep all</Button>
                     <Button variant="outline" size="sm" onClick={removeInvalid}>Remove invalid</Button>
-                    <span className="text-[11px] text-muted-foreground">remove any row with ✕ — the solver builds only from what you keep</span>
                   </div>
 
                   {[
@@ -608,27 +611,21 @@ export function WizardView({ onToast }: WizardViewProps) {
 
         {step === "intake" && (
           <div className="space-y-4 max-w-3xl mx-auto">
-            <Section title="Instructor intake (natural language)" icon={<Users className="w-5 h-5 text-primary" />} tone="primary">
-              <p className="text-sm text-muted-foreground mb-3">
-                Type a constraint exactly as a coordinator would. Muse Spark parses it into typed operations;
-                CP-SAT re-solves and proves feasibility.
-              </p>
+            <Section title="Add a constraint" hint="Type it exactly as you'd say it. Muse parses it into typed constraints; the solver re-solves and proves it before anything changes." icon={<Users className="w-5 h-5 text-primary" />} tone="primary">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <label className="text-xs font-semibold text-muted-foreground" htmlFor="speaker">Speaker</label>
                 <select
                   id="speaker"
                   value={speakerId}
                   onChange={(e) => setSpeakerId(e.target.value)}
-                  className="border border-input rounded-lg px-2 py-1 text-xs bg-background"
+                  className="min-h-10 border border-input rounded-xl px-2 py-1 text-xs bg-background"
                 >
                   <option value="">(chair / not specified)</option>
                   {(ingest?.scenario.instructors ?? currentScenario?.instructors ?? []).map((i) => (
                     <option key={i.id} value={i.id}>{i.name}</option>
                   ))}
                 </select>
-                <span className="text-[10px] text-muted-foreground">
-                  Needed for “I can’t…” / “keep me…” requests.
-                </span>
+                <InfoTip text="Needed for “I can't…” / “keep me…” requests — tells the parser who is speaking." />
               </div>
               <textarea
                 value={intakeMsg}
@@ -666,10 +663,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                 )}
                 <AgentTrace steps={copilot.agent_trace} />
                 {copilot.options.length > 0 && (
-                  <Section title="Solver-verified resolutions" icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} tone="emerald">
-                    <p className="text-xs text-emerald-800 mb-2">
-                      Muse proposed each fix; CP-SAT re-solved it. Only proven options are shown — the least disruptive one was applied to the term.
-                    </p>
+                  <Section title="Verified fixes" hint="Muse proposed each fix; the solver re-solved it. Only proven options show — the least disruptive one was applied to the term." icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} tone="emerald">
                     <div className="space-y-1.5">
                       {copilot.options.map((o, i) => (
                         <div key={i} className="bg-white border border-emerald-200 rounded p-2 text-xs">
@@ -704,16 +698,12 @@ export function WizardView({ onToast }: WizardViewProps) {
 
         {step === "build" && (
           <div className="space-y-4 max-w-3xl mx-auto">
-            <Section title="Build the term" icon={<Zap className="w-5 h-5 text-emerald-600" />} tone="emerald">
-              <p className="text-sm text-emerald-700 mb-3">
-                The OR-Tools CP-SAT solver assigns every section an instructor, timeslot set, and room under all
-                hard constraints — capacity, loads, cohort conflicts, equipment, walk distances.
-              </p>
+            <Section title="Build the term" hint="Assigns every section an instructor, time, and room under all hard rules: capacity, loads, cohort conflicts, equipment, walk distance. Pick an engine — same input, same output contract." icon={<Zap className="w-5 h-5 text-emerald-600" />} tone="emerald">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-semibold text-emerald-900">Engine — plug-and-play, one contract:</span>
+                <span className="text-xs font-semibold text-emerald-900">Engine</span>
                 <Button variant="outline" size="sm" onClick={runCompare} disabled={compareBusy} className="ml-auto flex items-center gap-1.5">
                   {compareBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                  Compare side by side
+                  Compare engines
                 </Button>
               </div>
               <div className="grid sm:grid-cols-3 gap-2 mb-3">
@@ -778,8 +768,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                     </div>
                   </div>
                   <p className="text-[11px] text-emerald-800 mb-2">
-                    Same world, same constraints, two independent engines. Differing sections are ringed in the
-                    right-hand grid ({compare.differing_sections.length} of {compare.cpsat.timetable?.placements.length ?? 0}).
+                    Differing sections ringed on the right ({compare.differing_sections.length} of {compare.cpsat.timetable?.placements.length ?? 0}).
                   </p>
                   {compare.cpsat.timetable && compare.ours.timetable && (
                     <div className="grid gap-3 2xl:grid-cols-2">
@@ -800,23 +789,21 @@ export function WizardView({ onToast }: WizardViewProps) {
                 </div>
               )}
               <div className="mt-4 border-t border-emerald-200 pt-3">
-                <p className="text-xs text-emerald-800 mb-2">
-                  <strong>Scale proof:</strong> the demo story is one CS department slice. Load a full
-                  department cluster (26 instructors, 25 sections, 12 cohorts, 3 programs) or the entire
-                  university (38 instructors, 41 sections, 20 cohorts, 5 programs sharing the same rooms
-                  and slots) — the same engine solves it live.
-                </p>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-xs font-semibold text-emerald-900">Try it at scale</span>
+                  <InfoTip text="The demo story is one CS department slice. Department = 26 instructors · 25 sections · 12 cohorts. University = 38 instructors · 41 sections · 20 cohorts · 5 programs, all sharing the same rooms and slots. Same engine, solved live." />
+                </div>
                 <div className="flex gap-2 flex-wrap">
                   <Button variant="outline" size="sm" onClick={() => loadScale("department")} disabled={scaleBusy} className="flex items-center gap-1.5">
                     {scaleBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
-                    Load department scale
+                    Department
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => loadScale("university")} disabled={scaleBusy} className="flex items-center gap-1.5">
                     {scaleBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
-                    Load university scale
+                    University
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => loadScale("reset")} disabled={scaleBusy}>
-                    Back to story seed
+                    Story seed
                   </Button>
                 </div>
               </div>
@@ -837,7 +824,7 @@ export function WizardView({ onToast }: WizardViewProps) {
         {step === "review" && (
           <div className="space-y-4 max-w-3xl mx-auto">
             {spectral && (
-              <Section title="Spectral radar" icon={<Radar className="w-5 h-5 text-sky-600" />} tone="sky">
+              <Section title="Spectral radar" hint="Conflict-graph health check. μ₂ = how tightly sections are coupled; Hoffman bound = minimum time bands needed; max clique = largest set of mutually conflicting sections. Warnings flag structural deadlocks before a solve is wasted." icon={<Radar className="w-5 h-5 text-sky-600" />} tone="sky">
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="bg-white border rounded p-2">
                     <div className="font-bold text-foreground">{spectral.algebraic_connectivity.toFixed(3)}</div>
@@ -863,7 +850,7 @@ export function WizardView({ onToast }: WizardViewProps) {
             )}
 
             {margins && (
-              <Section title={`Four-course guarantee (C39) — min ${margins.min_courses}`} icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} tone="emerald">
+              <Section title={`4-course guarantee · min ${margins.min_courses}`} hint="Every cohort must be able to fit at least this many distinct, non-overlapping courses toward graduation. Amber = shortfall the tightener can repair." icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} tone="emerald">
                 <div className="space-y-2">
                   {margins.cohorts.map((m) => (
                     <div key={m.cohort_id} className={cn("border rounded-lg p-2.5", m.ok ? "bg-white border-emerald-200" : "bg-amber-50 border-amber-200")}>
@@ -888,11 +875,7 @@ export function WizardView({ onToast }: WizardViewProps) {
 
         {step === "emergency" && (
           <div className="space-y-4 max-w-3xl mx-auto">
-            <Section title="Emergency response" icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} tone="amber">
-              <p className="text-sm text-amber-700 mb-3">
-                An instructor drops out. The co-pilot probes every qualified instructor with CP-SAT and ranks the
-                zero-ripple swaps — the solver proves who can cover before any name is shown.
-              </p>
+            <Section title="Emergency" hint="An instructor drops out? The solver probes every qualified instructor and ranks zero-ripple covers — no name is shown until cover is proven." icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} tone="amber">
               <textarea
                 value={emergencyMsg}
                 onChange={(e) => setEmergencyMsg(e.target.value)}
@@ -948,20 +931,22 @@ export function WizardView({ onToast }: WizardViewProps) {
         )}
       </div>
 
-      {/* Footer nav */}
-      <div className="shrink-0 border-t border-border bg-card px-4 py-3 flex items-center justify-between">
-        <Button variant="outline" size="md" onClick={() => setStep(stepOrder[Math.max(0, currentIndex - 1)])} disabled={currentIndex === 0} className="flex items-center gap-1.5">
+      {/* Footer nav — floats above content (and above the mobile tab bar) */}
+      <div className="glass sticky bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-30 mt-4 flex items-center justify-between gap-2 rounded-2xl border border-border px-2.5 py-2 shadow-lg shadow-slate-900/5 lg:bottom-3">
+        <Button variant="outline" size="md" onClick={() => setStep(stepOrder[Math.max(0, currentIndex - 1)])} disabled={currentIndex === 0}>
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
-        <span className="text-xs text-muted-foreground">Step {currentIndex + 1} of {STEPS.length}</span>
+        <span className="text-[11px] font-medium whitespace-nowrap text-muted-foreground">
+          {currentIndex + 1} / {STEPS.length} · <span className="font-semibold text-foreground">{STEPS[currentIndex].label}</span>
+        </span>
         {currentIndex < stepOrder.length - 1 ? (
-          <Button variant="primary" size="md" onClick={handleNext} disabled={ingestBusy} className="flex items-center gap-1.5">
+          <Button variant="primary" size="md" onClick={handleNext} disabled={ingestBusy}>
             {ingestBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Next <ArrowRight className="w-4 h-4" />
           </Button>
         ) : (
-          <Button variant="primary" size="md" onClick={() => onToast("Schedule stable — audit trail recorded", "success")} className="flex items-center gap-1.5">
-            Complete <CheckCircle2 className="w-4 h-4" />
+          <Button variant="primary" size="md" onClick={() => onToast("Schedule stable — audit trail recorded", "success")}>
+            Done <CheckCircle2 className="w-4 h-4" />
           </Button>
         )}
       </div>

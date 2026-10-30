@@ -13,8 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ScheduleGod AI — Academic Scheduler & Cohort Demand Engine",
-  description: "Agentic co-pilot for department course timetabling: natural-language constraints → CP-SAT-verified schedules with self-healing conflict explanation and solver-proven emergency coverage proposals.",
+  title: "ScheduleGod AI",
+  description: "Solver-proven course timetables from plain-language constraints.",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+  themeColor: "#4f46e5",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
