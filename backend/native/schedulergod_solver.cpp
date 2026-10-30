@@ -22,6 +22,8 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 using namespace std;

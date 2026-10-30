@@ -19,8 +19,8 @@ image = (
     modal.Image.debian_slim(python_version="3.12")
     .pip_install_from_requirements("requirements.txt")
     .apt_install("g++")
-    .add_local_python_source("app")
-    .add_local_dir("app/data", remote_path="/root/app/data")
+    .add_local_python_source("app", copy=True)
+    .add_local_dir("app/data", remote_path="/root/app/data", copy=True)
     .add_local_file("native/schedulergod_solver.cpp",
                     remote_path="/root/native/schedulergod_solver.cpp", copy=True)
     .run_commands("g++ -O3 -std=c++17 -o /root/native/solver /root/native/schedulergod_solver.cpp")
