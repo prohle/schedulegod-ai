@@ -340,7 +340,7 @@ function StudentPlanPanel({ user, onToast }: {
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <div className="elev space-y-3 rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center gap-1.5">
         <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide uppercase">
           <GraduationCap className="h-4 w-4 text-primary" /> Suggest my schedule
@@ -391,13 +391,13 @@ function StudentPlanPanel({ user, onToast }: {
       )}
 
       {plan?.progress && (
-        <div className="space-y-1.5 rounded-xl border border-border bg-background p-3 text-xs">
+        <div className="animate-rise elev space-y-1.5 rounded-xl border border-border bg-background p-3 text-xs">
           <p className="font-bold">
             {plan.progress.program_name}: {plan.progress.required_completed} of {plan.progress.required_total} mandatory courses completed ({plan.progress.pct_complete}%)
             <span className="ml-2 font-medium text-muted-foreground">from {plan.progress.source}</span>
           </p>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-primary" style={{ width: `${plan.progress.pct_complete}%` }} />
+          <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+            <div className="brand-gradient h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${plan.progress.pct_complete}%` }} />
           </div>
           <p className="text-muted-foreground">
             Ready now (mandatory): {plan.progress.mandatory_ready.join(", ") || "none"}
@@ -426,9 +426,9 @@ function StudentPlanPanel({ user, onToast }: {
       )}
 
       {plan && plan.courses.length > 0 && (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="animate-rise grid gap-2 sm:grid-cols-2">
           {plan.courses.map((c) => (
-            <div key={c.section_id} className="rounded-xl border border-border bg-background p-3">
+            <div key={c.section_id} className={`rounded-xl border border-border border-l-4 bg-background p-3 ${c.required ? "border-l-indigo-500" : "border-l-slate-300"}`}>
               <p className="flex items-center gap-2 text-sm font-extrabold">
                 {c.course_code}
                 {c.required ? (

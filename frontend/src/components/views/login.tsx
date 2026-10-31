@@ -48,6 +48,41 @@ export function LoginView({ onLogin, onToast }: {
   return (
     <div className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-background p-4">
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_30rem_at_50%_-10%,rgba(99,102,241,0.16),transparent),radial-gradient(40rem_24rem_at_90%_110%,rgba(14,165,233,0.12),transparent)]" />
+
+      {/* Proof panel (desktop): the first impression carries the evidence. */}
+      <div className="animate-rise relative mr-14 hidden w-full max-w-xl xl:block">
+        <p className="text-[11px] font-bold tracking-[0.2em] text-indigo-600 uppercase">Agentic constraint solver · Timetable infrastructure</p>
+        <h2 className="mt-3 text-5xl leading-[1.05] font-extrabold tracking-tight text-foreground">
+          The timetable,<br /><span className="text-gradient">proven — not guessed.</span>
+        </h2>
+        <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
+          Messy institutional files in any format become one model of the whole
+          campus. Muse Spark proposes constraints in plain language; two
+          solver engines prove every schedule, change, and student's plan
+          before it stands.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-1.5">
+          {["Any-format ingestion", "Muse Spark parses", "Solvers prove", "Faculty verified", "Students advised"].map((s, i, a) => (
+            <span key={s} className="inline-flex items-center gap-1.5">
+              <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-bold text-indigo-900 ring-1 ring-indigo-200/70 shadow-sm">{s}</span>
+              {i < a.length - 1 && <span className="text-indigo-300">→</span>}
+            </span>
+          ))}
+        </div>
+        <div className="mt-8 grid max-w-lg grid-cols-3 gap-2">
+          {[
+            ["361", "sections proven optimal at full-university scale"],
+            ["2", "solver engines raced head-to-head on identical data"],
+            ["100%", "of cohorts keep their 4-course guarantee at stress scale"],
+          ].map(([n, label]) => (
+            <div key={label} className="elev rounded-2xl border border-border bg-card/90 p-3">
+              <div className="text-gradient text-2xl font-extrabold tracking-tight">{n}</div>
+              <div className="mt-1 text-[10px] leading-snug text-muted-foreground">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="animate-rise relative w-full max-w-md space-y-4">
         <div className="space-y-2 text-center">
           <div className="inline-flex rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 p-3 text-white shadow-lg shadow-indigo-500/25">
@@ -95,7 +130,7 @@ export function LoginView({ onLogin, onToast }: {
                   cohort_id: role === "student" ? linkId || undefined : undefined,
                 })
               : submit("/api/auth/login", { email, password })}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/25 transition-all active:scale-[0.99] disabled:opacity-50"
+            className="brand-gradient inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-500/30 transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-40"
           >
             {registering ? <UserPlus className="w-4 h-4" /> : <KeyRound className="w-4 h-4" />}
             {registering ? "Create account" : "Sign in"}

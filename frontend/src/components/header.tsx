@@ -3,7 +3,7 @@
 // Compact glass header: brand, live scale, user. Detail hides in tooltips.
 
 import { useEffect, useState } from "react";
-import { GraduationCap, LogOut } from "lucide-react";
+import { BookOpenCheck, GraduationCap, LogOut, ShieldCheck } from "lucide-react";
 import type { Scenario } from "@/types";
 import type { AuthUser } from "@/lib/auth";
 import { Tip } from "@/components/ui/tip";
@@ -55,6 +55,12 @@ export function Header({ user, onLogout }: { user?: AuthUser | null; onLogout?: 
 
           {user && (
             <>
+              <span className="hidden h-8 items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 text-[11px] font-bold text-indigo-700 ring-1 ring-indigo-200/70 sm:inline-flex">
+                {user.role === "coordinator" ? <ShieldCheck className="h-3.5 w-3.5" />
+                  : user.role === "instructor" ? <BookOpenCheck className="h-3.5 w-3.5" />
+                  : <GraduationCap className="h-3.5 w-3.5" />}
+                <span className="capitalize">{user.role}</span>
+              </span>
               <Tip label={`${user.email} · ${user.role}`} side="bottom">
                 <span className="flex h-8 w-8 cursor-help items-center justify-center rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-[11px] font-extrabold text-white shadow-sm">
                   {(user.display_name || user.email).slice(0, 1).toUpperCase()}

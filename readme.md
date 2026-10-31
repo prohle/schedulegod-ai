@@ -32,6 +32,8 @@ Built for the **Meta Global AI Developer Hackathon** — *Build for Your World* 
 
 ![Express · Term Change: before/after with CP-SAT-verified reassignment](docs/screenshot-term-change.png)
 
+![Student · Suggest my schedule: record-based advising with a verified personal plan](docs/screenshot-student.png)
+
 ## How it works
 
 ```
@@ -55,7 +57,11 @@ BUILD      both engines assign every section an instructor, timeslot set,
            evaluates both final schedules from outputs alone (proven status,
            then penalty, then speed) and ranks Rank 1 / Rank 2
 OPERATE    the coordinator publishes the winning timetable; instructors and
-           students sign in to their own role-filtered schedules. Changes
+           students sign in to their own role-filtered schedules, and each
+           student is advised from their own study record + desired degree:
+           mandatory/optional from the fed degree map, a proven personal
+           plan that fits their work days — or a named reason it cannot.
+           Changes
            arrive two ways: a term change (a typed message -> impact analysis
            -> propose_candidates: every qualified instructor solver-probed
            for zero-ripple feasibility + preference delta, ranked with
@@ -92,7 +98,7 @@ Full constraint catalog — offerings & degree roadmaps, course optionality, act
 | "Diaz is taking over CS 101, MATH 201 and CS 201 personally." | INFEASIBLE — Diaz's load cap is two sections. Muse Spark's explanation names the binding rule and ranks resolutions ("drop the CS 201 pin — Okafor has capacity to take it"); **every option is re-solved by CP-SAT with its own penalty delta**, the least disruptive one applies. |
 | "CS 350 enrollment jumped to 45 after registration ended." | Active enrollment re-triggers every capacity check; the board re-solves and CS 350 lands in the 120-seat hall with zero cohort conflicts. |
 | *(coordinator clicks Publish, then signs in as Prof. Chen)* | Chen sees **only her own sections**. Her request "I can't teach Fridays" goes to the coordinator, who approves it — the verified loop re-solves, re-publishes, and her personal grid updates. A student signing in sees only their cohort's courses. |
-| "I work Tuesdays and Thursdays. I need CS 201 this term, no 8 AMs." *(a student, in My Schedule → Suggest my schedule)* | Muse Spark parses work days / must-take / time bans; an exact selector returns a personal plan from the placed timetable — required roadmap courses first, zero overlaps, nothing on work days — re-verified independently before it is shown. When CS 201's only section is the 8 AM one, the student is told that plainly instead of being handed a plan that slips their degree. |
+| "I work Tuesdays and Thursdays. I need CS 201 this term, no 8 AMs." *(a student, in My Schedule → Suggest my schedule)* | Advising starts from the student's own record: mandatory vs optional from the fed degree map, completed courses from their study record (or a cohort progress lookup), desired degree of their choice. Muse Spark parses record + life constraints; a degree-map audit shows mandatory done / ready / co-takeable / locked; an exact selector then recommends — zero overlaps, nothing already completed, nothing on work days — re-verified independently before it is shown. When CS 201's only section is the 8 AM one, the student is told that plainly instead of being handed a plan that slips their degree. |
 | "What if enrollment grows 20% — or we repurpose the big hall?" | Each growth/repurpose/build-a-lab what-if is re-solved first: utilization and four-course-guarantee deltas with a plain verdict, before capital is committed. Add a college, degree, or course — or adjust a degree map — by re-ingesting the changed files; the institution re-solves as one. |
 | *(C39 shortfall fires)* | "CS 2023 cohort can only fit 2 of 4 non-conflicting courses." → the tightener proposes opening already-offered electives; CP-SAT verifies the margin gains against the current board and **rejects** moves that make the enlarged scenario infeasible. Only verified moves are shown. |
 
@@ -174,7 +180,7 @@ cp .env.example .env        # then paste your key from https://dev.meta.ai/dashb
 docker compose up --build   # live Muse Spark
 ```
 
-**Sample outputs / provenance:** `backend/muse-verification.json` is a live captured run of all four structured roles against the seed (ingestion + parse + explanation + tighten), all `muse-spark-1.3-contributor`, with real structured outputs and latencies (3–42 s per call across the contributor and open-weights captures). The parse battery includes a speaker context for identity-dependent messages. `backend/muse-verification-student.json` captures a live student-plan parse (work days + must-take course + no-8AM, verified end-to-end). `backend/muse-verification-voice.json` captures Muse Voice Transcribe producing a review draft; spelled-out academic titles from speech recognition are normalized deterministically before parsing.
+**Sample outputs / provenance:** `backend/muse-verification.json` is a live captured run of the structured roles against the seed (ingestion + parse + explanation + tighten), all `muse-spark-1.3-contributor`, with real structured outputs and latencies (3–42 s per call across the contributor and open-weights captures). The parse battery includes a speaker context for identity-dependent messages. `backend/muse-verification-student.json` captures the fifth role live: a student-plan parse from a stated record (work days + completed courses, degree-map audit, verified plan end-to-end). `backend/muse-verification-voice.json` captures Muse Voice Transcribe producing a review draft; spelled-out academic titles from speech recognition are normalized deterministically before parsing.
 
 *All four structured roles run on the contributor model because the data is synthetic; a real institution would use standard mode (`muse-spark-1.3`) so no staff data ever trains Meta's models. Dev-time coding tools are unrestricted by the hackathon and touch nothing at runtime.*
 

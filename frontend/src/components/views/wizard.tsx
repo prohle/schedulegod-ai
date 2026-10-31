@@ -139,7 +139,7 @@ function Section({ title, icon, hint, children, tone = "default" }: {
     sky: "bg-sky-50 border-sky-200",
   };
   return (
-    <section className={cn("rounded-2xl border p-3.5 shadow-sm sm:p-4", tones[tone])}>
+    <section className={cn("elev rounded-2xl border p-3.5 sm:p-4", tones[tone])}>
       <div className="mb-3 flex items-center gap-2">
         <span className="shrink-0 rounded-lg border border-black/5 bg-white/80 p-1.5 shadow-sm">{icon}</span>
         <h3 className="min-w-0 flex-1 truncate font-extrabold text-sm tracking-tight text-foreground">{title}</h3>
@@ -487,7 +487,7 @@ export function WizardView({ onToast }: WizardViewProps) {
         </div>
       </div>
 
-      <div className="mt-4 space-y-4">
+      <div className="mt-4 space-y-4 pb-28">
         {error && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
             Backend not reachable — the wizard needs the Python service. Start it with{" "}
@@ -497,7 +497,7 @@ export function WizardView({ onToast }: WizardViewProps) {
         )}
 
         {step === "import" && (
-          <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="space-y-4 max-w-4xl mx-auto">
             <Section title="Your scheduling data" hint="Any format — PDF catalog, Excel rooms, Word memo, CSV, plain text, or a zip. Muse autocleans files covering all six needs (catalog, degree maps, cohorts, faculty, rooms, campus map) into one model of the institution." icon={<Database className="w-5 h-5 text-primary" />} tone="primary">
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -615,7 +615,7 @@ export function WizardView({ onToast }: WizardViewProps) {
         )}
 
         {step === "intake" && (
-          <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="space-y-4 max-w-4xl mx-auto">
             <Section title="Add a constraint" hint="Type it exactly as you'd say it. Muse parses it into typed constraints; the solver re-solves and proves it before anything changes." icon={<Users className="w-5 h-5 text-primary" />} tone="primary">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <label className="text-xs font-semibold text-muted-foreground" htmlFor="speaker">Speaker</label>
@@ -702,7 +702,7 @@ export function WizardView({ onToast }: WizardViewProps) {
         )}
 
         {step === "build" && (
-          <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="space-y-4 max-w-4xl mx-auto">
             <Section title="Build the term" hint="Assigns every section an instructor, time, and room under all hard rules: capacity, loads, cohort conflicts, equipment, walk distance. Pick an engine — same input, same output contract." icon={<Zap className="w-5 h-5 text-emerald-600" />} tone="emerald">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-semibold text-emerald-900">Engine</span>
@@ -831,7 +831,7 @@ export function WizardView({ onToast }: WizardViewProps) {
         )}
 
         {step === "review" && (
-          <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="space-y-4 max-w-4xl mx-auto">
             {spectral && (
               <Section title="Spectral radar" hint="Conflict-graph health check. μ₂ = how tightly sections are coupled; Hoffman bound = minimum time bands needed; max clique = largest set of mutually conflicting sections. Warnings flag structural deadlocks before a solve is wasted." icon={<Radar className="w-5 h-5 text-sky-600" />} tone="sky">
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -883,7 +883,7 @@ export function WizardView({ onToast }: WizardViewProps) {
         )}
 
         {step === "term-change" && (
-          <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="space-y-4 max-w-4xl mx-auto">
             <Section title="Term Change" hint="A change that lasts through the end of the term — an instructor will no longer teach, so their sections are reassigned for the rest of the term. The solver probes every qualified instructor and ranks only zero-ripple reassignments; no name is shown until the reassignment is proven. A room change for the rest of the term (e.g. a hall withdrawn) is entered in Intake instead." icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} tone="amber">
               <textarea
                 value={termChangeMsg}

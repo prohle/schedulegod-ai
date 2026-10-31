@@ -44,6 +44,11 @@ function Block({ placement, changed, compact }: {
       <div className="flex items-start justify-between gap-1">
         <span className="text-[11px] font-extrabold leading-tight truncate">
           {placement.course_code}
+          {compact && (
+            <span className="ml-1 text-[9px] font-semibold opacity-75">
+              {shortName(placement.instructor_name)}
+            </span>
+          )}
         </span>
         <span className="flex items-center gap-1 shrink-0">
           {placement.periods.length > 1 && (
@@ -56,13 +61,15 @@ function Block({ placement, changed, compact }: {
           )}
         </span>
       </div>
-      <div className="text-[10px] font-medium leading-tight truncate">
-        {shortName(placement.instructor_name)}
-      </div>
       {!compact && (
-        <div className="text-[9px] leading-tight opacity-70 truncate">
-          {placement.room_name}
-        </div>
+        <>
+          <div className="text-[10px] font-medium leading-tight truncate">
+            {shortName(placement.instructor_name)}
+          </div>
+          <div className="text-[9px] leading-tight opacity-70 truncate">
+            {placement.room_name}
+          </div>
+        </>
       )}
     </div>
   );
@@ -100,14 +107,14 @@ export function TimetableGrid({ placements, changed, compact }: {
           className="grid min-w-[430px] gap-px overflow-hidden rounded-2xl bg-border p-px sm:min-w-[520px]"
           style={{
             gridTemplateColumns: "44px repeat(5, minmax(0, 1fr))",
-            gridTemplateRows: `26px repeat(4, ${compact ? "60px" : "76px"})`,
+            gridTemplateRows: `28px repeat(4, ${compact ? "60px" : "84px"})`,
           }}
         >
           <div className="bg-slate-100" style={{ gridColumn: 1, gridRow: 1 }} />
           {DAY_NAMES.map((day, i) => (
             <div
               key={day}
-              className="flex items-center justify-center bg-slate-100 px-0.5 text-[10px] font-extrabold tracking-widest text-slate-500 uppercase"
+              className="flex items-center justify-center bg-slate-100 px-0.5 text-[10px] font-extrabold tracking-widest text-slate-600 uppercase"
               style={{ gridColumn: i + 2, gridRow: 1 }}
             >
               <span className="sm:hidden">{day.slice(0, 3)}</span>

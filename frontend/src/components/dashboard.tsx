@@ -79,7 +79,7 @@ export function Dashboard() {
       <Header user={user} onLogout={handleLogout} />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <Sidebar activeView={activeView} setActiveView={setActiveView} />
-        <main className="relative min-w-0 flex-1 overflow-hidden bg-muted/30">
+        <main className="relative min-w-0 flex-1 overflow-hidden bg-muted/30 bg-[radial-gradient(54rem_26rem_at_85%_-10%,rgba(99,102,241,0.08),transparent),radial-gradient(36rem_20rem_at_-10%_110%,rgba(14,165,233,0.06),transparent)]">
           {/* Clearance for the fixed mobile tab bar (removed on lg). */}
           <div className="custom-scrollbar h-full overflow-y-auto p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4">
             <div key={activeView} className="animate-rise mx-auto w-full max-w-6xl">

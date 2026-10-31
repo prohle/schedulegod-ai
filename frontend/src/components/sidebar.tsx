@@ -54,11 +54,11 @@ export function Sidebar({ activeView, setActiveView }: NavProps) {
                 className={cn(
                   "relative flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 transition-all duration-150 active:scale-[0.97]",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                    ? "brand-gradient text-white shadow-lg shadow-indigo-500/30"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
-                <Icon className="h-5 w-5 shrink-0" />
+                <Icon className={cn("h-5 w-5 shrink-0", isActive && "scale-110")} />
                 <span className="text-[10px] leading-none font-semibold">{view.label}</span>
               </button>
             </Tip>
@@ -88,7 +88,7 @@ export function MobileNav({ activeView, setActiveView }: NavProps) {
               className={cn(
                 "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 transition-all duration-150 active:scale-[0.96]",
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                  ? "brand-gradient text-white shadow-lg shadow-indigo-500/30"
                   : "text-muted-foreground active:bg-accent"
               )}
             >
