@@ -211,6 +211,7 @@ can reach, and quote any reply (with permission) in the form's Impact field:
 - [x] Voice hardened to draft-only (Oct 30): `/term-change/audio` returns a transcript for a signed-in reviewer and never changes the term by itself — speaker identity cannot be established from audio
 - [x] Claim consistency pass (Oct 30): test badge = 53, engine-speed claims aligned to `docs/solver_evidence.md` (same proven optimum, faster on every measured row; deterministic single-worker contract stated explicitly)
 - [x] Judging-week keep-warm: `.github/workflows/keepwarm.yml` pings API + UI every 15 min Nov 5–9 so Modal scale-to-zero never cold-starts for a judge
+- [ ] **Re-record the demo video with the ScheduleSolve AI brand** (Oct 30 rebrand): the shipped 2:51 video still says "ScheduleGod AI" in narration and shows the old URL on the end card. Pipeline: `local-demo/record_live.js` + `narrate.py` + `assemble_live.py` (narration text already renamed); upload as a new `demo-video` release asset and update the video link above — **before submitting**
 - [ ] Meta credits claimed (deadline Nov 4, 9:00 PM ET); spend limit set — **account action**
 - [ ] X post published with video + repo + gallery links; post link submitted (Most Viral cutoff Nov 8 EOD) — **account action** (copy ready above)
 - [ ] YouTube upload of `final.mp4`; link added to the video field above — **account action**
