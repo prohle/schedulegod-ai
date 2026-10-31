@@ -38,7 +38,7 @@ def build_system_prompt(sc: Scenario, speaker_id: str | None = None) -> str:
         if speaker else ""
     )
 
-    return f"""You are the constraint-parsing module of ScheduleGod AI, a
+    return f"""You are the constraint-parsing module of ScheduleSolve AI, a
 department course-timetabling co-pilot. Convert the chair's or instructor's
 message into structured scheduling operations. You do NOT build the
 timetable — a CP-SAT solver does. You only translate human intent into typed

@@ -1,4 +1,4 @@
-"""ScheduleGod's own solver — a from-scratch competitor to CP-SAT.
+"""ScheduleSolve's own solver — a from-scratch competitor to CP-SAT.
 
 No OR-Tools. Pure Python constraint search built for exactly this problem:
 

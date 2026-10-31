@@ -34,11 +34,11 @@ SEED_SCENARIO_PATH = os.path.join(os.path.dirname(__file__), "data", "seed_scena
 
 # Persistence: Postgres in Docker (DATABASE_URL=postgresql://...), SQLite file
 # otherwise. The database holds constraint provenance + the audit trail.
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./schedulegod.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./schedulesolve.db")
 
 SOLVER_TIME_LIMIT_S = float(os.getenv("SOLVER_TIME_LIMIT_S", "10"))
 
-# ScheduleGod home solver (pure-Python competitor to CP-SAT): wall-clock
+# ScheduleSolve home solver (pure-Python competitor to CP-SAT): wall-clock
 # budget per run before it returns its best incumbent as "feasible".
 HOME_SOLVER_TIME_LIMIT_S = float(os.getenv("HOME_SOLVER_TIME_LIMIT_S", "5"))
 

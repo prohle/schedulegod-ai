@@ -1,4 +1,4 @@
-# ScheduleGod AI — frontend (Next.js 16)
+# ScheduleSolve AI — frontend (Next.js 16)
 # Multi-stage: build the app, then run a lean production server.
 FROM node:20-slim AS build
 WORKDIR /app

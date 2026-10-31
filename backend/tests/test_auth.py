@@ -14,27 +14,27 @@ def _login(client, email, password="demo1234"):
 
 
 def test_demo_accounts_and_me(client):
-    headers = _login(client, "coordinator@schedulegod.demo")
+    headers = _login(client, "coordinator@schedulesolve.demo")
     me = client.get("/auth/me", headers=headers).json()["user"]
     assert me["role"] == "coordinator"
     bad = client.post("/auth/login", json={
-        "email": "coordinator@schedulegod.demo", "password": "wrong"})
+        "email": "coordinator@schedulesolve.demo", "password": "wrong"})
     assert bad.status_code == 401
     assert client.get("/schedule/mine").status_code == 401
 
 
 def test_publish_then_role_scoped_mine(client):
-    coordinator = _login(client, "coordinator@schedulegod.demo")
+    coordinator = _login(client, "coordinator@schedulesolve.demo")
     published = client.post("/schedule/publish", json={"engine": "cpsat"},
                             headers=coordinator)
     assert published.status_code == 200, published.text
 
-    chen = _login(client, "chen@schedulegod.demo")
+    chen = _login(client, "chen@schedulesolve.demo")
     mine = client.get("/schedule/mine", headers=chen).json()
     assert mine["role"] == "instructor" and mine["placements"]
     assert all(p["instructor_id"] == "chen" for p in mine["placements"])
 
-    student = _login(client, "cs2025@schedulegod.demo")
+    student = _login(client, "cs2025@schedulesolve.demo")
     cohort_view = client.get("/schedule/mine", headers=student).json()
     assert cohort_view["role"] == "student"
     full = client.get("/schedule/current", headers=coordinator).json()
@@ -46,8 +46,8 @@ def test_publish_then_role_scoped_mine(client):
 
 
 def test_change_request_round_trip_through_verified_apply(client):
-    coordinator = _login(client, "coordinator@schedulegod.demo")
-    chen = _login(client, "chen@schedulegod.demo")
+    coordinator = _login(client, "coordinator@schedulesolve.demo")
+    chen = _login(client, "chen@schedulesolve.demo")
     created = client.post("/me/change-requests", headers=chen, json={
         "message": "Prof. Chen can't teach Fridays."})
     assert created.status_code == 200, created.text

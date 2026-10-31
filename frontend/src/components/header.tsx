@@ -31,7 +31,7 @@ export function Header({ user, onLogout }: { user?: AuthUser | null; onLogout?: 
           </div>
           <div className="min-w-0 leading-tight">
             <h1 className="flex items-center gap-1.5 truncate text-sm font-extrabold tracking-tight text-foreground">
-              ScheduleGod AI
+              ScheduleSolve AI
               <Tip label="Every schedule is solver-proven — the AI proposes, the solver verifies. No guesswork." side="bottom">
                 <span className="hidden cursor-help rounded-md bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700 ring-1 ring-indigo-200/70 min-[420px]:inline-block">
                   solver-proven

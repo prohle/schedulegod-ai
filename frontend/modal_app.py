@@ -17,9 +17,9 @@ from pathlib import Path
 import modal
 
 FRONTEND_DIR = Path(__file__).parent
-BACKEND_API_URL = "https://prohle--schedulegod-ai-api.us-east.modal.run"
+BACKEND_API_URL = "https://prohle--schedulesolve-ai-api.us-east.modal.run"
 
-app = modal.App("schedulegod-ai-ui")
+app = modal.App("schedulesolve-ai-ui")
 
 
 def _ignore(path: Path) -> bool:

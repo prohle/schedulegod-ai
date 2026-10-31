@@ -383,7 +383,7 @@ def run_tightener(scenario: Scenario, ops: Optional[list[Operation]] = None) -> 
         result=best_result, margins=best_margins)
 
 
-_TIGHTENER_SYSTEM_PROMPT = """You are the tightening module of ScheduleGod AI, a
+_TIGHTENER_SYSTEM_PROMPT = """You are the tightening module of ScheduleSolve AI, a
 department course-timetabling co-pilot. The CP-SAT solver has hit a deadlock
 (an infeasible timetable, a spectral structural warning) or the four-course
 offering guarantee failed for some cohort. You receive the evidence and

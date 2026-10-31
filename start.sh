@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ScheduleGod AI — single-command local deploy.
+# ScheduleSolve AI — single-command local deploy.
 #
 # Bootstraps the Python backend (FastAPI + OR-Tools CP-SAT) and the Next.js
 # frontend, wires them together, auto-assigns free ports, and stops both on
@@ -82,7 +82,7 @@ if [ -n "${MODEL_API_KEY:-}" ] || [ -n "${MUSE_API_KEY:-}" ]; then
 fi
 
 echo ""
-echo "  ScheduleGod AI starting…"
+echo "  ScheduleSolve AI starting…"
 echo "  · Frontend  http://localhost:${FRONTEND_PORT}"
 echo "  · Backend   http://localhost:${BACKEND_PORT}   (API docs: /docs)"
 echo "  · Muse mode ${MUSE_MODE}"

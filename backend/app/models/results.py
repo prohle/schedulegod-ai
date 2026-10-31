@@ -50,7 +50,7 @@ class SolveResult(BaseModel):
 
 
 class CompareResult(BaseModel):
-    """Side-by-side: CP-SAT vs ScheduleGod's own solver on the same world."""
+    """Side-by-side: CP-SAT vs ScheduleSolve's own solver on the same world."""
 
     cpsat: SolveResult
     ours: SolveResult

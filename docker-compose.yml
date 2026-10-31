@@ -1,4 +1,4 @@
-# ScheduleGod AI — full stack: database + backend + frontend.
+# ScheduleSolve AI — full stack: database + backend + frontend.
 #
 #   docker compose up --build          # build and boot everything
 #   docker compose down                # stop
@@ -13,9 +13,9 @@ services:
   db:
     image: postgres:18-alpine
     environment:
-      POSTGRES_USER: schedulegod
-      POSTGRES_PASSWORD: schedulegod
-      POSTGRES_DB: schedulegod
+      POSTGRES_USER: schedulesolve
+      POSTGRES_PASSWORD: schedulesolve
+      POSTGRES_DB: schedulesolve
     volumes:
       # Postgres 18 image: PGDATA lives under /var/lib/postgresql/18/docker,
       # so mount the volume at /var/lib/postgresql (not .../data as in <=17).
@@ -24,7 +24,7 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql://schedulegod:schedulegod@db:5432/schedulegod
+      DATABASE_URL: postgresql://schedulesolve:schedulesolve@db:5432/schedulesolve
       MODEL_API_KEY: ${MODEL_API_KEY:-}
       MUSE_API_KEY: ${MUSE_API_KEY:-}
     # No readiness gating: the backend treats the database as best-effort

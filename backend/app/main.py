@@ -1,4 +1,4 @@
-"""ScheduleGod AI — backend entry point.
+"""ScheduleSolve AI — backend entry point.
 
     instructor/chair message -> Muse Spark constraint parsing -> CP-SAT
     solve -> timetable, minimal-conflict explanation, or verified term-change
@@ -62,7 +62,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="ScheduleGod AI", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="ScheduleSolve AI", version="0.2.0", lifespan=lifespan)
 
 
 def load_seed_scenario() -> Scenario:
@@ -109,7 +109,7 @@ class ApplyOpsRequest(BaseModel):
 class SolveRequest(BaseModel):
     scenario: Scenario
     operations: Optional[list] = None
-    engine: str = "cpsat"  # "cpsat" (OR-Tools) | "ours" (ScheduleGod home solver)
+    engine: str = "cpsat"  # "cpsat" (OR-Tools) | "ours" (ScheduleSolve home solver)
 
 
 class IngestRequest(BaseModel):
@@ -149,7 +149,7 @@ def _ingest_text(text: str) -> IngestResponse:
 
 @app.get("/status")
 def status() -> dict:
-    return {"status": "ok", "service": "schedulegod-ai-backend"}
+    return {"status": "ok", "service": "schedulesolve-ai-backend"}
 
 
 @app.get("/history")
@@ -521,7 +521,7 @@ def auth_login(req: LoginRequest) -> dict:
     from app.services.auth import create_session, find_user, public_user, verify_password
     init_db()
     user = find_user(req.email)
-    if user is None and req.email.lower().endswith("@schedulegod.demo"):
+    if user is None and req.email.lower().endswith("@schedulesolve.demo"):
         from app.services.auth import seed_demo_users
         seed_demo_users(get_current_scenario())
         user = find_user(req.email)

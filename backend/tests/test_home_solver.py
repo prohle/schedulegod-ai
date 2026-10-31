@@ -1,4 +1,4 @@
-"""ScheduleGod home solver vs CP-SAT: same contract, independently verified.
+"""ScheduleSolve home solver vs CP-SAT: same contract, independently verified.
 
 The home solver must (a) produce timetables that satisfy every hard
 constraint — checked here from the placements alone, not by trusting the

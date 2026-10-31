@@ -17,7 +17,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./schedulegod.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./schedulesolve.db")
 if DATABASE_URL.startswith("postgres://"):  # SQLAlchemy wants postgresql://
     DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
 

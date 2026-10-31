@@ -26,8 +26,8 @@ def _op(op, **kw):
 
 
 def test_structured_intake_verified_apply_and_load(client):
-    coordinator = _login(client, "coordinator@schedulegod.demo")
-    chen = _login(client, "chen@schedulegod.demo")
+    coordinator = _login(client, "coordinator@schedulesolve.demo")
+    chen = _login(client, "chen@schedulesolve.demo")
     client.post("/schedule/publish", json={"engine": "cpsat"}, headers=coordinator)
 
     created = client.post("/me/change-requests", headers=chen, json={
@@ -63,8 +63,8 @@ def test_structured_intake_verified_apply_and_load(client):
 
 
 def test_structured_intake_infeasible_is_rejected_with_reason(client):
-    coordinator = _login(client, "coordinator@schedulegod.demo")
-    lee = _login(client, "lee@schedulegod.demo")  # sole instructor for CS 210
+    coordinator = _login(client, "coordinator@schedulesolve.demo")
+    lee = _login(client, "lee@schedulesolve.demo")  # sole instructor for CS 210
     created = client.post("/me/change-requests", headers=lee, json={
         "operations": [
             _op("add_instructor_unavailability", day=d,
@@ -81,7 +81,7 @@ def test_structured_intake_infeasible_is_rejected_with_reason(client):
 
 
 def test_structured_intake_whitelist_and_self_only(client):
-    chen = _login(client, "chen@schedulegod.demo")
+    chen = _login(client, "chen@schedulesolve.demo")
     # Campus closures are the coordinator's, not a professor's pick.
     only_forbidden = client.post("/me/change-requests", headers=chen, json={
         "operations": [_op("add_term_closure", day=4, label="Holiday",
@@ -117,8 +117,8 @@ def test_term_closure_blocks_slots_in_solver(client):
 
 
 def test_term_closure_endpoint_coordinator_only(client):
-    coordinator = _login(client, "coordinator@schedulegod.demo")
-    chen = _login(client, "chen@schedulegod.demo")
+    coordinator = _login(client, "coordinator@schedulesolve.demo")
+    chen = _login(client, "chen@schedulesolve.demo")
     body = {"closures": [{"day": 3, "period": 2, "label": "Convocation"}]}
     assert client.post("/term/closures", json=body, headers=chen).status_code == 403
     set_resp = client.post("/term/closures", json=body, headers=coordinator)

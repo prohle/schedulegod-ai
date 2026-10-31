@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ScheduleGod AI",
+  title: "ScheduleSolve AI",
   description: "Solver-proven course timetables from plain-language constraints.",
 };
 

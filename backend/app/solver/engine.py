@@ -14,7 +14,7 @@ shape — only the search differs.
 
   cpsat   OR-Tools CP-SAT (Google): industrial C++ constraint solver,
           clause learning, proves optimality in fractions of a second.
-  ours    ScheduleGod home solver: AI-crafted pure-Python search
+  ours    ScheduleSolve home solver: AI-crafted pure-Python search
           (MRV + forward checking + branch-and-bound + ejection
           hill-climbing), designed around this problem's trade-offs.
   greedy  The home solver's first descent only — a milliseconds-fast
@@ -44,7 +44,7 @@ ENGINES: list[EngineInfo] = [
         description="Google's C++ constraint solver — clause learning, "
                     "assumption-literal conflict cores, proven optima in milliseconds."),
     EngineInfo(
-        id="ours", label="ScheduleGod solver (ours)", kind="ai-crafted",
+        id="ours", label="ScheduleSolve solver (ours)", kind="ai-crafted",
         description="AI-authored solver built for this problem: native C++ search "
                     "core (MRV + forward checking, branch-and-bound with an admissible "
                     "bound, ejection hill-climbing, deletion-minimized conflict cores) "

@@ -1,6 +1,6 @@
 import { forward, BACKEND_URL } from "@/lib/backend";
 
-// Side-by-side engine comparison: CP-SAT vs the ScheduleGod home solver on
+// Side-by-side engine comparison: CP-SAT vs the ScheduleSolve home solver on
 // the backend's current scenario.
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));

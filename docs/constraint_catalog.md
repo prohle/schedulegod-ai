@@ -1,4 +1,4 @@
-# ScheduleGod AI — Constraint Catalog (Academic Course Scheduling)
+# ScheduleSolve AI — Constraint Catalog (Academic Course Scheduling)
 
 The problem a department scheduler actually solves each term, broken into
 entities and constraints. This catalog is the source of truth for three

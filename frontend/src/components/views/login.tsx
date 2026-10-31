@@ -9,9 +9,9 @@ import { GraduationCap, KeyRound, UserPlus } from "lucide-react";
 import { saveSession, type AuthUser } from "@/lib/auth";
 
 const DEMO = [
-  { label: "Coordinator", email: "coordinator@schedulegod.demo", hint: "Runs the term: build, publish, approve changes" },
-  { label: "Prof. Chen (instructor)", email: "chen@schedulegod.demo", hint: "Sees only her sections; requests changes" },
-  { label: "CS 2025 (student)", email: "cs2025@schedulegod.demo", hint: "Sees only the cohort's courses" },
+  { label: "Coordinator", email: "coordinator@schedulesolve.demo", hint: "Runs the term: build, publish, approve changes" },
+  { label: "Prof. Chen (instructor)", email: "chen@schedulesolve.demo", hint: "Sees only her sections; requests changes" },
+  { label: "CS 2025 (student)", email: "cs2025@schedulesolve.demo", hint: "Sees only the cohort's courses" },
 ];
 
 export function LoginView({ onLogin, onToast }: {
@@ -53,7 +53,7 @@ export function LoginView({ onLogin, onToast }: {
           <div className="inline-flex rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 p-3 text-white shadow-lg shadow-indigo-500/25">
             <GraduationCap className="w-7 h-7" />
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight">ScheduleGod AI</h1>
+          <h1 className="text-xl font-extrabold tracking-tight">ScheduleSolve AI</h1>
           <p className="text-xs text-muted-foreground" title="Every schedule here is solver-proven — the AI proposes, the solver verifies.">
             Solver-proven timetables
           </p>

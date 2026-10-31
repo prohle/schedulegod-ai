@@ -1,8 +1,8 @@
 # Live demo on Modal
 
 Deployed and live:
-- **UI:** https://prohle--schedulegod-ai-ui-web.us-east.modal.run (`modal deploy frontend/modal_app.py` — Next.js standalone Node server, scale-to-zero)
-- **Backend API:** https://prohle--schedulegod-ai-api.us-east.modal.run (FastAPI, scale-to-zero)
+- **UI:** https://prohle--schedulesolve-ai-ui-web.us-east.modal.run (`modal deploy frontend/modal_app.py` — Next.js standalone Node server, scale-to-zero)
+- **Backend API:** https://prohle--schedulesolve-ai-api.us-east.modal.run (FastAPI, scale-to-zero)
 
 The backend is a standard FastAPI app; Modal runs it as a scale-to-zero ASGI
 container. The Next.js UI proxies through its existing `/api/*` routes
@@ -20,10 +20,10 @@ cd backend
 modal deploy modal_app.py
 ```
 
-Modal prints a URL like `https://<workspace>--schedulegod-ai-api.modal.run`.
+Modal prints a URL like `https://<workspace>--schedulesolve-ai-api.modal.run`.
 Open `/status` and `/docs` to verify it.
 
-**State:** SQLite is mounted on the `schedulegod-data` Modal Volume, so the
+**State:** SQLite is mounted on the `schedulesolve-data` Modal Volume, so the
 audit trail survives restarts. `POST /scenario/reset` returns the demo to the
 seed term.
 
@@ -47,7 +47,7 @@ assets copied per the Next.js standalone guide) and serves it with
 Alternative (Vercel):
 - Import the repo into Vercel.
 - Root directory: `frontend`.
-- Environment variable: `BACKEND_URL=https://<workspace>--schedulegod-ai-api.modal.run`.
+- Environment variable: `BACKEND_URL=https://<workspace>--schedulesolve-ai-api.modal.run`.
 - Deploy.
 
 The UI's `/api/*` routes forward to `BACKEND_URL`; the browser never talks to

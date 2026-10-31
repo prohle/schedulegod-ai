@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import modal
 
-app = modal.App("schedulegod-ai")
+app = modal.App("schedulesolve-ai")
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
@@ -21,19 +21,19 @@ image = (
     .apt_install("g++")
     .add_local_python_source("app", copy=True)
     .add_local_dir("app/data", remote_path="/root/app/data", copy=True)
-    .add_local_file("native/schedulergod_solver.cpp",
-                    remote_path="/root/native/schedulergod_solver.cpp", copy=True)
-    .run_commands("g++ -O3 -std=c++17 -o /root/native/solver /root/native/schedulergod_solver.cpp")
+    .add_local_file("native/schedulesolve_solver.cpp",
+                    remote_path="/root/native/schedulesolve_solver.cpp", copy=True)
+    .run_commands("g++ -O3 -std=c++17 -o /root/native/solver /root/native/schedulesolve_solver.cpp")
 )
 
-volume = modal.Volume.from_name("schedulegod-data", create_if_missing=True)
+volume = modal.Volume.from_name("schedulesolve-data", create_if_missing=True)
 
 
 @app.function(
     image=image,
     secrets=[modal.Secret.from_name("meta-api")],
     volumes={"/data": volume},
-    env={"DATABASE_URL": "sqlite:////data/schedulegod.db"},
+    env={"DATABASE_URL": "sqlite:////data/schedulesolve.db"},
     timeout=300,          # Muse calls can take 30-90s
     cpu=2,
     memory=4096,

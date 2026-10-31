@@ -7,20 +7,20 @@ Copy-paste source for the CV platform form. Deadline: **Wed Nov 4, 9:00 PM ET**
 
 | Field | Value |
 |---|---|
-| Project name | ScheduleGod AI |
+| Project name | ScheduleSolve AI |
 | Track | **Indie Developer** (solo entrant) |
 | Problem statement | **Build for Your World** — the course-timetabling week every department coordinator loses, every term |
 | Team | Solo — Huong Le |
-| Repo (public) | https://github.com/prohle/schedulegod-ai |
-| Demo video (≤3:00) | https://github.com/prohle/schedulegod-ai/releases/download/demo-video/final.mp4 (2:51 live Puppeteer screencast, re-recorded Oct 30 on the current Express/Full interface) — _upload the same file to YouTube and add that link here too_ |
-| Live demo | **https://prohle--schedulegod-ai-ui-web.us-east.modal.run** (full UI, no account/key; backend API: https://prohle--schedulegod-ai-api.us-east.modal.run/docs) — or judges run `docker compose up` (no key, no account — see README "Judges — try it in 2 minutes") |
+| Repo (public) | https://github.com/prohle/schedulesolve-ai |
+| Demo video (≤3:00) | https://github.com/prohle/schedulesolve-ai/releases/download/demo-video/final.mp4 (2:51 live Puppeteer screencast, re-recorded Oct 30 on the current Express/Full interface) — _upload the same file to YouTube and add that link here too_ |
+| Live demo | **https://prohle--schedulesolve-ai-ui-web.us-east.modal.run** (full UI, no account/key; backend API: https://prohle--schedulesolve-ai-api.us-east.modal.run/docs) — or judges run `docker compose up` (no key, no account — see README "Judges — try it in 2 minutes") |
 | X post (Most Viral) | _paste link after posting; engagement counts until Nov 8 EOD. Ready copy below — attach `final.mp4`_ |
 
 **X post (ready to publish, attach the video):**
-> Every term, one coordinator loses a week to the course timetable. ScheduleGod AI takes the messy files as they are — PDF, Word, Excel, plain text — and returns a *proven* timetable for the whole university. The AI proposes. The solver proves. Our own C++ solver proves the same answer faster on every measured instance — and finishes a 361-section university the industrial engine can't. Live demo + full build log in the replies. #BuildForYourWorld
+> Every term, one coordinator loses a week to the course timetable. ScheduleSolve AI takes the messy files as they are — PDF, Word, Excel, plain text — and returns a *proven* timetable for the whole university. The AI proposes. The solver proves. Our own C++ solver proves the same answer faster on every measured instance — and finishes a 361-section university the industrial engine can't. Live demo + full build log in the replies. #BuildForYourWorld
 >
-> Reply 1: Live demo (one tap, no account): https://prohle--schedulegod-ai-ui-web.us-east.modal.run
-> Reply 2: Code + evidence: https://github.com/prohle/schedulegod-ai
+> Reply 1: Live demo (one tap, no account): https://prohle--schedulesolve-ai-ui-web.us-east.modal.run
+> Reply 2: Code + evidence: https://github.com/prohle/schedulesolve-ai
 
 **One-liner:** An agentic co-pilot that turns natural-language scheduling
 constraints into a provably feasible university timetable — Muse Spark
@@ -31,7 +31,7 @@ and student's personal plan before it can stand.
 **Short description (form):**
 Every term, a department coordinator burns a week reconciling instructor
 constraints, degree roadmaps, room capacities, and campus walk times in a
-spreadsheet that is wrong the moment reality changes. ScheduleGod AI replaces
+spreadsheet that is wrong the moment reality changes. ScheduleSolve AI replaces
 that week: paste or drop the institution's messy data and Muse Spark
 autocleans it into a typed model; type one sentence ("Prof. Patel can't teach
 Mondays — committee duty") and Muse parses it into validated constraints
@@ -70,12 +70,12 @@ can't cross in ten minutes.
 
 Right now, universities solve this NP-hard combinatorial puzzle with email
 threads, guesswork, and spreadsheets that are broken the moment reality
-changes. To fix this for the Meta Hackathon, we built ScheduleGod AI.
+changes. To fix this for the Meta Hackathon, we built ScheduleSolve AI.
 
 Here is how it works. You point the tool at messy institutional files in any
 format — PDF catalogs, Word degree maps, Excel room sheets, or plain text.
 Muse Spark — Meta's model family, and the intelligence layer behind
-ScheduleGod AI — autocleans and organizes them into cleaned structured data
+ScheduleSolve AI — autocleans and organizes them into cleaned structured data
 representing the entire institution: for each degree roadmap, current
 student bodies, current faculty load requirements, faculty preference and
 availability, each cohort based on real map and lab facility availability,
@@ -186,14 +186,14 @@ can reach, and quote any reply (with permission) in the form's Impact field:
 
 > Subject: 10-minute look — AI timetabling that proves its schedule?
 >
-> Hi [Name], I built ScheduleGod AI for the Meta hackathon: it takes the
+> Hi [Name], I built ScheduleSolve AI for the Meta hackathon: it takes the
 > messy files a department already has (catalog, degree maps, room sheets,
 > faculty emails), turns natural-language constraints ("Patel can't teach
 > Mondays") into a timetable a solver mathematically proves feasible, and
 > re-proves every mid-term change before showing it. It also suggests
 > students a personal course plan that fits their work schedule and degree
 > roadmap — or warns them before a must-take course slips a semester.
-> Live demo (no signup): https://prohle--schedulegod-ai-ui-web.us-east.modal.run
+> Live demo (no signup): https://prohle--schedulesolve-ai-ui-web.us-east.modal.run
 > Would you be willing to look for 10 minutes and tell me (a) how long
 > timetabling takes your office today, and (b) whether a proven schedule
 > would change that? One quotable sentence helps more than any feature.

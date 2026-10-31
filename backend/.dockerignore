@@ -2,7 +2,7 @@
 __pycache__
 *.pyc
 *.db
-schedulegod.db
+schedulesolve.db
 muse-verification.json
 scripts
 data/*.db

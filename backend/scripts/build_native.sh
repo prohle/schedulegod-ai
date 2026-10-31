@@ -3,5 +3,5 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 CXX="${CXX:-g++}"
-"$CXX" -O3 -std=c++17 -o native/solver native/schedulergod_solver.cpp
+"$CXX" -O3 -std=c++17 -o native/solver native/schedulesolve_solver.cpp
 echo "built native/solver"

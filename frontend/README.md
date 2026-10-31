@@ -1,6 +1,6 @@
-# ScheduleGod AI — Frontend
+# ScheduleSolve AI — Frontend
 
-Next.js 16 UI for ScheduleGod AI: a **Guided Wizard** (simple, step-by-step)
+Next.js 16 UI for ScheduleSolve AI: a **Guided Wizard** (simple, step-by-step)
 and **Expert views** (master timetable, faculty, DAG, cohort demand, student
 audits, intelligence).
 

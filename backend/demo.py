@@ -124,7 +124,7 @@ def print_intelligence(scenario) -> None:
 
 def main() -> None:
     scenario = load_seed_scenario()
-    print("ScheduleGod AI — offline demo (mock parser; set MODEL_API_KEY for Muse Spark)")
+    print("ScheduleSolve AI — offline demo (mock parser; set MODEL_API_KEY for Muse Spark)")
     print(f"Scenario: {scenario.name}")
     print(f"Cohorts: " + "; ".join(
         f"{c.name} (term {c.current_term}, {c.size} students)"

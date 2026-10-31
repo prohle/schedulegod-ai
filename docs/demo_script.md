@@ -1,4 +1,4 @@
-# ScheduleGod AI — demo video script (live Puppeteer screencast)
+# ScheduleSolve AI — demo video script (live Puppeteer screencast)
 
 > The shipped video is a **real-time Puppeteer screencast** of the running
 > application (`local-demo/record_live.js`, CDP `Page.startScreencast`),
@@ -22,7 +22,7 @@
    (status → penalty → speed). The race runs at department scale, where
    the native solver's win is the measured one (same proven objective,
    lower proof time — `docs/solver_evidence.md`); the recorder asserts
-   "ScheduleGod solver (ours) ranks first" before marking the beat.
+   "ScheduleSolve solver (ours) ranks first" before marking the beat.
 4. **University scale + publish** — Load university scale (38 instructors,
    41 sections, 20 cohorts, 5 programs) → coordinator publishes the
    verified timetable.

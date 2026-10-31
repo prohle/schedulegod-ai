@@ -179,7 +179,7 @@ export function WizardView({ onToast }: WizardViewProps) {
   const [lastEngine, setLastEngine] = useState<string>("cpsat");
   const [engineList, setEngineList] = useState<{ id: string; label: string; kind?: string; description: string }[]>([
     { id: "cpsat", label: "OR-Tools CP-SAT", kind: "industrial", description: "Google's C++ constraint solver — proven optima in milliseconds." },
-    { id: "ours", label: "ScheduleGod solver (ours)", kind: "ai-crafted", description: "From-scratch pure-Python solver built for this problem." },
+    { id: "ours", label: "ScheduleSolve solver (ours)", kind: "ai-crafted", description: "From-scratch pure-Python solver built for this problem." },
     { id: "greedy", label: "Greedy descent (ours, fast)", kind: "ai-crafted", description: "First descent only — shows what the optimization phases buy." },
   ]);
   useEffect(() => {
@@ -735,7 +735,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                   </button>
                 ))}
               </div>
-              <Button variant="primary" size="md" onClick={() => { solveWith(engine); onToast(engine === "ours" ? "Running ScheduleGod solver…" : "Running CP-SAT…", "info"); }} disabled={busy !== null} className="flex items-center gap-2">
+              <Button variant="primary" size="md" onClick={() => { solveWith(engine); onToast(engine === "ours" ? "Running ScheduleSolve solver…" : "Running CP-SAT…", "info"); }} disabled={busy !== null} className="flex items-center gap-2">
                 {busy === "solve" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 Solve with {engineList.find((e) => e.id === engine)?.label ?? engine}
               </Button>
@@ -782,7 +782,7 @@ export function WizardView({ onToast }: WizardViewProps) {
                         <TimetableGrid placements={compare.cpsat.timetable.placements} compact />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-emerald-700 mb-1">ScheduleGod solver (ours)</div>
+                        <div className="text-xs font-bold text-emerald-700 mb-1">ScheduleSolve solver (ours)</div>
                         <TimetableGrid
                           placements={compare.ours.timetable.placements}
                           changed={changedSections(compare.cpsat.timetable.placements, compare.ours.timetable.placements)}

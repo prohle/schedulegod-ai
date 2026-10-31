@@ -1,6 +1,6 @@
 # Honest limitations
 
-What ScheduleGod AI does **not** do, stated plainly. Each item names the
+What ScheduleSolve AI does **not** do, stated plainly. Each item names the
 code that bounds it, so a judge can verify the boundary instead of taking
 our word for it. Scoped claims are stronger than broad ones.
 

@@ -88,7 +88,7 @@ def _system_prompt(scenario: Scenario, cohort, plan: list[str], pool: list[str])
         c = scenario.course(cid)
         return f"- {c.id} ({c.code}, {c.title})" + (" [required this term]" if cid in plan else "")
     courses = "\n".join(line(cid) for cid in pool)
-    return f"""You parse a student's schedule request for ScheduleGod AI.
+    return f"""You parse a student's schedule request for ScheduleSolve AI.
 The student belongs to cohort {cohort.name}. Convert their message into
 typed constraints for a deterministic selector — you do NOT pick classes.
 

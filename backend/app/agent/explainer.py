@@ -89,7 +89,7 @@ def _mock_explanation(ops: list[Operation], core: list[int]) -> ExplanationResul
     )
 
 
-_EXPLANATION_SYSTEM_PROMPT = """You are the self-healing explanation module of ScheduleGod AI, a
+_EXPLANATION_SYSTEM_PROMPT = """You are the self-healing explanation module of ScheduleSolve AI, a
 department course-timetabling co-pilot. You receive a scheduling request
 that CP-SAT just PROVED infeasible, together with the solver's minimal
 conflict core. Your job is translation, not invention: explain the conflict
